@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import urllib.parse
 import urllib.request
 import xml.etree.ElementTree as ET
@@ -321,6 +322,10 @@ APP_JS = """
           if (status) status.textContent = `자동 갱신 완료 (${Math.min(rows.length, 6)}건)`;
           return;
         }
+        if (Array.isArray(rows) && rows.length === 0) {
+          if (status) status.textContent = "조건에 맞는 최신 기사 없음";
+          return;
+        }
       }
     } catch (_) {}
 
@@ -425,13 +430,50 @@ def load_recent_articles(base: Path) -> pd.DataFrame:
     return df.sort_values("date", ascending=False).head(12).reset_index(drop=True)
 
 
-def fetch_google_news_articles(phrase: str = "중앙선거여론조사심의위원회", limit: int = 12) -> pd.DataFrame:
+def fetch_google_news_articles(
+    phrase: str = "중앙선거여론조사심의위원회",
+    limit: int = 12,
+    max_content_checks: int = 20,
+) -> pd.DataFrame:
     def _fetch_xml(url: str) -> str:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
         with urllib.request.urlopen(req, timeout=20) as r:
             return r.read().decode("utf-8", "ignore")
 
+    def _fetch_text(url: str) -> str:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=8) as r:
+            html = r.read().decode("utf-8", "ignore")
+        # Strip script/style blocks and tags for robust phrase matching.
+        html = re.sub(r"(?is)<script.*?>.*?</script>", " ", html)
+        html = re.sub(r"(?is)<style.*?>.*?</style>", " ", html)
+        text = re.sub(r"(?is)<[^>]+>", " ", html)
+        return re.sub(r"\s+", " ", text).strip()
+
     queries = [f'"{phrase}"', f"{phrase} 여론조사"]
+    phrase_hit_cache: dict[str, bool] = {}
+
+    content_checks = 0
+
+    def _article_contains_phrase(url: str, title: str, desc: str) -> bool:
+        nonlocal content_checks
+        # Fast path: phrase explicitly present in RSS title/description.
+        if phrase in f"{title} {desc}":
+            return True
+        if url in phrase_hit_cache:
+            return phrase_hit_cache[url]
+        if content_checks >= max_content_checks:
+            phrase_hit_cache[url] = False
+            return False
+        try:
+            content_checks += 1
+            txt = _fetch_text(url)
+            ok = phrase in txt
+        except Exception:
+            ok = False
+        phrase_hit_cache[url] = ok
+        return ok
+
     rows = []
     for q in queries:
         try:
@@ -440,7 +482,7 @@ def fetch_google_news_articles(phrase: str = "중앙선거여론조사심의위�
                 f"q={urllib.parse.quote(q)}&hl=ko&gl=KR&ceid=KR:ko"
             )
             root = ET.fromstring(_fetch_xml(rss))
-            for it in root.findall(".//item"):
+            for it in root.findall(".//item")[:40]:
                 title = (it.findtext("title") or "").strip()
                 link = (it.findtext("link") or "").strip()
                 desc = (it.findtext("description") or "").strip()
@@ -448,7 +490,8 @@ def fetch_google_news_articles(phrase: str = "중앙선거여론조사심의위�
                 pub = (it.findtext("pubDate") or "").strip()
                 if not title or not link:
                     continue
-                if phrase not in f"{title} {desc}":
+                # Enforce phrase presence in article content (or RSS text as fast path).
+                if not _article_contains_phrase(link, title, desc):
                     continue
                 dt = None
                 if pub:
@@ -465,6 +508,10 @@ def fetch_google_news_articles(phrase: str = "중앙선거여론조사심의위�
                         "_dt": dt,
                     }
                 )
+                if len(rows) >= limit:
+                    break
+            if len(rows) >= limit:
+                break
             if rows:
                 break
         except Exception:
@@ -486,25 +533,17 @@ def resolve_news_articles(base: Path, outputs: Path) -> tuple[pd.DataFrame, str]
     if not fetched_articles.empty:
         return fetched_articles, "google_rss"
 
-    # Priority 2: issue intake output
-    issue_news = outputs / "issue_news_latest.csv"
-    if issue_news.exists():
-        try:
-            tmp = pd.read_csv(issue_news)
-            tmp = tmp.rename(columns={"published": "date", "link": "url", "keyword": "source"})
-            for c in ["date", "source", "title", "url"]:
-                if c not in tmp.columns:
-                    tmp[c] = ""
-            tmp["date"] = pd.to_datetime(tmp["date"], errors="coerce")
-            tmp = tmp.dropna(subset=["date", "title", "url"])[["date", "source", "title", "url"]]
-            tmp = tmp.sort_values("date", ascending=False).head(12).reset_index(drop=True)
-            if not tmp.empty:
-                return tmp, "issue_news_latest_csv"
-        except Exception:
-            pass
+    # Priority 2: manual fallback file (curated) but keep strict phrase condition.
+    phrase = "중앙선거여론조사심의위원회"
+    manual = load_recent_articles(base)
+    if not manual.empty:
+        manual = manual[manual["title"].astype(str).str.contains(phrase, na=False)].copy()
+        manual = manual.head(12).reset_index(drop=True)
+        if not manual.empty:
+            return manual, "recent_articles_csv_filtered"
 
-    # Priority 3: manual fallback file
-    return load_recent_articles(base), "recent_articles_csv"
+    # If nothing matches the strict rule, return empty list.
+    return pd.DataFrame(columns=["date", "source", "title", "url"]), "no_matching_articles"
 
 
 def load_backtest_overall(outputs: Path) -> dict:

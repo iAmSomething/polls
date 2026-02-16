@@ -189,6 +189,10 @@
           if (status) status.textContent = `자동 갱신 완료 (${Math.min(rows.length, 6)}건)`;
           return;
         }
+        if (Array.isArray(rows) && rows.length === 0) {
+          if (status) status.textContent = "조건에 맞는 최신 기사 없음";
+          return;
+        }
       }
     } catch (_) {}
 
