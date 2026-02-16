@@ -430,97 +430,153 @@ def load_recent_articles(base: Path) -> pd.DataFrame:
     return df.sort_values("date", ascending=False).head(12).reset_index(drop=True)
 
 
+def load_cached_news_json(base: Path) -> pd.DataFrame:
+    p = base / "docs" / "news_latest.json"
+    cols = ["date", "source", "title", "url"]
+    if not p.exists():
+        return pd.DataFrame(columns=cols)
+    try:
+        rows = json.loads(p.read_text(encoding="utf-8"))
+    except Exception:
+        return pd.DataFrame(columns=cols)
+    if not isinstance(rows, list):
+        return pd.DataFrame(columns=cols)
+    df = pd.DataFrame(rows)
+    for c in cols:
+        if c not in df.columns:
+            df[c] = ""
+    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df = df.dropna(subset=["date", "title", "url"])
+    return df.sort_values("date", ascending=False).head(12).reset_index(drop=True)
+
+
 def fetch_google_news_articles(
     phrase: str = "중앙선거여론조사심의위원회",
     limit: int = 12,
-    max_content_checks: int = 20,
+    max_content_checks: int = 80,
 ) -> pd.DataFrame:
-    def _fetch_xml(url: str) -> str:
+    def _fetch_html(url: str, timeout: int = 12) -> str:
         req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=20) as r:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
             return r.read().decode("utf-8", "ignore")
 
-    def _fetch_text(url: str) -> str:
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=8) as r:
-            html = r.read().decode("utf-8", "ignore")
-        # Strip script/style blocks and tags for robust phrase matching.
-        html = re.sub(r"(?is)<script.*?>.*?</script>", " ", html)
-        html = re.sub(r"(?is)<style.*?>.*?</style>", " ", html)
-        text = re.sub(r"(?is)<[^>]+>", " ", html)
-        return re.sub(r"\s+", " ", text).strip()
+    def _extract_naver_links(search_html: str) -> list[str]:
+        cands = re.findall(r'https://n\.news\.naver\.com/mnews/article/\d+/\d+', search_html)
+        uniq: list[str] = []
+        for u in cands:
+            if u not in uniq:
+                uniq.append(u)
+        return uniq
 
-    queries = [f'"{phrase}"', f"{phrase} 여론조사"]
-    phrase_hit_cache: dict[str, bool] = {}
+    def _extract_title(html: str, fallback_url: str) -> str:
+        for pat in [
+            r'<meta\s+property="og:title"\s+content="([^"]+)"',
+            r"<meta\s+property='og:title'\s+content='([^']+)'",
+            r"<title>(.*?)</title>",
+        ]:
+            m = re.search(pat, html, flags=re.I | re.S)
+            if m:
+                return re.sub(r"\s+", " ", m.group(1)).strip()
+        return fallback_url
+
+    pollster_keywords = [str(x).strip() for x in POLLSTERS if str(x).strip()]
+    priority_steps = [
+        {
+            "priority": 1,
+            "name": "phrase",
+            "queries": [f"{phrase} 여론조사", f"{phrase} 정당 지지율", phrase],
+        },
+        {
+            "priority": 2,
+            "name": "pollster_name",
+            "queries": [f"{k} 여론조사" for k in pollster_keywords],
+        },
+        {
+            "priority": 3,
+            "name": "general_poll",
+            "queries": ["여론조사 정당 지지율", "여론조사"],
+        },
+    ]
+    article_cache: dict[str, tuple[bool, str, str]] = {}
+    seen_urls: set[str] = set()
 
     content_checks = 0
+    rows = []
 
-    def _article_contains_phrase(url: str, title: str, desc: str) -> bool:
+    def _fetch_article_payload(url: str) -> tuple[bool, str, str]:
         nonlocal content_checks
-        # Fast path: phrase explicitly present in RSS title/description.
-        if phrase in f"{title} {desc}":
-            return True
-        if url in phrase_hit_cache:
-            return phrase_hit_cache[url]
+        if url in article_cache:
+            return article_cache[url]
         if content_checks >= max_content_checks:
-            phrase_hit_cache[url] = False
-            return False
+            article_cache[url] = (False, "", "")
+            return article_cache[url]
         try:
             content_checks += 1
-            txt = _fetch_text(url)
-            ok = phrase in txt
+            html = _fetch_html(url, timeout=8)
+            txt = re.sub(r"(?is)<script.*?>.*?</script>|<style.*?>.*?</style>|<[^>]+>", " ", html)
+            txt = re.sub(r"\s+", " ", txt).strip()
+            ok = True
         except Exception:
             ok = False
-        phrase_hit_cache[url] = ok
-        return ok
+            html = ""
+            txt = ""
+        article_cache[url] = (ok, html, txt)
+        return article_cache[url]
 
-    rows = []
-    for q in queries:
-        try:
-            rss = (
-                "https://news.google.com/rss/search?"
-                f"q={urllib.parse.quote(q)}&hl=ko&gl=KR&ceid=KR:ko"
-            )
-            root = ET.fromstring(_fetch_xml(rss))
-            for it in root.findall(".//item")[:40]:
-                title = (it.findtext("title") or "").strip()
-                link = (it.findtext("link") or "").strip()
-                desc = (it.findtext("description") or "").strip()
-                source = (it.findtext("source") or "Google News").strip()
-                pub = (it.findtext("pubDate") or "").strip()
-                if not title or not link:
+    def _match_priority(text: str, title: str) -> int | None:
+        t = f"{title} {text}"
+        if phrase in t:
+            return 1
+        if any(k in t for k in pollster_keywords):
+            return 2
+        if "여론조사" in t:
+            return 3
+        return None
+
+    for step in priority_steps:
+        for q in step["queries"]:
+            try:
+                surl = (
+                    "https://search.naver.com/search.naver"
+                    f"?where=news&sm=tab_jum&query={urllib.parse.quote(q)}"
+                )
+                search_html = _fetch_html(surl, timeout=12)
+                links = _extract_naver_links(search_html)[:40]
+            except Exception:
+                links = []
+            for link in links:
+                if link in seen_urls:
                     continue
-                # Enforce phrase presence in article content (or RSS text as fast path).
-                if not _article_contains_phrase(link, title, desc):
+                ok, html, text = _fetch_article_payload(link)
+                if not ok:
                     continue
-                dt = None
-                if pub:
-                    try:
-                        dt = parsedate_to_datetime(pub)
-                    except Exception:
-                        dt = None
+                title = _extract_title(html, link)
+                matched_priority = _match_priority(text, title)
+                if matched_priority != step["priority"]:
+                    continue
+                seen_urls.add(link)
                 rows.append(
                     {
-                        "date": (dt.date().isoformat() if dt is not None else ""),
-                        "source": source,
+                        "date": pd.Timestamp.now(tz=ZoneInfo("Asia/Seoul")).date().isoformat(),
+                        "source": "네이버뉴스",
                         "title": title,
                         "url": link,
-                        "_dt": dt,
+                        "priority": matched_priority,
+                        "priority_name": step["name"],
+                        "_dt": pd.Timestamp.now(tz=ZoneInfo("Asia/Seoul")),
                     }
                 )
                 if len(rows) >= limit:
                     break
             if len(rows) >= limit:
                 break
-            if rows:
-                break
-        except Exception:
-            continue
+        if len(rows) >= limit:
+            break
 
     if not rows:
         return pd.DataFrame(columns=["date", "source", "title", "url"])
     out = pd.DataFrame(rows).drop_duplicates(subset=["url"]).copy()
-    out = out.sort_values("_dt", ascending=False, na_position="last")
+    out = out.sort_values(["priority", "_dt"], ascending=[True, False], na_position="last")
     out = out[["date", "source", "title", "url"]].head(limit).reset_index(drop=True)
     out["date"] = pd.to_datetime(out["date"], errors="coerce")
     out = out.dropna(subset=["date", "title", "url"])
@@ -528,19 +584,29 @@ def fetch_google_news_articles(
 
 
 def resolve_news_articles(base: Path, outputs: Path) -> tuple[pd.DataFrame, str]:
-    # Priority 1: build-time Google RSS fetch
+    # Priority 1: build-time article fetch + content verification
     fetched_articles = fetch_google_news_articles()
     if not fetched_articles.empty:
-        return fetched_articles, "google_rss"
+        return fetched_articles, "naver_priority_1_2_3"
 
-    # Priority 2: manual fallback file (curated) but keep strict phrase condition.
+    # Priority 2: keep last successful published list to avoid blank UI on transient failures.
+    cached = load_cached_news_json(base)
+    if not cached.empty:
+        return cached, "cached_news_latest_json"
+
+    # Priority 3: manual fallback file (curated), use same priority concept on title text.
     phrase = "중앙선거여론조사심의위원회"
+    pollster_keywords = [str(x).strip() for x in POLLSTERS if str(x).strip()]
     manual = load_recent_articles(base)
     if not manual.empty:
-        manual = manual[manual["title"].astype(str).str.contains(phrase, na=False)].copy()
+        t = manual["title"].astype(str)
+        cond1 = t.str.contains(phrase, na=False)
+        cond2 = t.apply(lambda x: any(k in x for k in pollster_keywords))
+        cond3 = t.str.contains("여론조사", na=False)
+        manual = manual[cond1 | cond2 | cond3].copy()
         manual = manual.head(12).reset_index(drop=True)
         if not manual.empty:
-            return manual, "recent_articles_csv_filtered"
+            return manual, "recent_articles_csv_priority_1_2_3"
 
     # If nothing matches the strict rule, return empty list.
     return pd.DataFrame(columns=["date", "source", "title", "url"]), "no_matching_articles"
