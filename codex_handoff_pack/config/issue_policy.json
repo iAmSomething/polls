@@ -1,0 +1,9 @@
+{
+  "issue_model_active": false,
+  "activation_rule": {
+    "min_evaluated_weeks": 12,
+    "min_directional_accuracy": 0.58,
+    "min_abs_mae_improvement_pct": 3.0
+  },
+  "notes": "Collect issue rows continuously, but do not apply issue impact to live forecast until activation criteria are met."
+}

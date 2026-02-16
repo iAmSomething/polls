@@ -66,3 +66,9 @@ make run-issues
 
 - `data/input.xlsx`
 - `data/pollster_accuracy_clusters_2024_2025.xlsx`
+
+## Issue Impact Policy
+
+- Current mode: `collect-only` (no live forecast impact).
+- Policy file: `config/issue_policy.json`
+- Activation condition: apply issue impact only after enough evaluation history and measurable accuracy gain.
