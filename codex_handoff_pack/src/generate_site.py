@@ -778,6 +778,45 @@ def load_president_approval_raw_series(outputs: Path) -> dict:
     return {"x": x, "approve": approve, "disapprove": disapprove}
 
 
+def load_president_approval_table_rows(outputs: Path, max_rows: int = 24) -> list[dict]:
+    detail = outputs / "president_approval_weekly_detail.csv"
+    if not detail.exists():
+        return []
+    try:
+        df = pd.read_csv(detail)
+    except Exception:
+        return []
+    req = {"week_start", "week_end", "approve", "disapprove", "publisher", "source_url"}
+    if not req.issubset(set(df.columns)):
+        return []
+    df["week_start"] = pd.to_datetime(df["week_start"], errors="coerce")
+    df["approve"] = pd.to_numeric(df["approve"], errors="coerce")
+    df["disapprove"] = pd.to_numeric(df["disapprove"], errors="coerce")
+    df = df.dropna(subset=["week_start", "approve", "disapprove"]).copy()
+    if df.empty:
+        return []
+    if "source_title" not in df.columns:
+        df["source_title"] = ""
+    if "notes" not in df.columns:
+        df["notes"] = ""
+    df = df.sort_values("week_start", ascending=False).head(max_rows)
+    rows = []
+    for _, r in df.iterrows():
+        rows.append(
+            {
+                "week_start": pd.to_datetime(r["week_start"]).strftime("%Y-%m-%d"),
+                "week_end": str(r.get("week_end", "")),
+                "approve": float(r["approve"]),
+                "disapprove": float(r["disapprove"]),
+                "publisher": str(r.get("publisher", "")).strip() or "-",
+                "source_url": str(r.get("source_url", "")).strip(),
+                "source_title": str(r.get("source_title", "")).strip(),
+                "notes": str(r.get("notes", "")).strip(),
+            }
+        )
+    return rows
+
+
 def sparkline_svg(values: list[float], color: str) -> str:
     if not values:
         return ""
@@ -880,6 +919,7 @@ def render_html(
     backtest_overall: dict,
     president_overall: dict,
     president_raw_series: dict,
+    president_table_rows: list[dict],
 ) -> None:
     now_kst = datetime.now(tz=ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d %H:%M:%S KST")
     cache_bust = datetime.now(tz=ZoneInfo("Asia/Seoul")).strftime("%Y%m%d%H%M%S")
@@ -979,6 +1019,27 @@ def render_html(
             """
         )
 
+    pres_rows_html = []
+    for r in president_table_rows:
+        src = "-"
+        if r["source_url"]:
+            label = r["source_title"] if r["source_title"] else "링크"
+            src = f'<a href="{r["source_url"]}" target="_blank" rel="noopener noreferrer">{label}</a>'
+        period = f'{r["week_start"]} ~ {r["week_end"]}' if r["week_end"] else r["week_start"]
+        pres_rows_html.append(
+            f"""
+            <tr>
+              <td>{period}</td>
+              <td>{r['approve']:.1f}</td>
+              <td>{r['disapprove']:.1f}</td>
+              <td>{r['publisher']}</td>
+              <td>{src}</td>
+            </tr>
+            """
+        )
+    if not pres_rows_html:
+        pres_rows_html.append("<tr><td colspan='5'>대통령 주간 데이터가 없습니다.</td></tr>")
+
     weight_rows = []
     for _, r in weights_df.iterrows():
         agency = str(r.get("조사기관", ""))
@@ -1063,6 +1124,16 @@ def render_html(
 
     <section class=\"news\"><div class=\"panel-title\" style=\"margin: 0 0 8px;\">최근 여론조사 기사 링크</div><div id=\"news-status\" class=\"news-status\">대기 중...</div><div id=\"news-grid\" class=\"news-grid\">{''.join(article_cards)}</div></section>
 
+    <section class=\"panel\" style=\"margin-top:14px;\">
+      <div class=\"panel-title\" style=\"margin-bottom:8px;\">대통령 국정수행 주간 표</div>
+      <table>
+        <thead>
+          <tr><th>조사기간(주차)</th><th>긍정(%)</th><th>부정(%)</th><th>조사기관</th><th>출처</th></tr>
+        </thead>
+        <tbody>{''.join(pres_rows_html)}</tbody>
+      </table>
+    </section>
+
     <section class=\"method\">
       <details>
         <summary>방법론 (클릭하여 펼치기)</summary>
@@ -1110,6 +1181,7 @@ def main():
     backtest_overall = load_backtest_overall(outputs)
     president_overall = load_president_approval_overall(outputs)
     president_raw_series = load_president_approval_raw_series(outputs)
+    president_table_rows = load_president_approval_table_rows(outputs)
     traces, ranking_rows = build_party_payload(blended, forecast)
 
     latest_date = str(pd.to_datetime(blended["date_end"]).max().date())
@@ -1123,6 +1195,7 @@ def main():
         backtest_overall=backtest_overall,
         president_overall=president_overall,
         president_raw_series=president_raw_series,
+        president_table_rows=president_table_rows,
     )
     print(f"News source: {news_source}, rows={len(articles)}")
     print("Wrote docs/index.html, docs/style.css, docs/app.js")

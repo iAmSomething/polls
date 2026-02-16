@@ -75,6 +75,7 @@ def main() -> None:
         py = str(base / '.venv' / 'bin' / 'python')
         run_cmd([py, 'src/pipeline.py'], base)
         run_cmd([py, 'src/president_approval_pipeline.py'], base)
+        run_cmd([py, 'src/president_approval_postprocess.py'], base)
         run_cmd([py, 'src/forecast.py', '--model', 'ssm', '--regime-guard', 'on', '--exog-approval', 'on'], base)
         run_cmd([py, 'src/backtest_report.py', '--regime-guard', 'on', '--exog-approval', 'on'], base)
         run_cmd([py, 'src/generate_site.py'], base)

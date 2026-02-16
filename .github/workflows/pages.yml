@@ -71,6 +71,7 @@ jobs:
         run: |
           python src/pipeline.py
           python src/president_approval_pipeline.py
+          python src/president_approval_postprocess.py
           python src/forecast.py --model ssm --regime-guard on --exog-approval on
           python src/backtest_report.py --regime-guard on --exog-approval on
           python src/generate_site.py
@@ -80,6 +81,7 @@ jobs:
           test -f docs/news_latest.json
           test -f outputs/president_approval_weekly.csv
           test -f outputs/president_approval_quality_report.csv
+          test -f outputs/president_approval_outlier_report.csv
           python - <<'PY'
           import json
           import pandas as pd

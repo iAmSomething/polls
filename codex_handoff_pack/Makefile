@@ -3,7 +3,7 @@ VENV ?= .venv
 VENV_PY := $(VENV)/bin/python
 VENV_PIP := $(VENV)/bin/pip
 
-.PHONY: setup smoke run-forecast run-backtest run-pipeline run-president run-pres-approval run-weekly run-issues build-site fetch-nesdc apply-nesdc run-tuesday issue-intake clean
+.PHONY: setup smoke run-forecast run-backtest run-pipeline run-president run-pres-approval run-president-post run-weekly run-issues build-site fetch-nesdc apply-nesdc run-tuesday issue-intake clean
 
 setup:
 	$(PYTHON) -m venv $(VENV)
@@ -18,6 +18,9 @@ run-pipeline:
 
 run-president:
 	$(VENV_PY) src/president_approval_pipeline.py
+
+run-president-post:
+	$(VENV_PY) src/president_approval_postprocess.py
 
 run-pres-approval:
 	$(VENV_PY) src/president_approval_scrape_weekly.py

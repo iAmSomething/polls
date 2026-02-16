@@ -19,6 +19,7 @@ make smoke
 cd codex_handoff_pack
 make run-pipeline
 make run-president
+make run-president-post
 make run-pres-approval
 make run-forecast
 make run-weekly
@@ -82,6 +83,7 @@ make run-president
 산출물:
 - `outputs/president_approval_weekly.csv`
 - `outputs/president_approval_quality_report.csv`
+- `outputs/president_approval_outlier_report.csv` (급락/급등 이상치 감지 리포트)
 
 기간 백필(기사 기반 임시 수집, raw):
 

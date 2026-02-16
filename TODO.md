@@ -25,15 +25,14 @@ Updated: 2026-02-16
   - 결과: `data/president_approval.csv`, `outputs/president_approval_weekly*.csv/xlsx`
 
 ## In Progress
-- [ ] 대통령 raw 백필 미채움 4주 보완
-  - 기준: `outputs/president_approval_weekly.csv`에서 `approve/disapprove` 둘 다 결측인 주
-  - 입력 소스: `outputs/president_approval_candidates.json` 후보 링크 우선
+- [ ] 대통령 raw 값 품질 고도화
+  - 현재 결측 4주는 후처리에서 선형 보완 완료
+  - 다음 단계: 후보 기사 원문 기반으로 보완값 대체 검토
 
 ## Next (High)
-- [ ] 대통령 raw 이상치 규칙 검토 및 리포트 추가
-  - raw는 유지, 모델 입력 정제 로직의 감지/보정 결과를 별도 리포트로 기록
-  - 산출물 제안: `outputs/president_approval_outlier_report.csv`
-- [ ] 대통령 주간 표(approve/disapprove + 조사기관 + 조사기간 + 출처 URL)를 사이트에 별도 섹션으로 노출
+- [x] 대통령 raw 이상치 규칙 검토 및 리포트 추가
+  - 산출물: `outputs/president_approval_outlier_report.csv`
+- [x] 대통령 주간 표(approve/disapprove + 조사기관 + 조사기간 + 출처 URL)를 사이트에 별도 섹션으로 노출
 - [ ] `run-pres-approval` 결과를 Pages 빌드에 포함할지 운영 정책 확정
   - 수동 실행만 허용 vs 주간 자동 실행
 
