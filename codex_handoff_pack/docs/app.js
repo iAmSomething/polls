@@ -173,6 +173,25 @@
     const phrase = "중앙선거여론조사심의위원회";
     if (status) status.textContent = "기사 목록 불러오는 중...";
 
+    // Primary: same-origin static JSON generated at build time.
+    try {
+      const local = await fetch("news_latest.json", { cache: "no-store" });
+      if (local.ok) {
+        const rows = await local.json();
+        if (Array.isArray(rows) && rows.length) {
+          grid.innerHTML = rows.slice(0, 6).map((r) => `
+            <a class="news-card" href="${esc(r.url || "")}" target="_blank" rel="noopener noreferrer">
+              <div class="news-date">${esc(r.date || "")}</div>
+              <div class="news-title">${esc(r.title || "")}</div>
+              <div class="news-source">${esc(r.source || "출처")}</div>
+            </a>
+          `).join("");
+          if (status) status.textContent = `자동 갱신 완료 (${Math.min(rows.length, 6)}건)`;
+          return;
+        }
+      }
+    } catch (_) {}
+
     const qStrict = encodeURIComponent(`"${phrase}"`);
     const qBroad = encodeURIComponent(`${phrase} 여론조사`);
     const rssStrict = `https://news.google.com/rss/search?q=${qStrict}&hl=ko&gl=KR&ceid=KR:ko`;

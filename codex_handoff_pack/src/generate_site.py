@@ -1,6 +1,10 @@
 from __future__ import annotations
 
 import json
+import urllib.parse
+import urllib.request
+import xml.etree.ElementTree as ET
+from email.utils import parsedate_to_datetime
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -301,6 +305,25 @@ APP_JS = """
     const phrase = "중앙선거여론조사심의위원회";
     if (status) status.textContent = "기사 목록 불러오는 중...";
 
+    // Primary: same-origin static JSON generated at build time.
+    try {
+      const local = await fetch("news_latest.json", { cache: "no-store" });
+      if (local.ok) {
+        const rows = await local.json();
+        if (Array.isArray(rows) && rows.length) {
+          grid.innerHTML = rows.slice(0, 6).map((r) => `
+            <a class="news-card" href="${esc(r.url || "")}" target="_blank" rel="noopener noreferrer">
+              <div class="news-date">${esc(r.date || "")}</div>
+              <div class="news-title">${esc(r.title || "")}</div>
+              <div class="news-source">${esc(r.source || "출처")}</div>
+            </a>
+          `).join("");
+          if (status) status.textContent = `자동 갱신 완료 (${Math.min(rows.length, 6)}건)`;
+          return;
+        }
+      }
+    } catch (_) {}
+
     const qStrict = encodeURIComponent(`"${phrase}"`);
     const qBroad = encodeURIComponent(`${phrase} 여론조사`);
     const rssStrict = `https://news.google.com/rss/search?q=${qStrict}&hl=ko&gl=KR&ceid=KR:ko`;
@@ -404,6 +427,61 @@ def load_recent_articles(base: Path) -> pd.DataFrame:
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
     df = df.dropna(subset=["date", "title", "url"])
     return df.sort_values("date", ascending=False).head(12).reset_index(drop=True)
+
+
+def fetch_google_news_articles(phrase: str = "중앙선거여론조사심의위원회", limit: int = 12) -> pd.DataFrame:
+    def _fetch_xml(url: str) -> str:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(req, timeout=20) as r:
+            return r.read().decode("utf-8", "ignore")
+
+    queries = [f'"{phrase}"', f"{phrase} 여론조사"]
+    rows = []
+    for q in queries:
+        try:
+            rss = (
+                "https://news.google.com/rss/search?"
+                f"q={urllib.parse.quote(q)}&hl=ko&gl=KR&ceid=KR:ko"
+            )
+            root = ET.fromstring(_fetch_xml(rss))
+            for it in root.findall(".//item"):
+                title = (it.findtext("title") or "").strip()
+                link = (it.findtext("link") or "").strip()
+                desc = (it.findtext("description") or "").strip()
+                source = (it.findtext("source") or "Google News").strip()
+                pub = (it.findtext("pubDate") or "").strip()
+                if not title or not link:
+                    continue
+                if phrase not in f"{title} {desc}":
+                    continue
+                dt = None
+                if pub:
+                    try:
+                        dt = parsedate_to_datetime(pub)
+                    except Exception:
+                        dt = None
+                rows.append(
+                    {
+                        "date": (dt.date().isoformat() if dt is not None else ""),
+                        "source": source,
+                        "title": title,
+                        "url": link,
+                        "_dt": dt,
+                    }
+                )
+            if rows:
+                break
+        except Exception:
+            continue
+
+    if not rows:
+        return pd.DataFrame(columns=["date", "source", "title", "url"])
+    out = pd.DataFrame(rows).drop_duplicates(subset=["url"]).copy()
+    out = out.sort_values("_dt", ascending=False, na_position="last")
+    out = out[["date", "source", "title", "url"]].head(limit).reset_index(drop=True)
+    out["date"] = pd.to_datetime(out["date"], errors="coerce")
+    out = out.dropna(subset=["date", "title", "url"])
+    return out
 
 
 def load_backtest_overall(outputs: Path) -> dict:
@@ -698,6 +776,19 @@ def render_html(
     (docs_dir / "index.html").write_text(html, encoding="utf-8")
     (docs_dir / "style.css").write_text(STYLE_CSS + "\n", encoding="utf-8")
     (docs_dir / "app.js").write_text(APP_JS + "\n", encoding="utf-8")
+    news_payload = []
+    for _, a in articles_df.head(12).iterrows():
+        news_payload.append(
+            {
+                "date": pd.to_datetime(a["date"]).strftime("%Y-%m-%d"),
+                "source": str(a.get("source", "")),
+                "title": str(a.get("title", "")),
+                "url": str(a.get("url", "")),
+            }
+        )
+    (docs_dir / "news_latest.json").write_text(
+        json.dumps(news_payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
+    )
 
 
 def main():
@@ -708,7 +799,22 @@ def main():
     blended = load_blended(outputs)
     forecast = load_forecast(outputs)
     weights = load_weights(base, outputs)
-    articles = load_recent_articles(base)
+    fetched_articles = fetch_google_news_articles()
+    if fetched_articles.empty:
+        issue_news = outputs / "issue_news_latest.csv"
+        if issue_news.exists():
+            try:
+                tmp = pd.read_csv(issue_news)
+                tmp = tmp.rename(columns={"published": "date", "link": "url", "keyword": "source"})
+                for c in ["date", "source", "title", "url"]:
+                    if c not in tmp.columns:
+                        tmp[c] = ""
+                tmp["date"] = pd.to_datetime(tmp["date"], errors="coerce")
+                fetched_articles = tmp.dropna(subset=["date", "title", "url"])[["date", "source", "title", "url"]]
+                fetched_articles = fetched_articles.sort_values("date", ascending=False).head(12).reset_index(drop=True)
+            except Exception:
+                fetched_articles = pd.DataFrame()
+    articles = fetched_articles if not fetched_articles.empty else load_recent_articles(base)
     backtest_overall = load_backtest_overall(outputs)
     traces, ranking_rows = build_party_payload(blended, forecast)
 
