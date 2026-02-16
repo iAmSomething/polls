@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import argparse
+import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -32,10 +34,58 @@ OBSERVED_POINTS = [
 ]
 
 
+def load_observed_points_jsonl(path: Path, week_start: pd.Timestamp, week_end: pd.Timestamp) -> List[dict]:
+    if not path.exists():
+        return []
+
+    out: List[dict] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        try:
+            rec = json.loads(line)
+        except Exception:
+            continue
+
+        pollster = str(rec.get("pollster", "")).strip()
+        date_end = pd.to_datetime(rec.get("date_end"), errors="coerce")
+        values = rec.get("values", {}) or {}
+        source_url = str(rec.get("source_url", "")).strip()
+
+        if pollster not in POLLSTERS or pd.isna(date_end):
+            continue
+        if not (week_start <= date_end <= week_end):
+            continue
+        if not isinstance(values, dict) or not values:
+            continue
+
+        norm_vals = {}
+        for k, v in values.items():
+            try:
+                norm_vals[str(k)] = float(v)
+            except Exception:
+                continue
+
+        if not norm_vals:
+            continue
+
+        out.append(
+            {
+                "pollster": pollster,
+                "date_end": pd.Timestamp(date_end),
+                "source_url": source_url,
+                "values": norm_vals,
+            }
+        )
+    return out
+
+
 @dataclass
 class UpdateArtifacts:
     blended: pd.DataFrame
     points_df: pd.DataFrame
+    watchlist_df: pd.DataFrame
     log_text: str
 
 
@@ -152,9 +202,10 @@ def build_week_points(
     baseline: pd.Series,
     bias_df: pd.DataFrame,
     party_cols: List[str],
+    observed_points: List[dict],
 ) -> pd.DataFrame:
     rows = []
-    observed_map = {d["pollster"]: d for d in OBSERVED_POINTS if WEEK_START <= d["date_end"] <= WEEK_END}
+    observed_map = {d["pollster"]: d for d in observed_points if WEEK_START <= d["date_end"] <= WEEK_END}
 
     for pollster in POLLSTERS:
         if pollster in observed_map:
@@ -219,6 +270,65 @@ def blend_from_points(points_df: pd.DataFrame, weights_df: pd.DataFrame, party_c
     return pd.Series(row)
 
 
+def _safe_zscore(values: pd.Series) -> pd.Series:
+    s = pd.to_numeric(values, errors="coerce")
+    mu = float(s.mean()) if len(s) else 0.0
+    sigma = float(s.std(ddof=0)) if len(s) else 0.0
+    if not np.isfinite(sigma) or sigma <= 1e-9:
+        return pd.Series(0.0, index=s.index)
+    return (s - mu) / sigma
+
+
+def build_pollster_watchlist(
+    points_df: pd.DataFrame,
+    blend_row: pd.Series,
+    party_cols: List[str],
+    major_parties: Tuple[str, str] = ("더불어민주당", "국민의힘"),
+    z_threshold: float = 1.5,
+    abs_threshold: float = 6.0,
+) -> pd.DataFrame:
+    rows = []
+    for _, r in points_df.iterrows():
+        deltas = []
+        major_deltas = []
+        for p in party_cols:
+            if p not in r.index or p not in blend_row.index:
+                continue
+            pv = pd.to_numeric(pd.Series([r[p]]), errors="coerce").iloc[0]
+            bv = pd.to_numeric(pd.Series([blend_row[p]]), errors="coerce").iloc[0]
+            if not (np.isfinite(pv) and np.isfinite(bv)):
+                continue
+            d = float(pv - bv)
+            deltas.append(d)
+            if p in major_parties:
+                major_deltas.append(d)
+        if not deltas:
+            continue
+        if major_deltas:
+            delta_major = float(np.mean(np.abs(major_deltas)))
+        else:
+            delta_major = float(np.mean(np.abs(deltas)))
+        row = {
+            "pollster": r["pollster"],
+            "date_end": pd.to_datetime(r["date_end"]).date().isoformat(),
+            "source_type": r["source_type"],
+            "delta_major_abs": delta_major,
+            "max_abs_delta": float(np.max(np.abs(deltas))),
+        }
+        rows.append(row)
+
+    out = pd.DataFrame(rows)
+    if out.empty:
+        return pd.DataFrame(
+            columns=["pollster", "date_end", "source_type", "delta_major_abs", "z_score", "max_abs_delta", "alert"]
+        )
+    out["z_score"] = _safe_zscore(out["delta_major_abs"])
+    # Alert only on upper-tail anomalies (large divergence), not low-tail z-scores.
+    out["alert"] = (out["z_score"] >= z_threshold) | (out["max_abs_delta"] >= abs_threshold)
+    out = out.sort_values(["alert", "delta_major_abs", "max_abs_delta"], ascending=[False, False, False]).reset_index(drop=True)
+    return out
+
+
 def apply_update(outputs_dir: Path, new_blend_row: pd.Series) -> pd.DataFrame:
     wt_path = outputs_dir / "weighted_time_series.xlsx"
     blended = pd.read_excel(wt_path, sheet_name="weighted_time_series")
@@ -240,7 +350,7 @@ def apply_update(outputs_dir: Path, new_blend_row: pd.Series) -> pd.DataFrame:
     return blended
 
 
-def build_log(points_df: pd.DataFrame, blend_row: pd.Series) -> str:
+def build_log(points_df: pd.DataFrame, blend_row: pd.Series, watchlist_df: pd.DataFrame) -> str:
     observed = points_df[points_df["source_type"] == "observed_web"].copy()
     estimated = points_df[points_df["source_type"] == "estimated_bias_adjusted"].copy()
 
@@ -258,6 +368,14 @@ def build_log(points_df: pd.DataFrame, blend_row: pd.Series) -> str:
     lines.append("## Estimation Fallback")
     lines.append("- Missing pollsters were estimated via baseline projection (EWMA + damped trend) + pollster-specific bias adjustment.")
     lines.append(f"- Estimated pollsters: {len(estimated)}")
+    if not watchlist_df.empty:
+        alert_count = int(watchlist_df["alert"].fillna(False).sum())
+        if alert_count > 0:
+            top = watchlist_df[watchlist_df["alert"]].iloc[0]
+            lines.append(
+                "- Pollster anomaly alerts: "
+                f"{alert_count} (top: {top['pollster']}, delta_major_abs={float(top['delta_major_abs']):.2f}, z={float(top['z_score']):.2f})"
+            )
 
     lines.append("")
     lines.append("## Updated Blended Point")
@@ -270,7 +388,7 @@ def build_log(points_df: pd.DataFrame, blend_row: pd.Series) -> str:
     return "\n".join(lines) + "\n"
 
 
-def run_update(base_dir: Path) -> UpdateArtifacts:
+def run_update(base_dir: Path, observed_jsonl: Path) -> UpdateArtifacts:
     outputs = base_dir / "outputs"
     data_dir = base_dir / "data"
 
@@ -281,24 +399,58 @@ def run_update(base_dir: Path) -> UpdateArtifacts:
     raw_df = load_historical_raw(data_dir)
     baseline = baseline_projection(blended, party_cols)
     bias_df = estimate_pollster_bias(raw_df, blended, party_cols)
-
-    points_df = build_week_points(weights_df, baseline, bias_df, party_cols)
+    observed_points = [*OBSERVED_POINTS, *load_observed_points_jsonl(observed_jsonl, WEEK_START, WEEK_END)]
+    points_df = build_week_points(weights_df, baseline, bias_df, party_cols, observed_points)
     blend_row = blend_from_points(points_df, weights_df, party_cols)
     blended_updated = apply_update(outputs, blend_row)
+    watchlist_df = build_pollster_watchlist(points_df, blend_row, party_cols)
 
     points_out = outputs / f"weekly_public_points_{WEEK_START.date()}_{WEEK_END.date()}.csv"
     points_df.to_csv(points_out, index=False)
+    watchlist_csv = outputs / "pollster_watchlist.csv"
+    watchlist_df.to_csv(watchlist_csv, index=False)
+    watchlist_alerts = watchlist_df[watchlist_df["alert"]] if "alert" in watchlist_df.columns else pd.DataFrame()
+    lines = [
+        f"# Pollster Watchlist ({WEEK_START.date()} ~ {WEEK_END.date()})",
+        "",
+        f"- Pollsters analyzed: {len(watchlist_df)}",
+        f"- Alerts: {len(watchlist_alerts)}",
+    ]
+    if len(watchlist_alerts) > 0:
+        lines.append("")
+        lines.append("## Alerted Pollsters")
+        for _, r in watchlist_alerts.iterrows():
+            lines.append(
+                f"- {r['pollster']}: delta_major_abs={float(r['delta_major_abs']):.2f}, "
+                f"max_abs_delta={float(r['max_abs_delta']):.2f}, z={float(r['z_score']):.2f}, "
+                f"source_type={r['source_type']}"
+            )
+    else:
+        lines.append("- No pollster alerts triggered for this week.")
+    (outputs / "pollster_watchlist.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-    log_text = build_log(points_df, blend_row)
+    log_text = build_log(points_df, blend_row, watchlist_df)
     log_out = outputs / f"update_log_{WEEK_START.date()}_{WEEK_END.date()}.md"
     log_out.write_text(log_text, encoding="utf-8")
 
-    return UpdateArtifacts(blended=blended_updated, points_df=points_df, log_text=log_text)
+    return UpdateArtifacts(blended=blended_updated, points_df=points_df, watchlist_df=watchlist_df, log_text=log_text)
 
 
 def main():
+    global WEEK_START, WEEK_END
+
+    ap = argparse.ArgumentParser(description="Update blended weekly point from observed web points + fallback estimates.")
+    ap.add_argument("--week-start", default=str(WEEK_START.date()), help="Week start date (YYYY-MM-DD)")
+    ap.add_argument("--week-end", default=str(WEEK_END.date()), help="Week end date (YYYY-MM-DD)")
+    ap.add_argument("--observed-jsonl", default="outputs/observed_web_points.jsonl")
+    args = ap.parse_args()
+
+    WEEK_START = pd.Timestamp(args.week_start)
+    WEEK_END = pd.Timestamp(args.week_end)
+
     base = Path(__file__).resolve().parents[1]
-    res = run_update(base)
+    observed_jsonl = (base / args.observed_jsonl).resolve() if not Path(args.observed_jsonl).is_absolute() else Path(args.observed_jsonl)
+    res = run_update(base, observed_jsonl=observed_jsonl)
     print(f"Updated weekly points: {len(res.points_df)}")
     print(res.points_df[["pollster", "source_type", "date_end"]].to_string(index=False))
 

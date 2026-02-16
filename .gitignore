@@ -7,3 +7,7 @@
 *.pyc
 # NESDC downloaded weekly files
 codex_handoff_pack/data/nesdc_downloads/
+poll_news_collector/
+!poll_news_collector/
+poll_news_collector/*
+!poll_news_collector/hourly_pipeline.py
