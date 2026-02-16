@@ -3,7 +3,7 @@ VENV ?= .venv
 VENV_PY := $(VENV)/bin/python
 VENV_PIP := $(VENV)/bin/pip
 
-.PHONY: setup smoke run-forecast run-pipeline run-weekly run-issues build-site fetch-nesdc apply-nesdc run-tuesday issue-intake clean
+.PHONY: setup smoke run-forecast run-backtest run-pipeline run-weekly run-issues build-site fetch-nesdc apply-nesdc run-tuesday issue-intake clean
 
 setup:
 	$(PYTHON) -m venv $(VENV)
@@ -18,6 +18,9 @@ run-pipeline:
 
 run-forecast:
 	$(VENV_PY) src/forecast.py
+
+run-backtest:
+	$(VENV_PY) src/backtest_report.py
 
 run-weekly:
 	$(VENV_PY) src/weekly_run.py

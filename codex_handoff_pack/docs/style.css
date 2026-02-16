@@ -62,6 +62,7 @@ body {
 .rank-pred small { font-size: 12px; color: var(--muted); margin-left: 3px; }
 .rank-delta { font-size: 13px; color: var(--muted); }
 .rank-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.rank-band { font-size: 12px; color: #C5D7F6; margin-top: 2px; }
 .spark { margin-top: 6px; opacity: .9; }
 .news { margin-top: 14px; }
 .news-status { color: var(--muted); font-size: 12px; margin: 0 0 8px; }

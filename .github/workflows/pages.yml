@@ -70,7 +70,8 @@ jobs:
       - name: Build forecast outputs
         run: |
           python src/pipeline.py
-          python src/forecast.py
+          python src/forecast.py --model ssm --regime-guard on
+          python src/backtest_report.py --regime-guard on
           python src/generate_site.py
 
       - name: Configure Pages

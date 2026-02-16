@@ -94,6 +94,7 @@ body {
 .rank-pred small { font-size: 12px; color: var(--muted); margin-left: 3px; }
 .rank-delta { font-size: 13px; color: var(--muted); }
 .rank-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.rank-band { font-size: 12px; color: #C5D7F6; margin-top: 2px; }
 .spark { margin-top: 6px; opacity: .9; }
 .news { margin-top: 14px; }
 .news-status { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
@@ -151,7 +152,8 @@ APP_JS = """
         legendgroup: p.party, showlegend: false,
         marker: { color: p.color, size: 10, line: { color: "#DDE8FF", width: 1 } },
         text: ["예측치"], textposition: "middle right", textfont: { color: p.color, size: 11 },
-        hoverinfo: "skip"
+        customdata: [[p.pred_lo_80, p.pred_hi_80]],
+        hovertemplate: "<b>%{fullData.legendgroup} 예측</b><br>%{y:.2f}%<br>80% 구간: %{customdata[0]:.2f}% ~ %{customdata[1]:.2f}%<extra></extra>"
       });
     });
     return out;
@@ -404,6 +406,29 @@ def load_recent_articles(base: Path) -> pd.DataFrame:
     return df.sort_values("date", ascending=False).head(12).reset_index(drop=True)
 
 
+def load_backtest_overall(outputs: Path) -> dict:
+    p = outputs / "backtest_summary.csv"
+    if not p.exists():
+        return {}
+    try:
+        df = pd.read_csv(p)
+    except Exception:
+        return {}
+    df = df[df.get("level", "") == "overall"].copy()
+    if df.empty or "model" not in df.columns or "mae" not in df.columns:
+        return {}
+    out: dict[str, float] = {}
+    for model in ["legacy", "ssm"]:
+        r = df[df["model"] == model]
+        if not r.empty:
+            out[f"{model}_mae"] = float(pd.to_numeric(r.iloc[0]["mae"], errors="coerce"))
+            out[f"{model}_rmse"] = float(pd.to_numeric(r.iloc[0].get("rmse"), errors="coerce"))
+            out[f"{model}_n"] = int(pd.to_numeric(r.iloc[0].get("n"), errors="coerce"))
+    if "legacy_mae" in out and "ssm_mae" in out and out["legacy_mae"] > 0:
+        out["improvement_pct"] = (out["legacy_mae"] - out["ssm_mae"]) / out["legacy_mae"] * 100.0
+    return out
+
+
 def sparkline_svg(values: list[float], color: str) -> str:
     if not values:
         return ""
@@ -434,6 +459,9 @@ def build_party_payload(blended: pd.DataFrame, forecast: pd.DataFrame) -> tuple[
     fc["party"] = fc["party"].map(canonical_party_name)
     fc["next_week_pred"] = pd.to_numeric(fc["next_week_pred"], errors="coerce")
     fc["rmse"] = pd.to_numeric(fc.get("rmse"), errors="coerce")
+    fc["pred_lo_80"] = pd.to_numeric(fc.get("pred_lo_80"), errors="coerce")
+    fc["pred_hi_80"] = pd.to_numeric(fc.get("pred_hi_80"), errors="coerce")
+    fc["pred_sd"] = pd.to_numeric(fc.get("pred_sd"), errors="coerce")
     fc = fc.dropna(subset=["next_week_pred"])
 
     pred_date = (pd.to_datetime(df["date_end"]).max() + pd.Timedelta(days=7)).strftime("%Y-%m-%d")
@@ -454,6 +482,9 @@ def build_party_payload(blended: pd.DataFrame, forecast: pd.DataFrame) -> tuple[
 
         pred = float(pred_row.iloc[0]["next_week_pred"])
         rmse = float(pred_row.iloc[0]["rmse"]) if pd.notna(pred_row.iloc[0]["rmse"]) else None
+        pred_lo_80 = float(pred_row.iloc[0]["pred_lo_80"]) if pd.notna(pred_row.iloc[0]["pred_lo_80"]) else None
+        pred_hi_80 = float(pred_row.iloc[0]["pred_hi_80"]) if pd.notna(pred_row.iloc[0]["pred_hi_80"]) else None
+        pred_sd = float(pred_row.iloc[0]["pred_sd"]) if pd.notna(pred_row.iloc[0]["pred_sd"]) else None
         last_actual = float(valid.iloc[-1]["y"])
         delta = pred - last_actual
         spark_vals = valid.iloc[-16:]["y"].tolist()
@@ -468,6 +499,8 @@ def build_party_payload(blended: pd.DataFrame, forecast: pd.DataFrame) -> tuple[
                 "forecast_y": [last_actual, pred],
                 "pred_x": pred_date,
                 "pred_y": pred,
+                "pred_lo_80": pred_lo_80 if pred_lo_80 is not None else pred,
+                "pred_hi_80": pred_hi_80 if pred_hi_80 is not None else pred,
             }
         )
         ranking_rows.append(
@@ -476,6 +509,9 @@ def build_party_payload(blended: pd.DataFrame, forecast: pd.DataFrame) -> tuple[
                 "color": color,
                 "pred": pred,
                 "rmse": rmse,
+                "pred_lo_80": pred_lo_80,
+                "pred_hi_80": pred_hi_80,
+                "pred_sd": pred_sd,
                 "delta": delta,
                 "spark_svg": sparkline_svg(spark_vals, color),
             }
@@ -485,7 +521,15 @@ def build_party_payload(blended: pd.DataFrame, forecast: pd.DataFrame) -> tuple[
     return traces, ranking_rows
 
 
-def render_html(docs_dir: Path, traces: list[dict], ranking_rows: list[dict], weights_df: pd.DataFrame, articles_df: pd.DataFrame, latest_date: str) -> None:
+def render_html(
+    docs_dir: Path,
+    traces: list[dict],
+    ranking_rows: list[dict],
+    weights_df: pd.DataFrame,
+    articles_df: pd.DataFrame,
+    latest_date: str,
+    backtest_overall: dict,
+) -> None:
     now_kst = datetime.now(tz=ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d %H:%M:%S KST")
     cache_bust = datetime.now(tz=ZoneInfo("Asia/Seoul")).strftime("%Y%m%d%H%M%S")
 
@@ -499,6 +543,14 @@ def render_html(docs_dir: Path, traces: list[dict], ranking_rows: list[dict], we
     rmse_vals = [r["rmse"] for r in ranking_rows if r["rmse"] is not None]
     rmse_avg = sum(rmse_vals) / len(rmse_vals) if rmse_vals else 0.0
     cards.append({"label": "예측 오차(RMSE)", "value": f"{rmse_avg:.2f}", "sub": "정당 평균"})
+    if backtest_overall.get("improvement_pct") is not None:
+        cards.append(
+            {
+                "label": "백테스트 MAE 개선",
+                "value": f"{float(backtest_overall['improvement_pct']):+.1f}%",
+                "sub": "legacy 대비 ssm",
+            }
+        )
 
     cards_html = "".join(
         f"""
@@ -516,6 +568,11 @@ def render_html(docs_dir: Path, traces: list[dict], ranking_rows: list[dict], we
         sign = "▲" if r["delta"] > 0 else ("▼" if r["delta"] < 0 else "■")
         delta_txt = f"{sign} {abs(r['delta']):.2f}"
         rmse_txt = f"{r['rmse']:.2f}" if r["rmse"] is not None else "-"
+        band_txt = (
+            f"80% 구간 {r['pred_lo_80']:.2f}% ~ {r['pred_hi_80']:.2f}%"
+            if r["pred_lo_80"] is not None and r["pred_hi_80"] is not None
+            else "80% 구간 -"
+        )
         ranking_html.append(
             f"""
             <article class=\"rank-card\" data-party=\"{r['party']}\">
@@ -529,6 +586,7 @@ def render_html(docs_dir: Path, traces: list[dict], ranking_rows: list[dict], we
                 <span class=\"rank-delta\">{delta_txt}</span>
               </div>
               <div class=\"rank-sub\">RMSE {rmse_txt}</div>
+              <div class=\"rank-band\">{band_txt}</div>
               <div class=\"spark\">{r['spark_svg']}</div>
             </article>
             """
@@ -571,6 +629,16 @@ def render_html(docs_dir: Path, traces: list[dict], ranking_rows: list[dict], we
         )
 
     payload_json = json.dumps({"traces": traces}, ensure_ascii=False)
+    backtest_note = ""
+    if backtest_overall:
+        legacy_mae = backtest_overall.get("legacy_mae")
+        ssm_mae = backtest_overall.get("ssm_mae")
+        improve = backtest_overall.get("improvement_pct")
+        if legacy_mae is not None and ssm_mae is not None and improve is not None:
+            backtest_note = (
+                f"최근 롤링 백테스트 기준 MAE는 legacy {legacy_mae:.3f}, "
+                f"ssm {ssm_mae:.3f}이며 개선율은 {improve:+.2f}%입니다."
+            )
     html = f"""<!doctype html>
 <html lang=\"ko\">
 <head>
@@ -615,6 +683,7 @@ def render_html(docs_dir: Path, traces: list[dict], ranking_rows: list[dict], we
       <details>
         <summary>방법론 (클릭하여 펼치기)</summary>
         <p class=\"method-p\">2023년부터 2025년 6월 선거까지, 여론조사기관의 정당지지율과 실제 선거결과를 비교해 정확도(MAE)를 산출했습니다. 이후 정확도 상위 클러스터(9개 기관)만 사용해 합성 시계열을 만들고, 기관별 가중치는 1/MAE를 정규화해 적용합니다. 주간 업데이트에서는 Huber 손실 기반으로 가중치 안정성을 유지하도록 설계했습니다.</p>
+        <p class=\"method-p\">{backtest_note}</p>
         <table><thead><tr><th>조사기관</th><th>MAE</th><th>가중치(%)</th></tr></thead><tbody>{''.join(weight_rows)}</tbody></table>
       </details>
     </section>
@@ -640,10 +709,19 @@ def main():
     forecast = load_forecast(outputs)
     weights = load_weights(base, outputs)
     articles = load_recent_articles(base)
+    backtest_overall = load_backtest_overall(outputs)
     traces, ranking_rows = build_party_payload(blended, forecast)
 
     latest_date = str(pd.to_datetime(blended["date_end"]).max().date())
-    render_html(docs, traces, ranking_rows, weights, articles, latest_date=latest_date)
+    render_html(
+        docs,
+        traces,
+        ranking_rows,
+        weights,
+        articles,
+        latest_date=latest_date,
+        backtest_overall=backtest_overall,
+    )
     print("Wrote docs/index.html, docs/style.css, docs/app.js")
 
 

@@ -24,7 +24,8 @@
         legendgroup: p.party, showlegend: false,
         marker: { color: p.color, size: 10, line: { color: "#DDE8FF", width: 1 } },
         text: ["예측치"], textposition: "middle right", textfont: { color: p.color, size: 11 },
-        hoverinfo: "skip"
+        customdata: [[p.pred_lo_80, p.pred_hi_80]],
+        hovertemplate: "<b>%{fullData.legendgroup} 예측</b><br>%{y:.2f}%<br>80% 구간: %{customdata[0]:.2f}% ~ %{customdata[1]:.2f}%<extra></extra>"
       });
     });
     return out;
