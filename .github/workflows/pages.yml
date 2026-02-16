@@ -74,6 +74,22 @@ jobs:
           python src/backtest_report.py --regime-guard on
           python src/generate_site.py
 
+      - name: Validate generated news payload
+        run: |
+          test -f docs/news_latest.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path("docs/news_latest.json")
+          data = json.loads(p.read_text(encoding="utf-8"))
+          assert isinstance(data, list), "news_latest.json must be a list"
+          for i, row in enumerate(data[:12]):
+            assert isinstance(row, dict), f"row {i} must be an object"
+            for k in ("date", "source", "title", "url"):
+              assert k in row, f"row {i} missing key: {k}"
+          print("news_latest.json validation ok, rows=", len(data))
+          PY
+
       - name: Configure Pages
         uses: actions/configure-pages@v5
 

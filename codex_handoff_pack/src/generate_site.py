@@ -324,37 +324,33 @@ APP_JS = """
       }
     } catch (_) {}
 
+    const debugProxy = new URLSearchParams(window.location.search).get("newsProxy") === "1";
+    if (!debugProxy) {
+      if (status) status.textContent = "빌드 시점 수집 데이터 표시 중";
+      return;
+    }
+
+    // Debug-only fallback path (disabled by default)
     const qStrict = encodeURIComponent(`"${phrase}"`);
     const qBroad = encodeURIComponent(`${phrase} 여론조사`);
     const rssStrict = `https://news.google.com/rss/search?q=${qStrict}&hl=ko&gl=KR&ceid=KR:ko`;
     const rssBroad = `https://news.google.com/rss/search?q=${qBroad}&hl=ko&gl=KR&ceid=KR:ko`;
-
     let xmlText = await fetchViaCandidates(rssStrict);
     if (!xmlText) xmlText = await fetchViaCandidates(rssBroad);
     if (!xmlText) {
-      if (status) status.textContent = "자동 기사 로딩 실패(프록시 차단 가능). 잠시 후 새로고침 해주세요.";
+      if (status) status.textContent = "디버그 프록시 로딩 실패(정적 데이터 유지)";
       return;
     }
-
-    const rows = parseRss(xmlText)
-      .filter((r) => stripHtml(r.title + " " + r.desc).includes(phrase))
-      .slice(0, 6);
+    const rows = parseRss(xmlText).filter((r) => stripHtml(r.title + " " + r.desc).includes(phrase)).slice(0, 6);
     if (!rows.length) {
-      if (status) status.textContent = "조건에 맞는 최신 기사가 없습니다.";
+      if (status) status.textContent = "디버그 프록시 결과 없음(정적 데이터 유지)";
       return;
     }
-
     grid.innerHTML = rows.map((r) => {
       const d = r.date ? r.date.toISOString().slice(0, 10) : "";
-      return `
-        <a class="news-card" href="${esc(r.link)}" target="_blank" rel="noopener noreferrer">
-          <div class="news-date">${esc(d)}</div>
-          <div class="news-title">${esc(r.title)}</div>
-          <div class="news-source">${esc(r.source)}</div>
-        </a>
-      `;
+      return `<a class="news-card" href="${esc(r.link)}" target="_blank" rel="noopener noreferrer"><div class="news-date">${esc(d)}</div><div class="news-title">${esc(r.title)}</div><div class="news-source">${esc(r.source)}</div></a>`;
     }).join("");
-    if (status) status.textContent = `자동 갱신 완료 (${rows.length}건)`;
+    if (status) status.textContent = `디버그 프록시 갱신 (${rows.length}건)`;
   }
 
   fetchRecentPollNews();
@@ -482,6 +478,33 @@ def fetch_google_news_articles(phrase: str = "중앙선거여론조사심의위�
     out["date"] = pd.to_datetime(out["date"], errors="coerce")
     out = out.dropna(subset=["date", "title", "url"])
     return out
+
+
+def resolve_news_articles(base: Path, outputs: Path) -> tuple[pd.DataFrame, str]:
+    # Priority 1: build-time Google RSS fetch
+    fetched_articles = fetch_google_news_articles()
+    if not fetched_articles.empty:
+        return fetched_articles, "google_rss"
+
+    # Priority 2: issue intake output
+    issue_news = outputs / "issue_news_latest.csv"
+    if issue_news.exists():
+        try:
+            tmp = pd.read_csv(issue_news)
+            tmp = tmp.rename(columns={"published": "date", "link": "url", "keyword": "source"})
+            for c in ["date", "source", "title", "url"]:
+                if c not in tmp.columns:
+                    tmp[c] = ""
+            tmp["date"] = pd.to_datetime(tmp["date"], errors="coerce")
+            tmp = tmp.dropna(subset=["date", "title", "url"])[["date", "source", "title", "url"]]
+            tmp = tmp.sort_values("date", ascending=False).head(12).reset_index(drop=True)
+            if not tmp.empty:
+                return tmp, "issue_news_latest_csv"
+        except Exception:
+            pass
+
+    # Priority 3: manual fallback file
+    return load_recent_articles(base), "recent_articles_csv"
 
 
 def load_backtest_overall(outputs: Path) -> dict:
@@ -799,22 +822,7 @@ def main():
     blended = load_blended(outputs)
     forecast = load_forecast(outputs)
     weights = load_weights(base, outputs)
-    fetched_articles = fetch_google_news_articles()
-    if fetched_articles.empty:
-        issue_news = outputs / "issue_news_latest.csv"
-        if issue_news.exists():
-            try:
-                tmp = pd.read_csv(issue_news)
-                tmp = tmp.rename(columns={"published": "date", "link": "url", "keyword": "source"})
-                for c in ["date", "source", "title", "url"]:
-                    if c not in tmp.columns:
-                        tmp[c] = ""
-                tmp["date"] = pd.to_datetime(tmp["date"], errors="coerce")
-                fetched_articles = tmp.dropna(subset=["date", "title", "url"])[["date", "source", "title", "url"]]
-                fetched_articles = fetched_articles.sort_values("date", ascending=False).head(12).reset_index(drop=True)
-            except Exception:
-                fetched_articles = pd.DataFrame()
-    articles = fetched_articles if not fetched_articles.empty else load_recent_articles(base)
+    articles, news_source = resolve_news_articles(base, outputs)
     backtest_overall = load_backtest_overall(outputs)
     traces, ranking_rows = build_party_payload(blended, forecast)
 
@@ -828,6 +836,7 @@ def main():
         latest_date=latest_date,
         backtest_overall=backtest_overall,
     )
+    print(f"News source: {news_source}, rows={len(articles)}")
     print("Wrote docs/index.html, docs/style.css, docs/app.js")
 
 

@@ -192,37 +192,33 @@
       }
     } catch (_) {}
 
+    const debugProxy = new URLSearchParams(window.location.search).get("newsProxy") === "1";
+    if (!debugProxy) {
+      if (status) status.textContent = "빌드 시점 수집 데이터 표시 중";
+      return;
+    }
+
+    // Debug-only fallback path (disabled by default)
     const qStrict = encodeURIComponent(`"${phrase}"`);
     const qBroad = encodeURIComponent(`${phrase} 여론조사`);
     const rssStrict = `https://news.google.com/rss/search?q=${qStrict}&hl=ko&gl=KR&ceid=KR:ko`;
     const rssBroad = `https://news.google.com/rss/search?q=${qBroad}&hl=ko&gl=KR&ceid=KR:ko`;
-
     let xmlText = await fetchViaCandidates(rssStrict);
     if (!xmlText) xmlText = await fetchViaCandidates(rssBroad);
     if (!xmlText) {
-      if (status) status.textContent = "자동 기사 로딩 실패(프록시 차단 가능). 잠시 후 새로고침 해주세요.";
+      if (status) status.textContent = "디버그 프록시 로딩 실패(정적 데이터 유지)";
       return;
     }
-
-    const rows = parseRss(xmlText)
-      .filter((r) => stripHtml(r.title + " " + r.desc).includes(phrase))
-      .slice(0, 6);
+    const rows = parseRss(xmlText).filter((r) => stripHtml(r.title + " " + r.desc).includes(phrase)).slice(0, 6);
     if (!rows.length) {
-      if (status) status.textContent = "조건에 맞는 최신 기사가 없습니다.";
+      if (status) status.textContent = "디버그 프록시 결과 없음(정적 데이터 유지)";
       return;
     }
-
     grid.innerHTML = rows.map((r) => {
       const d = r.date ? r.date.toISOString().slice(0, 10) : "";
-      return `
-        <a class="news-card" href="${esc(r.link)}" target="_blank" rel="noopener noreferrer">
-          <div class="news-date">${esc(d)}</div>
-          <div class="news-title">${esc(r.title)}</div>
-          <div class="news-source">${esc(r.source)}</div>
-        </a>
-      `;
+      return `<a class="news-card" href="${esc(r.link)}" target="_blank" rel="noopener noreferrer"><div class="news-date">${esc(d)}</div><div class="news-title">${esc(r.title)}</div><div class="news-source">${esc(r.source)}</div></a>`;
     }).join("");
-    if (status) status.textContent = `자동 갱신 완료 (${rows.length}건)`;
+    if (status) status.textContent = `디버그 프록시 갱신 (${rows.length}건)`;
   }
 
   fetchRecentPollNews();
