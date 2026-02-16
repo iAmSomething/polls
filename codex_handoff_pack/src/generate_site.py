@@ -430,6 +430,31 @@ def load_recent_articles(base: Path) -> pd.DataFrame:
     return df.sort_values("date", ascending=False).head(12).reset_index(drop=True)
 
 
+def dedupe_same_day_same_source(df: pd.DataFrame, limit: int = 12) -> pd.DataFrame:
+    cols = ["date", "source", "title", "url"]
+    if df is None or df.empty:
+        return pd.DataFrame(columns=cols)
+    out = df.copy()
+    for c in cols:
+        if c not in out.columns:
+            out[c] = ""
+    out["date"] = pd.to_datetime(out["date"], errors="coerce")
+    out["source"] = out["source"].astype(str).str.strip()
+    out["title"] = out["title"].astype(str).str.strip()
+    out["url"] = out["url"].astype(str).str.strip()
+    out = out.dropna(subset=["date"]).copy()
+    out = out[(out["source"] != "") & (out["title"] != "") & (out["url"] != "")].copy()
+    if "_dt" in out.columns:
+        out = out.sort_values("_dt", ascending=False, na_position="last")
+    else:
+        out = out.sort_values("date", ascending=False, na_position="last")
+    out["date_only"] = out["date"].dt.date.astype(str)
+    out = out.drop_duplicates(subset=["date_only", "source"], keep="first")
+    out = out.drop(columns=["date_only"], errors="ignore")
+    out = out.sort_values("date", ascending=False, na_position="last")
+    return out[["date", "source", "title", "url"]].head(limit).reset_index(drop=True)
+
+
 def load_cached_news_json(base: Path) -> pd.DataFrame:
     p = base / "docs" / "news_latest.json"
     cols = ["date", "source", "title", "url"]
@@ -447,7 +472,7 @@ def load_cached_news_json(base: Path) -> pd.DataFrame:
             df[c] = ""
     df["date"] = pd.to_datetime(df["date"], errors="coerce")
     df = df.dropna(subset=["date", "title", "url"])
-    return df.sort_values("date", ascending=False).head(12).reset_index(drop=True)
+    return dedupe_same_day_same_source(df, limit=12)
 
 
 def fetch_google_news_articles(
@@ -478,6 +503,38 @@ def fetch_google_news_articles(
             if m:
                 return re.sub(r"\s+", " ", m.group(1)).strip()
         return fallback_url
+
+    def _extract_source(html: str) -> str:
+        patterns = [
+            r'<meta\s+name="twitter:creator"\s+content="([^"]+)"',
+            r'<meta\s+property="og:article:author"\s+content="([^"]+)"',
+            r'alt="([^"]+)"\s+title="[^"]*"\s+class="media_end_head_top_logo_img',
+        ]
+        for pat in patterns:
+            m = re.search(pat, html, flags=re.I | re.S)
+            if m:
+                s = re.sub(r"\s+", " ", m.group(1)).strip()
+                if "|" in s:
+                    s = s.split("|", 1)[0].strip()
+                if s:
+                    return s
+        return "네이버뉴스"
+
+    def _extract_published_dt(html: str) -> pd.Timestamp:
+        patterns = [
+            r'data-date-time="([^"]+)"',
+            r'"date":"([0-9]{4}-[0-9]{2}-[0-9]{2} [0-9]{2}:[0-9]{2}:[0-9]{2})"',
+        ]
+        for pat in patterns:
+            m = re.search(pat, html, flags=re.I | re.S)
+            if not m:
+                continue
+            ts = pd.to_datetime(m.group(1), errors="coerce")
+            if pd.notna(ts):
+                if getattr(ts, "tzinfo", None) is None:
+                    ts = ts.tz_localize("Asia/Seoul")
+                return ts
+        return pd.Timestamp.now(tz=ZoneInfo("Asia/Seoul"))
 
     pollster_keywords = [str(x).strip() for x in POLLSTERS if str(x).strip()]
     priority_steps = [
@@ -555,15 +612,16 @@ def fetch_google_news_articles(
                 if matched_priority != step["priority"]:
                     continue
                 seen_urls.add(link)
+                article_dt = _extract_published_dt(html)
                 rows.append(
                     {
-                        "date": pd.Timestamp.now(tz=ZoneInfo("Asia/Seoul")).date().isoformat(),
-                        "source": "네이버뉴스",
+                        "date": article_dt.date().isoformat(),
+                        "source": _extract_source(html),
                         "title": title,
                         "url": link,
                         "priority": matched_priority,
                         "priority_name": step["name"],
-                        "_dt": pd.Timestamp.now(tz=ZoneInfo("Asia/Seoul")),
+                        "_dt": article_dt,
                     }
                 )
                 if len(rows) >= limit:
@@ -577,22 +635,21 @@ def fetch_google_news_articles(
         return pd.DataFrame(columns=["date", "source", "title", "url"])
     out = pd.DataFrame(rows).drop_duplicates(subset=["url"]).copy()
     out = out.sort_values(["priority", "_dt"], ascending=[True, False], na_position="last")
-    out = out[["date", "source", "title", "url"]].head(limit).reset_index(drop=True)
     out["date"] = pd.to_datetime(out["date"], errors="coerce")
     out = out.dropna(subset=["date", "title", "url"])
-    return out
+    return dedupe_same_day_same_source(out, limit=limit)
 
 
 def resolve_news_articles(base: Path, outputs: Path) -> tuple[pd.DataFrame, str]:
     # Priority 1: build-time article fetch + content verification
     fetched_articles = fetch_google_news_articles()
     if not fetched_articles.empty:
-        return fetched_articles, "naver_priority_1_2_3"
+        return dedupe_same_day_same_source(fetched_articles, limit=12), "naver_priority_1_2_3"
 
     # Priority 2: keep last successful published list to avoid blank UI on transient failures.
     cached = load_cached_news_json(base)
     if not cached.empty:
-        return cached, "cached_news_latest_json"
+        return dedupe_same_day_same_source(cached, limit=12), "cached_news_latest_json"
 
     # Priority 3: manual fallback file (curated), use same priority concept on title text.
     phrase = "중앙선거여론조사심의위원회"
@@ -604,7 +661,7 @@ def resolve_news_articles(base: Path, outputs: Path) -> tuple[pd.DataFrame, str]
         cond2 = t.apply(lambda x: any(k in x for k in pollster_keywords))
         cond3 = t.str.contains("여론조사", na=False)
         manual = manual[cond1 | cond2 | cond3].copy()
-        manual = manual.head(12).reset_index(drop=True)
+        manual = dedupe_same_day_same_source(manual, limit=12)
         if not manual.empty:
             return manual, "recent_articles_csv_priority_1_2_3"
 
