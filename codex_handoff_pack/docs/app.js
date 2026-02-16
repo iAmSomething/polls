@@ -12,7 +12,7 @@
       out.push({
         x: p.actual_x, y: p.actual_y, type: "scatter", mode: "lines", name: p.party,
         legendgroup: p.party, line: { color: p.color, width: 2.7 },
-        hovertemplate: "%{fullData.name}: %{y:.2f}%<extra></extra>"
+        hovertemplate: "<b>%{fullData.name}</b>: %{y:.2f}%<extra></extra>"
       });
       out.push({
         x: p.forecast_x, y: p.forecast_y, type: "scatter", mode: "lines",
@@ -36,7 +36,22 @@
     font: { color: "#E6ECF5", family: "Inter, Pretendard, sans-serif" },
     margin: { l: 55, r: 20, t: 10, b: 44 },
     hovermode: "x unified",
-    xaxis: { gridcolor: "rgba(255,255,255,0.08)", linecolor: "rgba(255,255,255,0.12)" },
+    hoverlabel: {
+      bgcolor: "#0B1F3A",
+      bordercolor: "#8FB3FF",
+      font: { color: "#F7FAFF", size: 14, family: "Inter, Pretendard, sans-serif" },
+      align: "left",
+      namelength: -1
+    },
+    xaxis: {
+      gridcolor: "rgba(255,255,255,0.08)",
+      linecolor: "rgba(255,255,255,0.12)",
+      showspikes: true,
+      spikemode: "across",
+      spikecolor: "rgba(255,255,255,0.35)",
+      spikedash: "dot",
+      spikethickness: 1
+    },
     yaxis: { title: "지지율(%)", gridcolor: "rgba(255,255,255,0.08)", zeroline: false },
     legend: { orientation: "h", y: 1.08, x: 0 }
   };
@@ -88,4 +103,72 @@
       rankCards.forEach((c) => c.classList.toggle("active", c.dataset.party === party));
     });
   });
+
+  function esc(s) {
+    return String(s || "").replace(/[&<>"']/g, (ch) => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+      '"': "&quot;",
+      "'": "&#39;"
+    }[ch]));
+  }
+
+  function parseRss(xmlText) {
+    const doc = new DOMParser().parseFromString(xmlText, "text/xml");
+    const items = [...doc.querySelectorAll("item")];
+    const rows = items.map((it) => {
+      const title = (it.querySelector("title")?.textContent || "").trim();
+      const link = (it.querySelector("link")?.textContent || "").trim();
+      const pubDateRaw = (it.querySelector("pubDate")?.textContent || "").trim();
+      const source = (it.querySelector("source")?.textContent || "Google News").trim();
+      const dt = pubDateRaw ? new Date(pubDateRaw) : null;
+      return {
+        title,
+        link,
+        source,
+        date: dt && !isNaN(dt.getTime()) ? dt : null
+      };
+    }).filter((r) => r.title && r.link);
+    rows.sort((a, b) => (b.date ? b.date.getTime() : 0) - (a.date ? a.date.getTime() : 0));
+    return rows;
+  }
+
+  async function fetchRecentPollNews() {
+    const grid = document.getElementById("news-grid");
+    if (!grid) return;
+
+    const rssUrl = "https://news.google.com/rss/search?q=%EC%97%AC%EB%A1%A0%EC%A1%B0%EC%82%AC&hl=ko&gl=KR&ceid=KR:ko";
+    const candidates = [
+      `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`,
+      `https://r.jina.ai/http://news.google.com/rss/search?q=%EC%97%AC%EB%A1%A0%EC%A1%B0%EC%82%AC&hl=ko&gl=KR&ceid=KR:ko`
+    ];
+
+    let xmlText = "";
+    for (const u of candidates) {
+      try {
+        const res = await fetch(u, { cache: "no-store" });
+        if (!res.ok) continue;
+        xmlText = await res.text();
+        if (xmlText && xmlText.includes("<item>")) break;
+      } catch (_) {}
+    }
+    if (!xmlText) return;
+
+    const rows = parseRss(xmlText).slice(0, 6);
+    if (!rows.length) return;
+
+    grid.innerHTML = rows.map((r) => {
+      const d = r.date ? r.date.toISOString().slice(0, 10) : "";
+      return `
+        <a class="news-card" href="${esc(r.link)}" target="_blank" rel="noopener noreferrer">
+          <div class="news-date">${esc(d)}</div>
+          <div class="news-title">${esc(r.title)}</div>
+          <div class="news-source">${esc(r.source)}</div>
+        </a>
+      `;
+    }).join("");
+  }
+
+  fetchRecentPollNews();
 })();
