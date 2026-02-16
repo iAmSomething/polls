@@ -56,33 +56,53 @@
     return out;
   }
 
-  const layout = {
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "#F8FAFD",
-    font: { color: "#1A2332", family: "Inter, Pretendard, sans-serif" },
-    margin: { l: 55, r: 20, t: 10, b: 44 },
-    hovermode: "x unified",
-    hoverlabel: {
-      bgcolor: "#FFFFFF",
-      bordercolor: "#8FB3FF",
-      font: { color: "#1A2332", size: 13, family: "Inter, Pretendard, sans-serif" },
-      align: "left",
-      namelength: -1
-    },
-    xaxis: {
-      gridcolor: "rgba(71,85,105,0.18)",
-      linecolor: "rgba(100,116,139,0.35)",
-      showspikes: true,
-      spikemode: "across",
-      spikecolor: "rgba(71,85,105,0.5)",
-      spikedash: "dot",
-      spikethickness: 1
-    },
-    yaxis: { title: "지지율(%)", gridcolor: "rgba(71,85,105,0.18)", zeroline: false },
-    legend: { orientation: "h", y: 1.08, x: 0 }
-  };
+  function isDarkMode() {
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
 
-  Plotly.newPlot(chartDiv, buildTraces(), layout, { displayModeBar: false, responsive: true });
+  function buildLayout() {
+    const dark = isDarkMode();
+    return {
+      paper_bgcolor: "rgba(0,0,0,0)",
+      plot_bgcolor: dark ? "#152338" : "#F8FAFD",
+      font: { color: dark ? "#EAF0FA" : "#1A2332", family: "Inter, Pretendard, sans-serif" },
+      margin: { l: 55, r: 20, t: 10, b: 44 },
+      hovermode: "x unified",
+      hoverlabel: {
+        bgcolor: dark ? "#111A2B" : "#FFFFFF",
+        bordercolor: "#8FB3FF",
+        font: { color: dark ? "#EAF0FA" : "#1A2332", size: 13, family: "Inter, Pretendard, sans-serif" },
+        align: "left",
+        namelength: -1
+      },
+      xaxis: {
+        gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)",
+        linecolor: dark ? "rgba(158,176,204,0.24)" : "rgba(100,116,139,0.35)",
+        showspikes: true,
+        spikemode: "across",
+        spikecolor: dark ? "rgba(158,176,204,0.5)" : "rgba(71,85,105,0.5)",
+        spikedash: "dot",
+        spikethickness: 1
+      },
+      yaxis: {
+        title: "지지율(%)",
+        gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)",
+        zeroline: false
+      },
+      legend: { orientation: "h", y: 1.08, x: 0 }
+    };
+  }
+
+  function renderChart() {
+    Plotly.react(chartDiv, buildTraces(), buildLayout(), { displayModeBar: false, responsive: true });
+  }
+
+  renderChart();
+  if (window.matchMedia) {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    if (mq.addEventListener) mq.addEventListener("change", renderChart);
+    else if (mq.addListener) mq.addListener(renderChart);
+  }
 
   const fbtns = [...document.querySelectorAll(".fbtn")];
   function setBtnActive(key) { fbtns.forEach((b) => b.classList.toggle("active", b.dataset.range === key)); }

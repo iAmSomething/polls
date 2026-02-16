@@ -44,6 +44,17 @@ STYLE_CSS = """
   --line: #D6DEEA;
   --accent: #2563EB;
 }
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0B1220;
+    --panel: #111A2B;
+    --panel-soft: #152338;
+    --text: #EAF0FA;
+    --muted: #9EB0CC;
+    --line: #263850;
+    --accent: #6EA8FF;
+  }
+}
 * { box-sizing: border-box; }
 body {
   margin: 0;
@@ -51,6 +62,9 @@ body {
   color: var(--text);
   font-family: "Inter","Pretendard",system-ui,sans-serif;
   font-feature-settings: "tnum" 1, "lnum" 1;
+}
+@media (prefers-color-scheme: dark) {
+  body { background: radial-gradient(1200px 500px at 10% -10%, #1B3152 0%, var(--bg) 58%); }
 }
 .wrap { max-width: 1320px; margin: 0 auto; padding: 24px 18px 44px; }
 .top {
@@ -62,6 +76,9 @@ body {
   width: 26px; height: 26px; border-radius: 6px;
   background: linear-gradient(135deg, var(--accent), #53A0FF);
   box-shadow: 0 0 0 1px rgba(255,255,255,.8) inset;
+}
+@media (prefers-color-scheme: dark) {
+  .logo { box-shadow: 0 0 0 1px rgba(255,255,255,.2) inset; }
 }
 .title { font-size: 24px; font-weight: 800; letter-spacing: .1px; }
 .stamp { color: var(--muted); font-size: 13px; }
@@ -83,6 +100,9 @@ body {
   border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer;
 }
 .fbtn.active { border-color: var(--accent); color: #0F4FD6; background: #E9F1FF; }
+@media (prefers-color-scheme: dark) {
+  .fbtn.active { color: #DCE9FF; background: #1B3358; }
+}
 #chart { height: 540px; }
 .chart-caption { margin-top: 8px; color: var(--muted); font-size: 12px; }
 .rank-wrap { display: grid; gap: 9px; }
@@ -101,6 +121,9 @@ body {
 .rank-delta { font-size: 13px; color: var(--muted); }
 .rank-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
 .rank-band { font-size: 12px; color: #46608B; margin-top: 2px; }
+@media (prefers-color-scheme: dark) {
+  .rank-band { color: #C5D7F6; }
+}
 .spark { margin-top: 6px; opacity: .9; }
 .news { margin-top: 14px; }
 .news-status { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
@@ -110,6 +133,9 @@ body {
   padding: 10px 11px; text-decoration: none; color: var(--text); display: block; min-height: 92px;
 }
 .news-card:hover { border-color: #7AA5E8; }
+@media (prefers-color-scheme: dark) {
+  .news-card:hover { border-color: #4F78AD; }
+}
 .news-date { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
 .news-title { font-size: 13px; line-height: 1.45; font-weight: 600; margin-bottom: 6px; }
 .news-source { color: var(--muted); font-size: 12px; }
@@ -190,33 +216,53 @@ APP_JS = """
     return out;
   }
 
-  const layout = {
-    paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "#F8FAFD",
-    font: { color: "#1A2332", family: "Inter, Pretendard, sans-serif" },
-    margin: { l: 55, r: 20, t: 10, b: 44 },
-    hovermode: "x unified",
-    hoverlabel: {
-      bgcolor: "#FFFFFF",
-      bordercolor: "#8FB3FF",
-      font: { color: "#1A2332", size: 13, family: "Inter, Pretendard, sans-serif" },
-      align: "left",
-      namelength: -1
-    },
-    xaxis: {
-      gridcolor: "rgba(71,85,105,0.18)",
-      linecolor: "rgba(100,116,139,0.35)",
-      showspikes: true,
-      spikemode: "across",
-      spikecolor: "rgba(71,85,105,0.5)",
-      spikedash: "dot",
-      spikethickness: 1
-    },
-    yaxis: { title: "지지율(%)", gridcolor: "rgba(71,85,105,0.18)", zeroline: false },
-    legend: { orientation: "h", y: 1.08, x: 0 }
-  };
+  function isDarkMode() {
+    return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
 
-  Plotly.newPlot(chartDiv, buildTraces(), layout, { displayModeBar: false, responsive: true });
+  function buildLayout() {
+    const dark = isDarkMode();
+    return {
+      paper_bgcolor: "rgba(0,0,0,0)",
+      plot_bgcolor: dark ? "#152338" : "#F8FAFD",
+      font: { color: dark ? "#EAF0FA" : "#1A2332", family: "Inter, Pretendard, sans-serif" },
+      margin: { l: 55, r: 20, t: 10, b: 44 },
+      hovermode: "x unified",
+      hoverlabel: {
+        bgcolor: dark ? "#111A2B" : "#FFFFFF",
+        bordercolor: "#8FB3FF",
+        font: { color: dark ? "#EAF0FA" : "#1A2332", size: 13, family: "Inter, Pretendard, sans-serif" },
+        align: "left",
+        namelength: -1
+      },
+      xaxis: {
+        gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)",
+        linecolor: dark ? "rgba(158,176,204,0.24)" : "rgba(100,116,139,0.35)",
+        showspikes: true,
+        spikemode: "across",
+        spikecolor: dark ? "rgba(158,176,204,0.5)" : "rgba(71,85,105,0.5)",
+        spikedash: "dot",
+        spikethickness: 1
+      },
+      yaxis: {
+        title: "지지율(%)",
+        gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)",
+        zeroline: false
+      },
+      legend: { orientation: "h", y: 1.08, x: 0 }
+    };
+  }
+
+  function renderChart() {
+    Plotly.react(chartDiv, buildTraces(), buildLayout(), { displayModeBar: false, responsive: true });
+  }
+
+  renderChart();
+  if (window.matchMedia) {
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    if (mq.addEventListener) mq.addEventListener("change", renderChart);
+    else if (mq.addListener) mq.addListener(renderChart);
+  }
 
   const fbtns = [...document.querySelectorAll(".fbtn")];
   function setBtnActive(key) { fbtns.forEach((b) => b.classList.toggle("active", b.dataset.range === key)); }
