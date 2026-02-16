@@ -3,7 +3,7 @@ VENV ?= .venv
 VENV_PY := $(VENV)/bin/python
 VENV_PIP := $(VENV)/bin/pip
 
-.PHONY: setup smoke run-forecast run-pipeline run-weekly run-issues build-site fetch-nesdc apply-nesdc clean
+.PHONY: setup smoke run-forecast run-pipeline run-weekly run-issues build-site fetch-nesdc apply-nesdc run-tuesday clean
 
 setup:
 	$(PYTHON) -m venv $(VENV)
@@ -30,6 +30,9 @@ fetch-nesdc:
 
 apply-nesdc:
 	$(VENV_PY) src/apply_nesdc_weekly_update.py --rebuild
+
+run-tuesday:
+	$(VENV_PY) src/tuesday_18kst_runner.py
 
 build-site:
 	$(VENV_PY) src/generate_site.py
