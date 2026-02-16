@@ -72,3 +72,20 @@ make run-issues
 - Current mode: `collect-only` (no live forecast impact).
 - Policy file: `config/issue_policy.json`
 - Activation condition: apply issue impact only after enough evaluation history and measurable accuracy gain.
+
+## AI Issue Assessment (LLM)
+
+Use LLM mode for party advantage/disadvantage scoring from weekly news:
+
+```bash
+cd codex_handoff_pack
+export OPENAI_API_KEY="<your-key>"
+.venv/bin/python src/issue_intake.py \
+  --mode llm \
+  --week-start 2026-02-09 \
+  --week-end 2026-02-15 \
+  --keywords "정당 지지율,여론조사,민주당,국민의힘"
+```
+
+- If `OPENAI_API_KEY` is missing or API fails, it falls back to rule-based scoring.
+- Current forecast policy remains `collect-only` until evaluation thresholds are met.

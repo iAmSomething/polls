@@ -26,7 +26,7 @@ run-issues:
 	$(VENV_PY) src/issues.py
 
 issue-intake:
-	$(VENV_PY) src/issue_intake.py --week-start 2026-02-09 --week-end 2026-02-15 --keywords "정당 지지율,여론조사,민주당,국민의힘"
+	$(VENV_PY) src/issue_intake.py --mode llm --week-start 2026-02-09 --week-end 2026-02-15 --keywords "정당 지지율,여론조사,민주당,국민의힘"
 
 fetch-nesdc:
 	$(VENV_PY) src/fetch_nesdc_weekly.py

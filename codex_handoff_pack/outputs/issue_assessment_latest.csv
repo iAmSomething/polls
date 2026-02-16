@@ -1,5 +1,5 @@
-target_party,mention_count,raw_score,issue_type
-더불어민주당,23,26,정책성과
-국민의힘,25,14,정책성과
-조국혁신당,5,-2,정책성과
-개혁신당,0,0,정책성과
+target_party,mention_count,raw_score,issue_type,confidence,rationale,mode
+더불어민주당,7,20.0,정책성과,0.55,rule_based_lexicon,rule
+국민의힘,10,12.0,정책성과,0.55,rule_based_lexicon,rule
+조국혁신당,0,0.0,정책성과,0.55,rule_based_lexicon,rule
+개혁신당,0,0.0,정책성과,0.55,rule_based_lexicon,rule

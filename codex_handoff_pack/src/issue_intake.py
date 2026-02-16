@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import argparse
+import json
+import os
 import re
 import urllib.parse
 import urllib.request
@@ -18,6 +20,8 @@ PARTY_ALIASES = {
     "조국혁신당": ["조국혁신당", "조국"],
     "개혁신당": ["개혁신당", "이준석"],
 }
+PARTY_LIST = list(PARTY_ALIASES.keys())
+ISSUE_TYPES = ["경제", "안보", "사법", "인사", "부패/비리", "정책성과", "사고/참사"]
 
 POS_WORDS = ["호재", "상승", "반등", "우세", "지지", "확대", "개선", "강세", "선전", "돌파", "성공"]
 NEG_WORDS = ["악재", "하락", "논란", "비판", "의혹", "부진", "약세", "실패", "위기", "충돌", "수사", "기소"]
@@ -87,7 +91,7 @@ def score_text(text: str) -> int:
     return pos - neg
 
 
-def assess_party_scores(items: List[NewsItem]) -> pd.DataFrame:
+def assess_party_scores_rule(items: List[NewsItem]) -> pd.DataFrame:
     rows = []
     for party, aliases in PARTY_ALIASES.items():
         total_score = 0
@@ -106,9 +110,143 @@ def assess_party_scores(items: List[NewsItem]) -> pd.DataFrame:
         if issue_counter:
             dominant_issue = sorted(issue_counter.items(), key=lambda x: x[1], reverse=True)[0][0]
 
-        rows.append({"target_party": party, "mention_count": mention_count, "raw_score": total_score, "issue_type": dominant_issue})
+        rows.append(
+            {
+                "target_party": party,
+                "mention_count": mention_count,
+                "raw_score": float(total_score),
+                "issue_type": dominant_issue,
+                "confidence": 0.55,
+                "rationale": "rule_based_lexicon",
+            }
+        )
 
     return pd.DataFrame(rows)
+
+
+def _strip_json_block(s: str) -> str:
+    t = s.strip()
+    if t.startswith("```"):
+        t = re.sub(r"^```[a-zA-Z0-9]*\n", "", t)
+        t = re.sub(r"\n```$", "", t)
+    return t.strip()
+
+
+def call_openai_json(api_key: str, model: str, system_prompt: str, user_prompt: str) -> dict:
+    url = "https://api.openai.com/v1/chat/completions"
+    payload = {
+        "model": model,
+        "temperature": 0,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "response_format": {"type": "json_object"},
+    }
+    data = json.dumps(payload).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(req, timeout=90) as r:
+        body = json.loads(r.read().decode("utf-8", "ignore"))
+
+    content = body["choices"][0]["message"]["content"]
+    return json.loads(_strip_json_block(content))
+
+
+def assess_party_scores_llm(items: List[NewsItem], model: str, api_key: str, max_items: int) -> pd.DataFrame:
+    compact = []
+    for i, it in enumerate(items[:max_items], 1):
+        compact.append(
+            {
+                "idx": i,
+                "keyword": it.keyword,
+                "title": it.title,
+                "summary": it.summary[:280],
+                "published": it.published.isoformat() if it.published else "",
+            }
+        )
+
+    system_prompt = (
+        "당신은 한국 정치 뉴스 분석가다. "
+        "입력 기사들만 근거로 각 정당별 유불리 점수를 평가해 JSON만 출력하라."
+    )
+    schema_hint = {
+        "party_assessments": [
+            {
+                "target_party": "더불어민주당|국민의힘|조국혁신당|개혁신당",
+                "mention_count": 0,
+                "raw_score": 0.0,
+                "issue_type": "경제|안보|사법|인사|부패/비리|정책성과|사고/참사",
+                "confidence": 0.0,
+                "rationale": "짧은 근거",
+            }
+        ]
+    }
+    user_prompt = (
+        "[기사 입력]\n"
+        f"{json.dumps(compact, ensure_ascii=False)}\n\n"
+        "[평가 규칙]\n"
+        "- raw_score: 정당 유리(+) 불리(-), 대략 -30~+30 범위\n"
+        "- mention_count: 기사에서 해당 정당 관련 언급 개수 추정\n"
+        "- confidence: 0~1\n"
+        "- 반드시 4개 정당 모두 반환\n\n"
+        "[출력 JSON 스키마 예시]\n"
+        f"{json.dumps(schema_hint, ensure_ascii=False)}"
+    )
+
+    parsed = call_openai_json(api_key, model, system_prompt, user_prompt)
+    rows = parsed.get("party_assessments", []) if isinstance(parsed, dict) else []
+
+    cleaned = []
+    for party in PARTY_LIST:
+        hit = None
+        for r in rows:
+            if str(r.get("target_party", "")).strip() == party:
+                hit = r
+                break
+        if hit is None:
+            cleaned.append(
+                {
+                    "target_party": party,
+                    "mention_count": 0,
+                    "raw_score": 0.0,
+                    "issue_type": "정책성과",
+                    "confidence": 0.0,
+                    "rationale": "llm_missing_party_filled",
+                }
+            )
+            continue
+
+        issue_type = str(hit.get("issue_type", "정책성과")).strip()
+        if issue_type not in ISSUE_TYPES:
+            issue_type = "정책성과"
+
+        conf = pd.to_numeric(hit.get("confidence", 0.0), errors="coerce")
+        conf = float(conf) if pd.notna(conf) else 0.0
+        conf = max(0.0, min(1.0, conf))
+
+        mention = int(max(0, int(pd.to_numeric(hit.get("mention_count", 0), errors="coerce") or 0)))
+        score = float(pd.to_numeric(hit.get("raw_score", 0.0), errors="coerce") or 0.0)
+
+        cleaned.append(
+            {
+                "target_party": party,
+                "mention_count": mention,
+                "raw_score": score,
+                "issue_type": issue_type,
+                "confidence": conf,
+                "rationale": str(hit.get("rationale", ""))[:240],
+            }
+        )
+
+    return pd.DataFrame(cleaned)
 
 
 def to_issue_rows(assess_df: pd.DataFrame, issue_date: str) -> pd.DataFrame:
@@ -116,12 +254,21 @@ def to_issue_rows(assess_df: pd.DataFrame, issue_date: str) -> pd.DataFrame:
     for _, r in assess_df.iterrows():
         mention = int(r["mention_count"])
         score = float(r["raw_score"])
+        conf = float(pd.to_numeric(r.get("confidence", 0.0), errors="coerce") or 0.0)
+        rationale = str(r.get("rationale", "")).strip()
         if mention == 0:
             continue
 
         avg = score / max(1, mention)
         intensity = int(max(1, min(3, round(abs(avg)))))
-        direction = f"{r['target_party']} 유리" if score > 0 else f"{r['target_party']} 불리"
+        if score > 0:
+            direction = f"{r['target_party']} 유리"
+        elif score < 0:
+            direction = f"{r['target_party']} 불리"
+        else:
+            direction = "중립"
+            intensity = 0
+
         rows.append(
             {
                 "issue_date": issue_date,
@@ -130,7 +277,7 @@ def to_issue_rows(assess_df: pd.DataFrame, issue_date: str) -> pd.DataFrame:
                 "direction": direction,
                 "persistence": "잔존",
                 "target_party": r["target_party"],
-                "note": f"news_mentions={mention}, raw_score={score:.1f}",
+                "note": f"news_mentions={mention}, raw_score={score:.1f}, confidence={conf:.2f}, rationale={rationale}",
             }
         )
     return pd.DataFrame(rows)
@@ -161,6 +308,10 @@ def main() -> None:
     ap.add_argument("--keywords", required=True, help="comma-separated keywords")
     ap.add_argument("--extra-url", action="append", default=[], help="optional article url (repeatable)")
     ap.add_argument("--max-items-per-keyword", type=int, default=15)
+    ap.add_argument("--mode", choices=["rule", "llm", "auto"], default="llm")
+    ap.add_argument("--llm-model", default="gpt-4.1-mini")
+    ap.add_argument("--llm-max-items", type=int, default=40)
+    ap.add_argument("--openai-api-key", default="")
     ap.add_argument("--out-assess", default="outputs/issue_assessment_latest.csv")
     ap.add_argument("--out-news", default="outputs/issue_news_latest.csv")
     ap.add_argument("--issue-input", default="data/issues_input.csv")
@@ -186,8 +337,8 @@ def main() -> None:
 
     for u in args.extra_url:
         try:
-            html = fetch_url_text(u)
-            m = re.search(r"<title>(.*?)</title>", html, re.I | re.S)
+            page_html = fetch_url_text(u)
+            m = re.search(r"<title>(.*?)</title>", page_html, re.I | re.S)
             title = re.sub(r"\s+", " ", m.group(1)).strip() if m else u
             all_items.append(NewsItem(title=title, link=u, published=None, summary="", keyword="direct_url"))
         except Exception as e:
@@ -200,22 +351,48 @@ def main() -> None:
     out_assess = base / args.out_assess
     issue_input_path = base / args.issue_input
 
-    news_df = pd.DataFrame([
-        {"keyword": i.keyword, "published": i.published.isoformat() if i.published else "", "title": i.title, "link": i.link, "summary": i.summary}
-        for i in all_items
-    ])
+    news_df = pd.DataFrame(
+        [
+            {
+                "keyword": i.keyword,
+                "published": i.published.isoformat() if i.published else "",
+                "title": i.title,
+                "link": i.link,
+                "summary": i.summary,
+            }
+            for i in all_items
+        ]
+    )
     out_news.parent.mkdir(parents=True, exist_ok=True)
     news_df.to_csv(out_news, index=False)
 
-    assess_df = assess_party_scores(all_items)
+    api_key = args.openai_api_key or os.getenv("OPENAI_API_KEY", "")
+    use_llm = args.mode == "llm" or (args.mode == "auto" and bool(api_key))
+
+    if use_llm and not api_key:
+        print("WARN LLM mode requested but OPENAI_API_KEY is missing. Falling back to rule mode.")
+        use_llm = False
+
+    if use_llm:
+        try:
+            assess_df = assess_party_scores_llm(all_items, args.llm_model, api_key, args.llm_max_items)
+            assess_df["mode"] = "llm"
+        except Exception as e:
+            print(f"WARN LLM assessment failed: {e}. Falling back to rule mode.")
+            assess_df = assess_party_scores_rule(all_items)
+            assess_df["mode"] = "rule_fallback"
+    else:
+        assess_df = assess_party_scores_rule(all_items)
+        assess_df["mode"] = "rule"
+
     issue_rows = to_issue_rows(assess_df, issue_date=str(week_end_inclusive))
 
     out_assess.parent.mkdir(parents=True, exist_ok=True)
     assess_df.to_csv(out_assess, index=False)
-
     merge_into_issue_input(issue_rows, issue_input_path)
 
     print(f"Collected news items: {len(all_items)}")
+    print(f"Mode: {assess_df['mode'].iloc[0] if len(assess_df) else 'unknown'}")
     print(f"Wrote: {out_news}")
     print(f"Wrote: {out_assess}")
     print(f"Updated: {issue_input_path}")
