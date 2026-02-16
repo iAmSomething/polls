@@ -1,0 +1,227 @@
+from __future__ import annotations
+
+import argparse
+import re
+import urllib.parse
+import urllib.request
+import xml.etree.ElementTree as ET
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+from pathlib import Path
+from typing import Dict, List
+
+import pandas as pd
+
+PARTY_ALIASES = {
+    "더불어민주당": ["더불어민주당", "민주당", "더민주", "이재명"],
+    "국민의힘": ["국민의힘", "국민의 힘", "국힘"],
+    "조국혁신당": ["조국혁신당", "조국"],
+    "개혁신당": ["개혁신당", "이준석"],
+}
+
+POS_WORDS = ["호재", "상승", "반등", "우세", "지지", "확대", "개선", "강세", "선전", "돌파", "성공"]
+NEG_WORDS = ["악재", "하락", "논란", "비판", "의혹", "부진", "약세", "실패", "위기", "충돌", "수사", "기소"]
+
+ISSUE_TYPE_KEYWORDS = {
+    "경제": ["경제", "물가", "세금", "고용", "금리", "민생", "예산"],
+    "안보": ["안보", "외교", "국방", "북한", "미사일"],
+    "사법": ["사법", "재판", "수사", "기소", "법원", "검찰"],
+    "인사": ["인사", "장관", "임명", "공천"],
+    "부패/비리": ["비리", "부패", "의혹", "특혜"],
+    "정책성과": ["정책", "성과", "개혁", "공약", "발표"],
+    "사고/참사": ["사고", "참사", "재난", "붕괴", "화재"],
+}
+
+
+@dataclass
+class NewsItem:
+    title: str
+    link: str
+    published: datetime | None
+    summary: str
+    keyword: str
+
+
+def fetch_url_text(url: str) -> str:
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=25) as r:
+        return r.read().decode("utf-8", "ignore")
+
+
+def parse_rss_items(xml_text: str, keyword: str) -> List[NewsItem]:
+    root = ET.fromstring(xml_text)
+    items: List[NewsItem] = []
+    for it in root.findall(".//item"):
+        title = (it.findtext("title") or "").strip()
+        link = (it.findtext("link") or "").strip()
+        summary = (it.findtext("description") or "").strip()
+        pub = (it.findtext("pubDate") or "").strip()
+        dt = None
+        if pub:
+            try:
+                dt = datetime.strptime(pub, "%a, %d %b %Y %H:%M:%S %Z")
+            except Exception:
+                dt = None
+        if title and link:
+            items.append(NewsItem(title=title, link=link, published=dt, summary=summary, keyword=keyword))
+    return items
+
+
+def google_news_rss(keyword: str, week_start: str, week_end: str) -> str:
+    query = f'"{keyword}" after:{week_start} before:{week_end}'
+    q = urllib.parse.quote(query)
+    return f"https://news.google.com/rss/search?q={q}&hl=ko&gl=KR&ceid=KR:ko"
+
+
+def infer_issue_type(keyword: str, text: str) -> str:
+    s = f"{keyword} {text}"
+    for issue_type, kws in ISSUE_TYPE_KEYWORDS.items():
+        if any(k in s for k in kws):
+            return issue_type
+    return "정책성과"
+
+
+def score_text(text: str) -> int:
+    pos = sum(text.count(w) for w in POS_WORDS)
+    neg = sum(text.count(w) for w in NEG_WORDS)
+    return pos - neg
+
+
+def assess_party_scores(items: List[NewsItem]) -> pd.DataFrame:
+    rows = []
+    for party, aliases in PARTY_ALIASES.items():
+        total_score = 0
+        mention_count = 0
+        dominant_issue = "정책성과"
+        issue_counter: Dict[str, int] = {}
+
+        for it in items:
+            text = f"{it.title} {it.summary}"
+            if any(a in text for a in aliases):
+                mention_count += 1
+                total_score += score_text(text)
+                t = infer_issue_type(it.keyword, text)
+                issue_counter[t] = issue_counter.get(t, 0) + 1
+
+        if issue_counter:
+            dominant_issue = sorted(issue_counter.items(), key=lambda x: x[1], reverse=True)[0][0]
+
+        rows.append({"target_party": party, "mention_count": mention_count, "raw_score": total_score, "issue_type": dominant_issue})
+
+    return pd.DataFrame(rows)
+
+
+def to_issue_rows(assess_df: pd.DataFrame, issue_date: str) -> pd.DataFrame:
+    rows = []
+    for _, r in assess_df.iterrows():
+        mention = int(r["mention_count"])
+        score = float(r["raw_score"])
+        if mention == 0:
+            continue
+
+        avg = score / max(1, mention)
+        intensity = int(max(1, min(3, round(abs(avg)))))
+        direction = f"{r['target_party']} 유리" if score > 0 else f"{r['target_party']} 불리"
+        rows.append(
+            {
+                "issue_date": issue_date,
+                "issue_type": r["issue_type"],
+                "intensity": intensity,
+                "direction": direction,
+                "persistence": "잔존",
+                "target_party": r["target_party"],
+                "note": f"news_mentions={mention}, raw_score={score:.1f}",
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def merge_into_issue_input(issue_rows: pd.DataFrame, issue_input_path: Path) -> None:
+    cols = ["issue_date", "issue_type", "intensity", "direction", "persistence", "target_party", "note"]
+    if issue_input_path.exists():
+        base = pd.read_csv(issue_input_path)
+    else:
+        base = pd.DataFrame(columns=cols)
+
+    for c in cols:
+        if c not in base.columns:
+            base[c] = ""
+
+    merged = pd.concat([base[cols], issue_rows[cols]], ignore_index=True)
+    merged = merged.drop_duplicates(subset=["issue_date", "target_party", "direction", "note"], keep="last")
+    merged.to_csv(issue_input_path, index=False)
+
+
+def main() -> None:
+    base = Path(__file__).resolve().parents[1]
+
+    ap = argparse.ArgumentParser(description="Issue intake from keywords/articles -> weekly political impact rows")
+    ap.add_argument("--week-start", required=True, help="YYYY-MM-DD")
+    ap.add_argument("--week-end", required=True, help="YYYY-MM-DD (inclusive)")
+    ap.add_argument("--keywords", required=True, help="comma-separated keywords")
+    ap.add_argument("--extra-url", action="append", default=[], help="optional article url (repeatable)")
+    ap.add_argument("--max-items-per-keyword", type=int, default=15)
+    ap.add_argument("--out-assess", default="outputs/issue_assessment_latest.csv")
+    ap.add_argument("--out-news", default="outputs/issue_news_latest.csv")
+    ap.add_argument("--issue-input", default="data/issues_input.csv")
+    args = ap.parse_args()
+
+    week_start = pd.to_datetime(args.week_start).date().isoformat()
+    week_end_inclusive = pd.to_datetime(args.week_end).date()
+    week_end_exclusive = (week_end_inclusive + timedelta(days=1)).isoformat()
+
+    kws = [k.strip() for k in args.keywords.split(",") if k.strip()]
+    if not kws:
+        raise SystemExit("No keywords provided.")
+
+    all_items: List[NewsItem] = []
+    for kw in kws:
+        rss_url = google_news_rss(kw, week_start, week_end_exclusive)
+        try:
+            xml_text = fetch_url_text(rss_url)
+            items = parse_rss_items(xml_text, kw)[: args.max_items_per_keyword]
+            all_items.extend(items)
+        except Exception as e:
+            print(f"WARN keyword '{kw}' rss fetch failed: {e}")
+
+    for u in args.extra_url:
+        try:
+            html = fetch_url_text(u)
+            m = re.search(r"<title>(.*?)</title>", html, re.I | re.S)
+            title = re.sub(r"\s+", " ", m.group(1)).strip() if m else u
+            all_items.append(NewsItem(title=title, link=u, published=None, summary="", keyword="direct_url"))
+        except Exception as e:
+            print(f"WARN url fetch failed: {u} ({e})")
+
+    if not all_items:
+        raise SystemExit("No news items collected from keywords/urls.")
+
+    out_news = base / args.out_news
+    out_assess = base / args.out_assess
+    issue_input_path = base / args.issue_input
+
+    news_df = pd.DataFrame([
+        {"keyword": i.keyword, "published": i.published.isoformat() if i.published else "", "title": i.title, "link": i.link, "summary": i.summary}
+        for i in all_items
+    ])
+    out_news.parent.mkdir(parents=True, exist_ok=True)
+    news_df.to_csv(out_news, index=False)
+
+    assess_df = assess_party_scores(all_items)
+    issue_rows = to_issue_rows(assess_df, issue_date=str(week_end_inclusive))
+
+    out_assess.parent.mkdir(parents=True, exist_ok=True)
+    assess_df.to_csv(out_assess, index=False)
+
+    merge_into_issue_input(issue_rows, issue_input_path)
+
+    print(f"Collected news items: {len(all_items)}")
+    print(f"Wrote: {out_news}")
+    print(f"Wrote: {out_assess}")
+    print(f"Updated: {issue_input_path}")
+    if len(issue_rows):
+        print(issue_rows.to_string(index=False))
+
+
+if __name__ == "__main__":
+    main()
