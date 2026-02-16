@@ -136,19 +136,19 @@ APP_JS = """
       out.push({
         x: p.actual_x, y: p.actual_y, type: "scatter", mode: "lines", name: p.party,
         legendgroup: p.party, line: { color: p.color, width: 2.7 },
-        hovertemplate: "%{x}<br>%{fullData.name}: %{y:.2f}%<extra></extra>"
+        hovertemplate: "%{fullData.name}: %{y:.2f}%<extra></extra>"
       });
       out.push({
         x: p.forecast_x, y: p.forecast_y, type: "scatter", mode: "lines",
         legendgroup: p.party, showlegend: false, line: { color: p.color, width: 2.2, dash: "dot" },
-        hovertemplate: "예측 연결선<br>%{x}: %{y:.2f}%<extra></extra>"
+        hoverinfo: "skip"
       });
       out.push({
         x: [p.pred_x], y: [p.pred_y], type: "scatter", mode: "markers+text",
         legendgroup: p.party, showlegend: false,
         marker: { color: p.color, size: 10, line: { color: "#DDE8FF", width: 1 } },
         text: ["예측치"], textposition: "middle right", textfont: { color: p.color, size: 11 },
-        hovertemplate: "%{x}<br>%{y:.2f}% (예측)<extra></extra>"
+        hoverinfo: "skip"
       });
     });
     return out;
@@ -159,6 +159,7 @@ APP_JS = """
     plot_bgcolor: "rgba(255,255,255,0.02)",
     font: { color: "#E6ECF5", family: "Inter, Pretendard, sans-serif" },
     margin: { l: 55, r: 20, t: 10, b: 44 },
+    hovermode: "x unified",
     xaxis: { gridcolor: "rgba(255,255,255,0.08)", linecolor: "rgba(255,255,255,0.12)" },
     yaxis: { title: "지지율(%)", gridcolor: "rgba(255,255,255,0.08)", zeroline: false },
     legend: { orientation: "h", y: 1.08, x: 0 }
