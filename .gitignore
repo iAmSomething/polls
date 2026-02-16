@@ -5,3 +5,5 @@
 **/.ruff_cache/
 **/.venv/
 *.pyc
+# NESDC downloaded weekly files
+codex_handoff_pack/data/nesdc_downloads/
