@@ -1,6 +1,9 @@
 name: Build and Deploy Dashboard
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
   schedule:
     # Every Monday 09:00 Asia/Seoul == 00:00 UTC Monday
