@@ -244,12 +244,14 @@ APP_JS = """
     const rows = items.map((it) => {
       const title = (it.querySelector("title")?.textContent || "").trim();
       const link = (it.querySelector("link")?.textContent || "").trim();
+      const desc = (it.querySelector("description")?.textContent || "").trim();
       const pubDateRaw = (it.querySelector("pubDate")?.textContent || "").trim();
       const source = (it.querySelector("source")?.textContent || "Google News").trim();
       const dt = pubDateRaw ? new Date(pubDateRaw) : null;
       return {
         title,
         link,
+        desc,
         source,
         date: dt && !isNaN(dt.getTime()) ? dt : null
       };
@@ -262,10 +264,12 @@ APP_JS = """
     const grid = document.getElementById("news-grid");
     if (!grid) return;
 
-    const rssUrl = "https://news.google.com/rss/search?q=%EC%97%AC%EB%A1%A0%EC%A1%B0%EC%82%AC&hl=ko&gl=KR&ceid=KR:ko";
+    const phrase = "중앙선거여론조사심의위원회";
+    const q = encodeURIComponent(`"${phrase}"`);
+    const rssUrl = `https://news.google.com/rss/search?q=${q}&hl=ko&gl=KR&ceid=KR:ko`;
     const candidates = [
       `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`,
-      `https://r.jina.ai/http://news.google.com/rss/search?q=%EC%97%AC%EB%A1%A0%EC%A1%B0%EC%82%AC&hl=ko&gl=KR&ceid=KR:ko`
+      `https://r.jina.ai/http://news.google.com/rss/search?q=${q}&hl=ko&gl=KR&ceid=KR:ko`
     ];
 
     let xmlText = "";
@@ -279,7 +283,9 @@ APP_JS = """
     }
     if (!xmlText) return;
 
-    const rows = parseRss(xmlText).slice(0, 6);
+    const rows = parseRss(xmlText)
+      .filter((r) => (r.title + " " + r.desc).includes(phrase))
+      .slice(0, 6);
     if (!rows.length) return;
 
     grid.innerHTML = rows.map((r) => {
