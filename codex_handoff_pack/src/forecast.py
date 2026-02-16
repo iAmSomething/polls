@@ -156,7 +156,19 @@ def load_approval_weekly(path: Path) -> pd.Series:
     df = df.dropna(subset=["week_monday", "approve"]).sort_values("week_monday")
     if df.empty:
         return pd.Series(dtype=float)
-    return pd.Series(df["approve"].values, index=pd.DatetimeIndex(df["week_monday"]), name="approve")
+    s = pd.Series(df["approve"].values, index=pd.DatetimeIndex(df["week_monday"]), name="approve")
+    s = s.sort_index()
+
+    # Outlier clean (for model input only): suppress abrupt jumps in weekly diff.
+    d = s.diff()
+    med = float(d.dropna().median()) if d.notna().any() else 0.0
+    mad = float((d.dropna() - med).abs().median()) if d.notna().any() else 0.0
+    thr = max(8.0, 3.5 * max(mad, 1e-6))
+    spike_mask = (d - med).abs() > thr
+    s_clean = s.copy()
+    s_clean[spike_mask] = np.nan
+    s_clean = s_clean.interpolate(method="time", limit_area="inside")
+    return s_clean
 
 
 def forecast_next_ssm_with_exog(

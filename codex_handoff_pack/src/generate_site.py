@@ -36,18 +36,18 @@ POLLSTERS = [
 
 STYLE_CSS = """
 :root {
-  --bg: #071223;
-  --panel: #0B1F3A;
-  --panel-soft: #102746;
-  --text: #E6ECF5;
-  --muted: #9FB0C8;
-  --line: #1D355A;
-  --accent: #2E6CF6;
+  --bg: #F5F7FB;
+  --panel: #FFFFFF;
+  --panel-soft: #F7FAFF;
+  --text: #1A2332;
+  --muted: #64748B;
+  --line: #D6DEEA;
+  --accent: #2563EB;
 }
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  background: radial-gradient(1200px 500px at 10% -10%, #173A67 0%, var(--bg) 52%);
+  background: radial-gradient(1200px 500px at 10% -10%, #DCE8FF 0%, var(--bg) 58%);
   color: var(--text);
   font-family: "Inter","Pretendard",system-ui,sans-serif;
   font-feature-settings: "tnum" 1, "lnum" 1;
@@ -60,14 +60,14 @@ body {
 .brand { display: flex; align-items: center; gap: 10px; }
 .logo {
   width: 26px; height: 26px; border-radius: 6px;
-  background: linear-gradient(135deg, var(--accent), #5B8DFF);
-  box-shadow: 0 0 0 1px rgba(255,255,255,.16) inset;
+  background: linear-gradient(135deg, var(--accent), #53A0FF);
+  box-shadow: 0 0 0 1px rgba(255,255,255,.8) inset;
 }
 .title { font-size: 24px; font-weight: 800; letter-spacing: .1px; }
 .stamp { color: var(--muted); font-size: 13px; }
 .insights { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0,1fr)); margin-bottom: 16px; }
 .insight-card {
-  background: linear-gradient(180deg, rgba(255,255,255,.03), transparent), var(--panel);
+  background: linear-gradient(180deg, rgba(37,99,235,.04), transparent), var(--panel);
   border: 1px solid var(--line); border-radius: 12px; padding: 14px 14px 12px;
 }
 .insight-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
@@ -82,8 +82,9 @@ body {
   border: 1px solid var(--line); background: var(--panel-soft); color: var(--text);
   border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer;
 }
-.fbtn.active { border-color: var(--accent); color: #DDE8FF; }
+.fbtn.active { border-color: var(--accent); color: #0F4FD6; background: #E9F1FF; }
 #chart { height: 540px; }
+.chart-caption { margin-top: 8px; color: var(--muted); font-size: 12px; }
 .rank-wrap { display: grid; gap: 9px; }
 .rank-card {
   background: var(--panel-soft); border: 1px solid var(--line); border-radius: 10px;
@@ -99,7 +100,7 @@ body {
 .rank-pred small { font-size: 12px; color: var(--muted); margin-left: 3px; }
 .rank-delta { font-size: 13px; color: var(--muted); }
 .rank-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-.rank-band { font-size: 12px; color: #C5D7F6; margin-top: 2px; }
+.rank-band { font-size: 12px; color: #46608B; margin-top: 2px; }
 .spark { margin-top: 6px; opacity: .9; }
 .news { margin-top: 14px; }
 .news-status { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
@@ -108,7 +109,7 @@ body {
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
   padding: 10px 11px; text-decoration: none; color: var(--text); display: block; min-height: 92px;
 }
-.news-card:hover { border-color: #3D5E8D; }
+.news-card:hover { border-color: #7AA5E8; }
 .news-date { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
 .news-title { font-size: 13px; line-height: 1.45; font-weight: 600; margin-bottom: 6px; }
 .news-source { color: var(--muted); font-size: 12px; }
@@ -119,7 +120,7 @@ summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
 table { width: 100%; border-collapse: collapse; }
 th, td { border-bottom: 1px solid var(--line); padding: 8px 6px; font-size: 13px; }
 th { color: var(--muted); text-align: left; font-weight: 600; }
-.wbar-wrap { display: inline-block; width: 180px; height: 8px; border-radius: 999px; background: #152E4F; margin-right: 8px; vertical-align: middle; }
+.wbar-wrap { display: inline-block; width: 180px; height: 8px; border-radius: 999px; background: #E4EBF8; margin-right: 8px; vertical-align: middle; }
 .wbar { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #2E6CF6, #76A2FF); }
 .wlabel { color: var(--text); font-size: 12px; }
 @media (max-width: 980px) {
@@ -136,6 +137,7 @@ APP_JS = """
   if (!dataEl) return;
   const payload = JSON.parse(dataEl.textContent);
   const tracesData = payload.traces || [];
+  const presidentRaw = payload.president_raw || {};
   const chartDiv = document.getElementById("chart");
   if (!chartDiv) return;
 
@@ -161,32 +163,56 @@ APP_JS = """
         hovertemplate: "<b>%{fullData.legendgroup} 예측</b><br>%{y:.2f}%<br>80% 구간: %{customdata[0]:.2f}% ~ %{customdata[1]:.2f}%<extra></extra>"
       });
     });
+    if (Array.isArray(presidentRaw.x) && presidentRaw.x.length) {
+      out.push({
+        x: presidentRaw.x,
+        y: presidentRaw.approve || [],
+        type: "scatter",
+        mode: "lines+markers",
+        name: "대통령 긍정평가(raw)",
+        legendgroup: "president_raw_approve",
+        line: { color: "#1D9BF0", width: 2, dash: "dash" },
+        marker: { size: 4, color: "#1D9BF0" },
+        hovertemplate: "<b>대통령 긍정평가(raw)</b>: %{y:.2f}%<extra></extra>"
+      });
+      out.push({
+        x: presidentRaw.x,
+        y: presidentRaw.disapprove || [],
+        type: "scatter",
+        mode: "lines+markers",
+        name: "대통령 부정평가(raw)",
+        legendgroup: "president_raw_disapprove",
+        line: { color: "#D83A3A", width: 2, dash: "dash" },
+        marker: { size: 4, color: "#D83A3A" },
+        hovertemplate: "<b>대통령 부정평가(raw)</b>: %{y:.2f}%<extra></extra>"
+      });
+    }
     return out;
   }
 
   const layout = {
     paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(255,255,255,0.02)",
-    font: { color: "#E6ECF5", family: "Inter, Pretendard, sans-serif" },
+    plot_bgcolor: "#F8FAFD",
+    font: { color: "#1A2332", family: "Inter, Pretendard, sans-serif" },
     margin: { l: 55, r: 20, t: 10, b: 44 },
     hovermode: "x unified",
     hoverlabel: {
-      bgcolor: "#0B1F3A",
+      bgcolor: "#FFFFFF",
       bordercolor: "#8FB3FF",
-      font: { color: "#F7FAFF", size: 14, family: "Inter, Pretendard, sans-serif" },
+      font: { color: "#1A2332", size: 13, family: "Inter, Pretendard, sans-serif" },
       align: "left",
       namelength: -1
     },
     xaxis: {
-      gridcolor: "rgba(255,255,255,0.08)",
-      linecolor: "rgba(255,255,255,0.12)",
+      gridcolor: "rgba(71,85,105,0.18)",
+      linecolor: "rgba(100,116,139,0.35)",
       showspikes: true,
       spikemode: "across",
-      spikecolor: "rgba(255,255,255,0.35)",
+      spikecolor: "rgba(71,85,105,0.5)",
       spikedash: "dot",
       spikethickness: 1
     },
-    yaxis: { title: "지지율(%)", gridcolor: "rgba(255,255,255,0.08)", zeroline: false },
+    yaxis: { title: "지지율(%)", gridcolor: "rgba(71,85,105,0.18)", zeroline: false },
     legend: { orientation: "h", y: 1.08, x: 0 }
   };
 
@@ -724,6 +750,34 @@ def load_president_approval_overall(outputs: Path) -> dict:
     return out
 
 
+def load_president_approval_raw_series(outputs: Path) -> dict:
+    p = outputs / "president_approval_weekly.csv"
+    if not p.exists():
+        return {"x": [], "approve": [], "disapprove": []}
+    try:
+        df = pd.read_csv(p)
+    except Exception:
+        return {"x": [], "approve": [], "disapprove": []}
+    if "week_monday" not in df.columns:
+        return {"x": [], "approve": [], "disapprove": []}
+    if "approve" not in df.columns or "disapprove" not in df.columns:
+        return {"x": [], "approve": [], "disapprove": []}
+    df["week_monday"] = pd.to_datetime(df["week_monday"], errors="coerce")
+    df["approve"] = pd.to_numeric(df["approve"], errors="coerce")
+    df["disapprove"] = pd.to_numeric(df["disapprove"], errors="coerce")
+    df = df.dropna(subset=["week_monday"]).sort_values("week_monday")
+    if df.empty:
+        return {"x": [], "approve": [], "disapprove": []}
+    x = []
+    approve = []
+    disapprove = []
+    for _, r in df.iterrows():
+        x.append(r["week_monday"].strftime("%Y-%m-%d"))
+        approve.append(float(r["approve"]) if pd.notna(r["approve"]) else None)
+        disapprove.append(float(r["disapprove"]) if pd.notna(r["disapprove"]) else None)
+    return {"x": x, "approve": approve, "disapprove": disapprove}
+
+
 def sparkline_svg(values: list[float], color: str) -> str:
     if not values:
         return ""
@@ -825,6 +879,7 @@ def render_html(
     latest_date: str,
     backtest_overall: dict,
     president_overall: dict,
+    president_raw_series: dict,
 ) -> None:
     now_kst = datetime.now(tz=ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d %H:%M:%S KST")
     cache_bust = datetime.now(tz=ZoneInfo("Asia/Seoul")).strftime("%Y%m%d%H%M%S")
@@ -944,7 +999,7 @@ def render_html(
             """
         )
 
-    payload_json = json.dumps({"traces": traces}, ensure_ascii=False)
+    payload_json = json.dumps({"traces": traces, "president_raw": president_raw_series}, ensure_ascii=False)
     backtest_note = ""
     if backtest_overall:
         legacy_mae = backtest_overall.get("legacy_mae")
@@ -1001,6 +1056,7 @@ def render_html(
           </div>
         </div>
         <div id=\"chart\"></div>
+        <div class=\"chart-caption\">대통령 긍정평가, 부정평가는 계산되지 않은 raw값입니다.</div>
       </article>
       <aside class=\"panel\"><div class=\"panel-title\" style=\"margin-bottom:8px;\">예측 랭킹</div><div class=\"rank-wrap\">{''.join(ranking_html)}</div></aside>
     </section>
@@ -1053,6 +1109,7 @@ def main():
     articles, news_source = resolve_news_articles(base, outputs)
     backtest_overall = load_backtest_overall(outputs)
     president_overall = load_president_approval_overall(outputs)
+    president_raw_series = load_president_approval_raw_series(outputs)
     traces, ranking_rows = build_party_payload(blended, forecast)
 
     latest_date = str(pd.to_datetime(blended["date_end"]).max().date())
@@ -1065,6 +1122,7 @@ def main():
         latest_date=latest_date,
         backtest_overall=backtest_overall,
         president_overall=president_overall,
+        president_raw_series=president_raw_series,
     )
     print(f"News source: {news_source}, rows={len(articles)}")
     print("Wrote docs/index.html, docs/style.css, docs/app.js")

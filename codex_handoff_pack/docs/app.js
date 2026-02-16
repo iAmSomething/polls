@@ -3,6 +3,7 @@
   if (!dataEl) return;
   const payload = JSON.parse(dataEl.textContent);
   const tracesData = payload.traces || [];
+  const presidentRaw = payload.president_raw || {};
   const chartDiv = document.getElementById("chart");
   if (!chartDiv) return;
 
@@ -28,32 +29,56 @@
         hovertemplate: "<b>%{fullData.legendgroup} 예측</b><br>%{y:.2f}%<br>80% 구간: %{customdata[0]:.2f}% ~ %{customdata[1]:.2f}%<extra></extra>"
       });
     });
+    if (Array.isArray(presidentRaw.x) && presidentRaw.x.length) {
+      out.push({
+        x: presidentRaw.x,
+        y: presidentRaw.approve || [],
+        type: "scatter",
+        mode: "lines+markers",
+        name: "대통령 긍정평가(raw)",
+        legendgroup: "president_raw_approve",
+        line: { color: "#1D9BF0", width: 2, dash: "dash" },
+        marker: { size: 4, color: "#1D9BF0" },
+        hovertemplate: "<b>대통령 긍정평가(raw)</b>: %{y:.2f}%<extra></extra>"
+      });
+      out.push({
+        x: presidentRaw.x,
+        y: presidentRaw.disapprove || [],
+        type: "scatter",
+        mode: "lines+markers",
+        name: "대통령 부정평가(raw)",
+        legendgroup: "president_raw_disapprove",
+        line: { color: "#D83A3A", width: 2, dash: "dash" },
+        marker: { size: 4, color: "#D83A3A" },
+        hovertemplate: "<b>대통령 부정평가(raw)</b>: %{y:.2f}%<extra></extra>"
+      });
+    }
     return out;
   }
 
   const layout = {
     paper_bgcolor: "rgba(0,0,0,0)",
-    plot_bgcolor: "rgba(255,255,255,0.02)",
-    font: { color: "#E6ECF5", family: "Inter, Pretendard, sans-serif" },
+    plot_bgcolor: "#F8FAFD",
+    font: { color: "#1A2332", family: "Inter, Pretendard, sans-serif" },
     margin: { l: 55, r: 20, t: 10, b: 44 },
     hovermode: "x unified",
     hoverlabel: {
-      bgcolor: "#0B1F3A",
+      bgcolor: "#FFFFFF",
       bordercolor: "#8FB3FF",
-      font: { color: "#F7FAFF", size: 14, family: "Inter, Pretendard, sans-serif" },
+      font: { color: "#1A2332", size: 13, family: "Inter, Pretendard, sans-serif" },
       align: "left",
       namelength: -1
     },
     xaxis: {
-      gridcolor: "rgba(255,255,255,0.08)",
-      linecolor: "rgba(255,255,255,0.12)",
+      gridcolor: "rgba(71,85,105,0.18)",
+      linecolor: "rgba(100,116,139,0.35)",
       showspikes: true,
       spikemode: "across",
-      spikecolor: "rgba(255,255,255,0.35)",
+      spikecolor: "rgba(71,85,105,0.5)",
       spikedash: "dot",
       spikethickness: 1
     },
-    yaxis: { title: "지지율(%)", gridcolor: "rgba(255,255,255,0.08)", zeroline: false },
+    yaxis: { title: "지지율(%)", gridcolor: "rgba(71,85,105,0.18)", zeroline: false },
     legend: { orientation: "h", y: 1.08, x: 0 }
   };
 
