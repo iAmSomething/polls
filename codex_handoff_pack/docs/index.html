@@ -8,23 +8,42 @@
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 24px; color: #1e293b; }
     .meta { color: #475569; margin-bottom: 16px; }
     img { width: 100%; max-width: 1100px; border: 1px solid #e2e8f0; border-radius: 8px; margin: 12px 0 24px; }
-    table { border-collapse: collapse; min-width: 420px; }
+    table { border-collapse: collapse; min-width: 560px; margin-bottom: 18px; }
     th, td { border: 1px solid #cbd5e1; padding: 8px 10px; text-align: right; }
     th:first-child, td:first-child { text-align: left; }
+    .box { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin: 12px 0 20px; line-height: 1.55; }
   </style>
 </head>
 <body>
   <h1>주간 여론 합성/예측 대시보드</h1>
-  <div class="meta">최근 조사 반영일: 2026-02-06 | 페이지 갱신: 2026-02-16 20:09:12 KST</div>
+  <div class="meta">최근 조사 반영일: 2026-02-06 | 페이지 갱신: 2026-02-16 20:12:48 KST</div>
+
+  <h2>산출 방법</h2>
+  <div class="box">
+    <strong>핵심 아이디어</strong><br/>
+    2023년부터 2025년 6월 선거까지, 여론조사기관의 정당지지율 추정과 실제 선거결과를 비교해 정확도를 평가했습니다.
+    그 결과를 기반으로 기관을 클러스터링하고, 정확도 상위 그룹(9개 기관)만 사용해 합성 시계열을 생성했습니다.<br/><br/>
+    <strong>가중 방식</strong><br/>
+    기관별 MAE(평균절대오차)의 역수(1/MAE)를 기본 가중치로 사용하고, 합이 1이 되도록 정규화합니다.
+    즉, 정확도가 높을수록(오차가 작을수록) 더 큰 가중치가 부여됩니다.
+  </div>
 
   <h2>합성 추세 + 다음주 예측치(우측 마커)</h2>
-  <img src="assets/trend_top5.png?v=20260216200912" alt="Trend chart" />
+  <img src="assets/trend_top5.png?v=20260216201248" alt="Trend chart" />
 
   <h3>예측 표</h3>
   <table>
     <thead><tr><th>정당</th><th>예측치(%)</th><th>RMSE</th></tr></thead>
     <tbody>
       <tr><td>더불어민주당</td><td>44.05</td><td>1.59</td></tr><tr><td>국민의힘</td><td>36.70</td><td>2.14</td></tr><tr><td>지지정당 없음</td><td>8.66</td><td>1.33</td></tr><tr><td>개혁신당</td><td>2.86</td><td>0.68</td></tr><tr><td>조국혁신당</td><td>2.77</td><td>0.53</td></tr>
+    </tbody>
+  </table>
+
+  <h3>기관별 가중치 공개</h3>
+  <table>
+    <thead><tr><th>조사기관</th><th>MAE</th><th>가중치(%)</th></tr></thead>
+    <tbody>
+      <tr><td>리서치앤리서치</td><td>1.715</td><td>18.53</td></tr><tr><td>엠브레인퍼블릭</td><td>1.988</td><td>15.98</td></tr><tr><td>리서치뷰</td><td>2.521</td><td>12.60</td></tr><tr><td>에이스리서치</td><td>2.707</td><td>11.74</td></tr><tr><td>한국리서치</td><td>2.985</td><td>10.65</td></tr><tr><td>조원씨앤아이</td><td>3.006</td><td>10.57</td></tr><tr><td>알앤써치</td><td>4.152</td><td>7.65</td></tr><tr><td>리얼미터</td><td>4.377</td><td>7.26</td></tr><tr><td>코리아리서치인터내셔널</td><td>6.330</td><td>5.02</td></tr>
     </tbody>
   </table>
 

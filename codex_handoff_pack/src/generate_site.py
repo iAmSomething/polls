@@ -16,6 +16,17 @@ PARTY_STYLES = {
     "조국혁신당": {"color": "#003A8C", "aliases": ["조국혁신당"]},
 }
 PARTY_ORDER = ["더불어민주당", "국민의힘", "지지정당 없음", "개혁신당", "조국혁신당"]
+POLLSTERS = [
+    "리서치앤리서치",
+    "엠브레인퍼블릭",
+    "리서치뷰",
+    "에이스리서치",
+    "한국리서치",
+    "조원씨앤아이",
+    "알앤써치",
+    "리얼미터",
+    "코리아리서치인터내셔널",
+]
 
 
 def setup_korean_font() -> None:
@@ -61,6 +72,32 @@ def load_forecast(outputs: Path) -> pd.DataFrame:
         return pd.read_excel(fallback, sheet_name="forecast")
 
     raise FileNotFoundError("No forecast workbook found in outputs/")
+
+
+def load_weights(base: Path, outputs: Path) -> pd.DataFrame:
+    weights_csv = outputs / "weights.csv"
+    if weights_csv.exists():
+        w = pd.read_csv(weights_csv)
+        if {"조사기관", "mae", "weight", "weight_pct"}.issubset(w.columns):
+            return w.sort_values("weight", ascending=False).reset_index(drop=True)
+
+    mae_path = base / "data" / "pollster_accuracy_clusters_2024_2025.xlsx"
+    if not mae_path.exists():
+        return pd.DataFrame(columns=["조사기관", "mae", "weight", "weight_pct"])
+
+    m = pd.read_excel(mae_path, sheet_name=0)
+    mae_col = next((c for c in m.columns if "MAE" in str(c).upper()), None)
+    if mae_col is None or "조사기관" not in m.columns:
+        return pd.DataFrame(columns=["조사기관", "mae", "weight", "weight_pct"])
+
+    m = m[m["조사기관"].isin(POLLSTERS)].copy()
+    m[mae_col] = pd.to_numeric(m[mae_col], errors="coerce")
+    m = m.dropna(subset=[mae_col])
+    m["weight"] = 1.0 / m[mae_col]
+    m["weight"] = m["weight"] / m["weight"].sum()
+    m["weight_pct"] = m["weight"] * 100.0
+    out = m[["조사기관", mae_col, "weight", "weight_pct"]].rename(columns={mae_col: "mae"})
+    return out.sort_values("weight", ascending=False).reset_index(drop=True)
 
 
 def draw_trend_with_forecast(blended: pd.DataFrame, forecast: pd.DataFrame, out_png: Path) -> pd.DataFrame:
@@ -115,7 +152,7 @@ def draw_trend_with_forecast(blended: pd.DataFrame, forecast: pd.DataFrame, out_
     return pd.DataFrame(rows).sort_values("next_week_pred", ascending=False)
 
 
-def render_html(docs_dir: Path, forecast_sorted: pd.DataFrame, latest_date: str) -> None:
+def render_html(docs_dir: Path, forecast_sorted: pd.DataFrame, weights_df: pd.DataFrame, latest_date: str) -> None:
     now_kst = datetime.now(tz=ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d %H:%M:%S %Z")
     cache_bust = datetime.now(tz=ZoneInfo("Asia/Seoul")).strftime("%Y%m%d%H%M%S")
     rows = []
@@ -125,6 +162,15 @@ def render_html(docs_dir: Path, forecast_sorted: pd.DataFrame, latest_date: str)
         rmse = r.get("rmse")
         rmse_txt = f"{float(rmse):.2f}" if pd.notna(rmse) else "-"
         rows.append(f"<tr><td>{party}</td><td>{pred:.2f}</td><td>{rmse_txt}</td></tr>")
+
+    weight_rows = []
+    for _, r in weights_df.iterrows():
+        agency = str(r.get("조사기관", ""))
+        mae = pd.to_numeric(r.get("mae"), errors="coerce")
+        w_pct = pd.to_numeric(r.get("weight_pct"), errors="coerce")
+        mae_txt = f"{float(mae):.3f}" if pd.notna(mae) else "-"
+        wp_txt = f"{float(w_pct):.2f}" if pd.notna(w_pct) else "-"
+        weight_rows.append(f"<tr><td>{agency}</td><td>{mae_txt}</td><td>{wp_txt}</td></tr>")
 
     html = f"""<!doctype html>
 <html lang="ko">
@@ -136,14 +182,25 @@ def render_html(docs_dir: Path, forecast_sorted: pd.DataFrame, latest_date: str)
     body {{ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; margin: 24px; color: #1e293b; }}
     .meta {{ color: #475569; margin-bottom: 16px; }}
     img {{ width: 100%; max-width: 1100px; border: 1px solid #e2e8f0; border-radius: 8px; margin: 12px 0 24px; }}
-    table {{ border-collapse: collapse; min-width: 420px; }}
+    table {{ border-collapse: collapse; min-width: 560px; margin-bottom: 18px; }}
     th, td {{ border: 1px solid #cbd5e1; padding: 8px 10px; text-align: right; }}
     th:first-child, td:first-child {{ text-align: left; }}
+    .box {{ background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 10px; padding: 14px 16px; margin: 12px 0 20px; line-height: 1.55; }}
   </style>
 </head>
 <body>
   <h1>주간 여론 합성/예측 대시보드</h1>
   <div class="meta">최근 조사 반영일: {latest_date} | 페이지 갱신: {now_kst}</div>
+
+  <h2>산출 방법</h2>
+  <div class="box">
+    <strong>핵심 아이디어</strong><br/>
+    2023년부터 2025년 6월 선거까지, 여론조사기관의 정당지지율 추정과 실제 선거결과를 비교해 정확도를 평가했습니다.
+    그 결과를 기반으로 기관을 클러스터링하고, 정확도 상위 그룹(9개 기관)만 사용해 합성 시계열을 생성했습니다.<br/><br/>
+    <strong>가중 방식</strong><br/>
+    기관별 MAE(평균절대오차)의 역수(1/MAE)를 기본 가중치로 사용하고, 합이 1이 되도록 정규화합니다.
+    즉, 정확도가 높을수록(오차가 작을수록) 더 큰 가중치가 부여됩니다.
+  </div>
 
   <h2>합성 추세 + 다음주 예측치(우측 마커)</h2>
   <img src="assets/trend_top5.png?v={cache_bust}" alt="Trend chart" />
@@ -153,6 +210,14 @@ def render_html(docs_dir: Path, forecast_sorted: pd.DataFrame, latest_date: str)
     <thead><tr><th>정당</th><th>예측치(%)</th><th>RMSE</th></tr></thead>
     <tbody>
       {''.join(rows)}
+    </tbody>
+  </table>
+
+  <h3>기관별 가중치 공개</h3>
+  <table>
+    <thead><tr><th>조사기관</th><th>MAE</th><th>가중치(%)</th></tr></thead>
+    <tbody>
+      {''.join(weight_rows)}
     </tbody>
   </table>
 
@@ -172,11 +237,12 @@ def main():
 
     blended = load_blended(outputs)
     forecast = load_forecast(outputs)
+    weights = load_weights(base, outputs)
 
     sorted_fc = draw_trend_with_forecast(blended, forecast, assets / "trend_top5.png")
 
     latest_date = str(pd.to_datetime(blended["date_end"]).max().date())
-    render_html(docs, sorted_fc, latest_date=latest_date)
+    render_html(docs, sorted_fc, weights, latest_date=latest_date)
     print("Wrote docs/index.html")
 
 

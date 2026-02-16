@@ -197,6 +197,26 @@ def compute_weights_from_mae(mae_xlsx: Path) -> Dict[str, float]:
     return {k: v / s for k, v in weights.items()}
 
 
+def build_weights_table(mae_xlsx: Path, weights: Dict[str, float]) -> pd.DataFrame:
+    wdf = pd.read_excel(mae_xlsx, sheet_name=0)
+    mae_col = None
+    for c in wdf.columns:
+        if "MAE" in str(c).upper():
+            mae_col = c
+            break
+    if mae_col is None:
+        raise ValueError("MAE column not found in mae_xlsx")
+
+    wdf = wdf[wdf["조사기관"].isin(POLLSTERS)].copy()
+    wdf[mae_col] = pd.to_numeric(wdf[mae_col], errors="coerce")
+    wdf = wdf.dropna(subset=[mae_col])
+    out = wdf[["조사기관", mae_col]].copy()
+    out = out.rename(columns={mae_col: "mae"})
+    out["weight"] = out["조사기관"].map(weights).fillna(0.0)
+    out["weight_pct"] = out["weight"] * 100.0
+    return out.sort_values("weight", ascending=False).reset_index(drop=True)
+
+
 def blend_time_series(df: pd.DataFrame, weights: Dict[str, float]) -> pd.DataFrame:
     """
     Group by date_end and compute weighted mean per party column.
@@ -262,11 +282,18 @@ def main():
     df = pd.concat([load_sheet(xlsx, s) for s in SHEETS], ignore_index=True)
     weights = compute_weights_from_mae(mae_xlsx)
     blended = blend_time_series(df, weights)
+    weights_df = build_weights_table(mae_xlsx, weights)
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    blended.to_excel(out, index=False)
+    with pd.ExcelWriter(out, engine="openpyxl") as writer:
+        blended.to_excel(writer, sheet_name="weighted_time_series", index=False)
+        weights_df.to_excel(writer, sheet_name="weights", index=False)
+
+    weights_csv = out.parent / "weights.csv"
+    weights_df.to_csv(weights_csv, index=False)
     print("Wrote:", out)
+    print("Wrote:", weights_csv)
 
 
 if __name__ == "__main__":
