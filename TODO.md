@@ -2,26 +2,49 @@
 
 Updated: 2026-02-16
 
-## Immediate
-- [x] Review handoff docs and source skeleton in `codex_handoff_pack/`.
-- [x] Build reproducible Python runtime (`.venv`, dependencies install).
-- [x] Run smoke tests for `src/pipeline.py`, `src/forecast.py`, `src/weekly_run.py`.
-- [x] Document exact run commands and expected inputs/outputs.
+## Done
+- [x] GitHub Pages + Actions 배포 파이프라인 구축 (`.github/workflows/pages.yml`)
+- [x] NESDC 화요일 18:00 KST 수집/적용 흐름 연결 (`src/tuesday_18kst_runner.py`)
+- [x] 뉴스 섹션 안정화: 빌드 타임 `docs/news_latest.json` 생성 + fallback
+- [x] 뉴스 필터 우선순위 적용
+  - 1) `중앙선거여론조사심의위원회`
+  - 2) 지정 여론조사기관명
+  - 3) `여론조사`
+- [x] 뉴스 중복 제거: 동일 날짜/동일 언론사 1건 유지
+- [x] 대시보드 리디자인 반영 + tooltip 가독성 개선 + `x unified` hover
+- [x] 대통령 지지율 파이프라인 추가
+  - `src/president_approval_pipeline.py`
+  - `outputs/president_approval_weekly.csv`
+  - `outputs/president_approval_quality_report.csv`
+- [x] 예측 모델 외생변수 옵션 추가 (`src/forecast.py --exog-approval on`)
+- [x] 백테스트 비교 확장 (`ssm_exog`) (`src/backtest_report.py`)
+- [x] 차트에 대통령 raw 시계열(긍정/부정) 오버레이 + 캡션 추가
+- [x] 메인 컬러를 라이트 고가독성 팔레트로 변경
+- [x] 2025-06-04~2026-02-16 주간 대통령 지표 백필 실행
+  - 현재 채움: 37주 중 33주
+  - 결과: `data/president_approval.csv`, `outputs/president_approval_weekly*.csv/xlsx`
 
-## Data/Inputs
-- [ ] Place raw source Excel in `codex_handoff_pack/data/` (any `.xlsx` filename is allowed).
-- [ ] Place pollster MAE file in `codex_handoff_pack/data/` (any `.xlsx` filename is allowed).
-- [ ] Verify required sheets exist:
-  - `정당지지도 (25.1.1~12.31.)`
-  - `정당지지도 (26.1.1~)`
+## In Progress
+- [ ] 대통령 raw 백필 미채움 4주 보완
+  - 기준: `outputs/president_approval_weekly.csv`에서 `approve/disapprove` 둘 다 결측인 주
+  - 입력 소스: `outputs/president_approval_candidates.json` 후보 링크 우선
 
-## Pipeline Completion
-- [ ] Implement scraper in `src/weekly_run.py::scrape_latest_public_points`.
-- [ ] Implement constrained optimizer in `src/weekly_run.py::update_weights`.
-- [ ] Add logging and weekly report output.
-- [ ] Add regression tests for date parsing and blending math.
+## Next (High)
+- [ ] 대통령 raw 이상치 규칙 검토 및 리포트 추가
+  - raw는 유지, 모델 입력 정제 로직의 감지/보정 결과를 별도 리포트로 기록
+  - 산출물 제안: `outputs/president_approval_outlier_report.csv`
+- [ ] 대통령 주간 표(approve/disapprove + 조사기관 + 조사기간 + 출처 URL)를 사이트에 별도 섹션으로 노출
+- [ ] `run-pres-approval` 결과를 Pages 빌드에 포함할지 운영 정책 확정
+  - 수동 실행만 허용 vs 주간 자동 실행
 
-## Decision Needed (User)
-- [x] Decide weekly run schedule and timezone for automation. -> selected: Monday 09:00, Asia/Seoul
-- [x] Decide whether to include PDF/table parsing (higher effort) or text-only scraping. -> selected: text-only scraping
-- [x] Decide loss for weight updates (`MAE` vs `Huber`). -> selected: Huber
+## Next (Medium)
+- [ ] `src/weekly_run.py` 스캐폴드 TODO 구현
+  - `scrape_latest_public_points()`
+  - `update_weights()` constrained optimization
+  - 주간 리포트 출력
+- [ ] 회귀 테스트 추가
+  - date parsing / blending / forecast I/O schema 검증
+
+## Backlog
+- [ ] 기사 보조 파서 고도화 (Gallup/Realmeter/NBS 소스별 파서 분리)
+- [ ] 확률 레이어 고도화 (`p_win`, `gap>0` 확률 UI)

@@ -19,6 +19,7 @@ make smoke
 cd codex_handoff_pack
 make run-pipeline
 make run-president
+make run-pres-approval
 make run-forecast
 make run-weekly
 make run-issues
@@ -81,6 +82,18 @@ make run-president
 산출물:
 - `outputs/president_approval_weekly.csv`
 - `outputs/president_approval_quality_report.csv`
+
+기간 백필(기사 기반 임시 수집, raw):
+
+```bash
+cd codex_handoff_pack
+make run-pres-approval
+```
+
+산출물:
+- `outputs/president_approval_weekly_detail.csv`
+- `outputs/president_approval_candidates.json`
+- `data/president_approval.csv`
 
 ## Issue Impact Policy
 
