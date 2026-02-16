@@ -5,6 +5,7 @@ import json
 import os
 import re
 import urllib.parse
+import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -149,18 +150,31 @@ def call_llm_json(
         ],
         "response_format": {"type": "json_object"},
     }
-    data = json.dumps(payload).encode("utf-8")
-    req = urllib.request.Request(
-        url,
-        data=data,
-        headers={
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {api_key}",
-        },
-        method="POST",
-    )
-    with urllib.request.urlopen(req, timeout=90) as r:
-        body = json.loads(r.read().decode("utf-8", "ignore"))
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+    }
+
+    def _post(json_payload: dict) -> dict:
+        req = urllib.request.Request(
+            url,
+            data=json.dumps(json_payload).encode("utf-8"),
+            headers=headers,
+            method="POST",
+        )
+        with urllib.request.urlopen(req, timeout=90) as r:
+            return json.loads(r.read().decode("utf-8", "ignore"))
+
+    try:
+        body = _post(payload)
+    except urllib.error.HTTPError as e:
+        # Perplexity sonar models may reject OpenAI response_format options.
+        if e.code == 400 and "response_format" in payload:
+            payload = dict(payload)
+            payload.pop("response_format", None)
+            body = _post(payload)
+        else:
+            raise
 
     content = body["choices"][0]["message"]["content"]
     return json.loads(_strip_json_block(content))

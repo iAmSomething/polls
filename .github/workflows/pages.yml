@@ -49,6 +49,24 @@ jobs:
         run: |
           python src/tuesday_18kst_runner.py
 
+      - name: Weekly issue intake (Perplexity, optional)
+        env:
+          PPLX_API_KEY: ${{ secrets.PPLX_API_KEY }}
+        run: |
+          if [ -z "${PPLX_API_KEY}" ]; then
+            echo "PPLX_API_KEY missing. Skip issue intake."
+            exit 0
+          fi
+          WEEK_END=$(TZ=Asia/Seoul date +%F)
+          WEEK_START=$(TZ=Asia/Seoul date -d "$WEEK_END -6 days" +%F)
+          python src/issue_intake.py \
+            --mode llm \
+            --llm-provider perplexity \
+            --llm-model sonar \
+            --week-start "$WEEK_START" \
+            --week-end "$WEEK_END" \
+            --keywords "정당 지지율,여론조사,민주당,국민의힘,개혁신당,조국혁신당"
+
       - name: Build forecast outputs
         run: |
           python src/pipeline.py
