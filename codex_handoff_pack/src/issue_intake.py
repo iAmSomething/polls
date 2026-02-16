@@ -132,8 +132,14 @@ def _strip_json_block(s: str) -> str:
     return t.strip()
 
 
-def call_openai_json(api_key: str, model: str, system_prompt: str, user_prompt: str) -> dict:
-    url = "https://api.openai.com/v1/chat/completions"
+def call_llm_json(
+    api_key: str,
+    model: str,
+    system_prompt: str,
+    user_prompt: str,
+    base_url: str,
+) -> dict:
+    url = base_url.rstrip("/") + "/chat/completions"
     payload = {
         "model": model,
         "temperature": 0,
@@ -160,7 +166,13 @@ def call_openai_json(api_key: str, model: str, system_prompt: str, user_prompt: 
     return json.loads(_strip_json_block(content))
 
 
-def assess_party_scores_llm(items: List[NewsItem], model: str, api_key: str, max_items: int) -> pd.DataFrame:
+def assess_party_scores_llm(
+    items: List[NewsItem],
+    model: str,
+    api_key: str,
+    max_items: int,
+    base_url: str,
+) -> pd.DataFrame:
     compact = []
     for i, it in enumerate(items[:max_items], 1):
         compact.append(
@@ -201,7 +213,7 @@ def assess_party_scores_llm(items: List[NewsItem], model: str, api_key: str, max
         f"{json.dumps(schema_hint, ensure_ascii=False)}"
     )
 
-    parsed = call_openai_json(api_key, model, system_prompt, user_prompt)
+    parsed = call_llm_json(api_key, model, system_prompt, user_prompt, base_url)
     rows = parsed.get("party_assessments", []) if isinstance(parsed, dict) else []
 
     cleaned = []
@@ -309,9 +321,12 @@ def main() -> None:
     ap.add_argument("--extra-url", action="append", default=[], help="optional article url (repeatable)")
     ap.add_argument("--max-items-per-keyword", type=int, default=15)
     ap.add_argument("--mode", choices=["rule", "llm", "auto"], default="llm")
-    ap.add_argument("--llm-model", default="gpt-4.1-mini")
+    ap.add_argument("--llm-provider", choices=["openai", "perplexity"], default="openai")
+    ap.add_argument("--llm-model", default="", help="LLM model name (provider default if empty)")
+    ap.add_argument("--llm-base-url", default="", help="Override chat completions base URL")
     ap.add_argument("--llm-max-items", type=int, default=40)
     ap.add_argument("--openai-api-key", default="")
+    ap.add_argument("--perplexity-api-key", default="")
     ap.add_argument("--out-assess", default="outputs/issue_assessment_latest.csv")
     ap.add_argument("--out-news", default="outputs/issue_news_latest.csv")
     ap.add_argument("--issue-input", default="data/issues_input.csv")
@@ -366,16 +381,37 @@ def main() -> None:
     out_news.parent.mkdir(parents=True, exist_ok=True)
     news_df.to_csv(out_news, index=False)
 
-    api_key = args.openai_api_key or os.getenv("OPENAI_API_KEY", "")
+    if args.llm_provider == "perplexity":
+        api_key = args.perplexity_api_key or os.getenv("PPLX_API_KEY", "")
+        default_base_url = "https://api.perplexity.ai"
+        default_model = "sonar"
+    else:
+        api_key = args.openai_api_key or os.getenv("OPENAI_API_KEY", "")
+        default_base_url = "https://api.openai.com/v1"
+        default_model = "gpt-4.1-mini"
+
+    llm_base_url = args.llm_base_url or default_base_url
+    llm_model = args.llm_model or default_model
     use_llm = args.mode == "llm" or (args.mode == "auto" and bool(api_key))
 
+    if args.llm_provider == "perplexity":
+        key_name = "PPLX_API_KEY"
+    else:
+        key_name = "OPENAI_API_KEY"
+
     if use_llm and not api_key:
-        print("WARN LLM mode requested but OPENAI_API_KEY is missing. Falling back to rule mode.")
+        print(f"WARN LLM mode requested but {key_name} is missing. Falling back to rule mode.")
         use_llm = False
 
     if use_llm:
         try:
-            assess_df = assess_party_scores_llm(all_items, args.llm_model, api_key, args.llm_max_items)
+            assess_df = assess_party_scores_llm(
+                all_items,
+                llm_model,
+                api_key,
+                args.llm_max_items,
+                llm_base_url,
+            )
             assess_df["mode"] = "llm"
         except Exception as e:
             print(f"WARN LLM assessment failed: {e}. Falling back to rule mode.")

@@ -89,3 +89,17 @@ export OPENAI_API_KEY="<your-key>"
 
 - If `OPENAI_API_KEY` is missing or API fails, it falls back to rule-based scoring.
 - Current forecast policy remains `collect-only` until evaluation thresholds are met.
+
+Perplexity API usage:
+
+```bash
+cd codex_handoff_pack
+export PPLX_API_KEY="<your-key>"
+.venv/bin/python src/issue_intake.py \
+  --mode llm \
+  --llm-provider perplexity \
+  --llm-model sonar \
+  --week-start 2026-02-09 \
+  --week-end 2026-02-15 \
+  --keywords "정당 지지율,여론조사,민주당,국민의힘"
+```
