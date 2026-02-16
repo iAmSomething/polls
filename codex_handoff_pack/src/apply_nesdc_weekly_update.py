@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import subprocess
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -72,7 +73,7 @@ def main() -> None:
             print(f'Backup written: {backup}')
 
     if args.rebuild:
-        py = str(base / '.venv' / 'bin' / 'python')
+        py = sys.executable
         run_cmd([py, 'src/pipeline.py'], base)
         run_cmd([py, 'src/president_approval_pipeline.py'], base)
         run_cmd([py, 'src/president_approval_postprocess.py'], base)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import subprocess
+import sys
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from datetime import datetime
@@ -76,7 +77,7 @@ def compute_feedback(base: Path, pre_forecast: pd.DataFrame | None, pre_last_dat
 
 def main() -> None:
     base = Path(__file__).resolve().parents[1]
-    py = str(base / '.venv' / 'bin' / 'python')
+    py = sys.executable
 
     now_kst = datetime.now(tz=ZoneInfo('Asia/Seoul'))
     today_kst = pd.Timestamp(now_kst.date())
