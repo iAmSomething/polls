@@ -142,6 +142,68 @@ def detect_regime_shift(weekly: pd.DataFrame) -> dict:
     return {"triggered": triggered, "reasons": reasons if reasons else ["normal"], "score": score}
 
 
+def load_approval_weekly(path: Path) -> pd.Series:
+    if not path.exists():
+        return pd.Series(dtype=float)
+    try:
+        df = pd.read_csv(path)
+    except Exception:
+        return pd.Series(dtype=float)
+    if "week_monday" not in df.columns or "approve" not in df.columns:
+        return pd.Series(dtype=float)
+    df["week_monday"] = pd.to_datetime(df["week_monday"], errors="coerce")
+    df["approve"] = pd.to_numeric(df["approve"], errors="coerce")
+    df = df.dropna(subset=["week_monday", "approve"]).sort_values("week_monday")
+    if df.empty:
+        return pd.Series(dtype=float)
+    return pd.Series(df["approve"].values, index=pd.DatetimeIndex(df["week_monday"]), name="approve")
+
+
+def forecast_next_ssm_with_exog(
+    series: pd.Series,
+    approval_weekly: pd.Series,
+    horizon_weeks: int = 1,
+    window_weeks: int = 24,
+    q_scale: float = 1.0,
+) -> tuple[float, float, float]:
+    base_pred, pred_sd, rmse = forecast_next_ssm(
+        series=series,
+        horizon_weeks=horizon_weeks,
+        window_weeks=window_weeks,
+        q_scale=q_scale,
+    )
+    s = series.dropna()
+    if len(s) < 12 or approval_weekly.empty:
+        return base_pred, pred_sd, rmse
+
+    df = pd.DataFrame({"y": s.astype(float)})
+    df = df.join(approval_weekly.rename("x"), how="left")
+    df = df.dropna(subset=["y", "x"]).sort_index()
+    if len(df) < 12:
+        return base_pred, pred_sd, rmse
+    if len(df) > window_weeks:
+        df = df.iloc[-window_weeks:]
+
+    # ARX(1): y_{t+1} = a + b*y_t + c*x_t
+    y_t = df["y"].iloc[:-1].to_numpy(dtype=float)
+    x_t = df["x"].iloc[:-1].to_numpy(dtype=float)
+    y_tp1 = df["y"].iloc[1:].to_numpy(dtype=float)
+    if len(y_tp1) < 8:
+        return base_pred, pred_sd, rmse
+
+    X = np.column_stack([np.ones_like(y_t), y_t, x_t])
+    # Ridge-stabilized closed-form for small samples.
+    ridge = 1e-3 * np.eye(X.shape[1])
+    beta = np.linalg.solve(X.T @ X + ridge, X.T @ y_tp1)
+    y_last = float(df["y"].iloc[-1])
+    x_last = float(df["x"].iloc[-1])
+    pred_arx = float(beta[0] + beta[1] * y_last + beta[2] * x_last)
+
+    # Blend to preserve baseline stability.
+    pred = 0.65 * float(base_pred) + 0.35 * pred_arx
+    return float(pred), pred_sd, rmse
+
+
 def to_weekly(blended: pd.DataFrame, date_col: str = "date_end") -> pd.DataFrame:
     df = blended.copy()
     df[date_col] = pd.to_datetime(df[date_col])
@@ -162,6 +224,8 @@ def main():
     ap.add_argument("--horizon-weeks", type=int, default=1)
     ap.add_argument("--regime-guard", choices=["on", "off"], default="on")
     ap.add_argument("--regime-q-scale", type=float, default=2.0, help="Q scale when regime shift is triggered")
+    ap.add_argument("--exog-approval", choices=["off", "on"], default="off")
+    ap.add_argument("--approval-weekly-csv", default="outputs/president_approval_weekly.csv")
     args = ap.parse_args()
 
     outputs_dir = Path("outputs")
@@ -182,6 +246,7 @@ def main():
     weekly = to_weekly(blended)
     regime = detect_regime_shift(weekly) if args.regime_guard == "on" else {"triggered": False, "reasons": ["disabled"], "score": 0.0}
     q_scale = args.regime_q_scale if regime.get("triggered", False) else 1.0
+    approval_weekly = load_approval_weekly(Path(args.approval_weekly_csv)) if args.exog_approval == "on" else pd.Series(dtype=float)
 
     forecast_rows = []
     for col in weekly.columns:
@@ -191,9 +256,18 @@ def main():
             )
             row = {"party": col, "next_week_pred": pred, "rmse": sigma, "pred_sd": np.nan}
         else:
-            pred, pred_sd, sigma = forecast_next_ssm(
-                weekly[col], horizon_weeks=args.horizon_weeks, window_weeks=args.window_weeks, q_scale=q_scale
-            )
+            if args.exog_approval == "on":
+                pred, pred_sd, sigma = forecast_next_ssm_with_exog(
+                    series=weekly[col],
+                    approval_weekly=approval_weekly,
+                    horizon_weeks=args.horizon_weeks,
+                    window_weeks=args.window_weeks,
+                    q_scale=q_scale,
+                )
+            else:
+                pred, pred_sd, sigma = forecast_next_ssm(
+                    weekly[col], horizon_weeks=args.horizon_weeks, window_weeks=args.window_weeks, q_scale=q_scale
+                )
             row = {"party": col, "next_week_pred": pred, "rmse": sigma, "pred_sd": pred_sd}
         z80 = 1.2815515655446004
         if pd.notna(row["pred_sd"]):
@@ -203,6 +277,7 @@ def main():
             row["pred_lo_80"] = np.nan
             row["pred_hi_80"] = np.nan
         row["model"] = args.model
+        row["exog_approval"] = args.exog_approval
         forecast_rows.append(row)
 
     out = pd.DataFrame(forecast_rows)
@@ -215,6 +290,8 @@ def main():
         "score": float(regime.get("score", 0.0)),
         "q_scale_applied": float(q_scale),
         "model": args.model,
+        "exog_approval": args.exog_approval,
+        "approval_rows": int(len(approval_weekly)),
     }
     regime_out.write_text(json.dumps(regime_payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print("Wrote:", regime_out)

@@ -18,6 +18,7 @@ make smoke
 ```bash
 cd codex_handoff_pack
 make run-pipeline
+make run-president
 make run-forecast
 make run-weekly
 make run-issues
@@ -66,6 +67,20 @@ make run-issues
 
 - `data/input.xlsx`
 - `data/pollster_accuracy_clusters_2024_2025.xlsx`
+- `data/president_approval.csv` (자동 누적, 비어있으면 헤더 파일로 시작)
+
+## President Approval Pipeline
+
+NESDC XLSX에서 대통령 국정수행 평가(긍정/부정/유보)를 자동 탐색해 주간 집계합니다.
+
+```bash
+cd codex_handoff_pack
+make run-president
+```
+
+산출물:
+- `outputs/president_approval_weekly.csv`
+- `outputs/president_approval_quality_report.csv`
 
 ## Issue Impact Policy
 

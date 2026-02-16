@@ -6,7 +6,14 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from forecast import detect_regime_shift, forecast_next, forecast_next_ssm, to_weekly
+from forecast import (
+    detect_regime_shift,
+    forecast_next,
+    forecast_next_ssm,
+    forecast_next_ssm_with_exog,
+    load_approval_weekly,
+    to_weekly,
+)
 
 
 def _clean_party_label(s: str) -> str:
@@ -15,11 +22,13 @@ def _clean_party_label(s: str) -> str:
 
 def run_backtest(
     weekly: pd.DataFrame,
+    approval_weekly: pd.Series,
     min_train_weeks: int = 20,
     window_weeks: int = 24,
     horizon_weeks: int = 1,
     regime_guard: bool = True,
     regime_q_scale: float = 2.0,
+    exog_approval: bool = False,
 ) -> pd.DataFrame:
     rows: list[dict] = []
     party_cols = [c for c in weekly.columns]
@@ -50,7 +59,18 @@ def run_backtest(
                 window_weeks=window_weeks,
                 q_scale=q_scale,
             )
-            for model, pred in [("legacy", pred_legacy), ("ssm", pred_ssm)]:
+            preds = [("legacy", pred_legacy), ("ssm", pred_ssm)]
+            if exog_approval and not approval_weekly.empty and isinstance(approval_weekly.index, pd.DatetimeIndex):
+                exog_hist = approval_weekly[approval_weekly.index <= s_train.index.max()]
+                pred_exog, _, _ = forecast_next_ssm_with_exog(
+                    series=s_train,
+                    approval_weekly=exog_hist,
+                    horizon_weeks=horizon_weeks,
+                    window_weeks=window_weeks,
+                    q_scale=q_scale,
+                )
+                preds.append(("ssm_exog", pred_exog))
+            for model, pred in preds:
                 err = float(actual - pred)
                 rows.append(
                     {
@@ -106,7 +126,8 @@ def write_markdown(summary: pd.DataFrame, out_md: Path) -> None:
         return
 
     o = summary[(summary["level"] == "overall")].copy()
-    if not o.empty and {"legacy", "ssm"}.issubset(set(o["model"])):
+    models = set(o["model"])
+    if not o.empty and {"legacy", "ssm"}.issubset(models):
         legacy_mae = float(o[o["model"] == "legacy"]["mae"].iloc[0])
         ssm_mae = float(o[o["model"] == "ssm"]["mae"].iloc[0])
         improve = (legacy_mae - ssm_mae) / legacy_mae * 100.0 if legacy_mae > 0 else 0.0
@@ -114,6 +135,15 @@ def write_markdown(summary: pd.DataFrame, out_md: Path) -> None:
             f"- Overall MAE legacy: **{legacy_mae:.3f}**",
             f"- Overall MAE ssm: **{ssm_mae:.3f}**",
             f"- Improvement (legacy -> ssm): **{improve:+.2f}%**",
+            "",
+        ]
+    if not o.empty and {"ssm", "ssm_exog"}.issubset(models):
+        ssm_mae = float(o[o["model"] == "ssm"]["mae"].iloc[0])
+        exog_mae = float(o[o["model"] == "ssm_exog"]["mae"].iloc[0])
+        improve_exog = (ssm_mae - exog_mae) / ssm_mae * 100.0 if ssm_mae > 0 else 0.0
+        lines += [
+            f"- Overall MAE ssm_exog: **{exog_mae:.3f}**",
+            f"- Improvement (ssm -> ssm_exog): **{improve_exog:+.2f}%**",
             "",
         ]
 
@@ -141,6 +171,8 @@ def main() -> None:
     ap.add_argument("--horizon-weeks", type=int, default=1)
     ap.add_argument("--regime-guard", choices=["on", "off"], default="on")
     ap.add_argument("--regime-q-scale", type=float, default=2.0)
+    ap.add_argument("--exog-approval", choices=["off", "on"], default="off")
+    ap.add_argument("--approval-weekly-csv", default="outputs/president_approval_weekly.csv")
     ap.add_argument("--out-preds", default="outputs/backtest_predictions.csv")
     ap.add_argument("--out-summary", default="outputs/backtest_summary.csv")
     ap.add_argument("--out-report", default="outputs/backtest_report.md")
@@ -151,14 +183,21 @@ def main() -> None:
         raise FileNotFoundError(f"Blended file not found: {blended_path}")
     blended = pd.read_excel(blended_path)
     weekly = to_weekly(blended)
+    approval_weekly = (
+        load_approval_weekly(Path(args.approval_weekly_csv))
+        if args.exog_approval == "on"
+        else pd.Series(dtype=float)
+    )
 
     preds = run_backtest(
         weekly=weekly,
+        approval_weekly=approval_weekly,
         min_train_weeks=args.min_train_weeks,
         window_weeks=args.window_weeks,
         horizon_weeks=args.horizon_weeks,
         regime_guard=(args.regime_guard == "on"),
         regime_q_scale=args.regime_q_scale,
+        exog_approval=(args.exog_approval == "on"),
     )
     summary = build_summary(preds)
 

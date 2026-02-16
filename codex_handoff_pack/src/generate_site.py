@@ -681,7 +681,7 @@ def load_backtest_overall(outputs: Path) -> dict:
     if df.empty or "model" not in df.columns or "mae" not in df.columns:
         return {}
     out: dict[str, float] = {}
-    for model in ["legacy", "ssm"]:
+    for model in ["legacy", "ssm", "ssm_exog"]:
         r = df[df["model"] == model]
         if not r.empty:
             out[f"{model}_mae"] = float(pd.to_numeric(r.iloc[0]["mae"], errors="coerce"))
@@ -689,6 +689,38 @@ def load_backtest_overall(outputs: Path) -> dict:
             out[f"{model}_n"] = int(pd.to_numeric(r.iloc[0].get("n"), errors="coerce"))
     if "legacy_mae" in out and "ssm_mae" in out and out["legacy_mae"] > 0:
         out["improvement_pct"] = (out["legacy_mae"] - out["ssm_mae"]) / out["legacy_mae"] * 100.0
+    if "ssm_mae" in out and "ssm_exog_mae" in out and out["ssm_mae"] > 0:
+        out["improvement_exog_pct"] = (out["ssm_mae"] - out["ssm_exog_mae"]) / out["ssm_mae"] * 100.0
+    return out
+
+
+def load_president_approval_overall(outputs: Path) -> dict:
+    p = outputs / "president_approval_weekly.csv"
+    if not p.exists():
+        return {}
+    try:
+        df = pd.read_csv(p)
+    except Exception:
+        return {}
+    if "week_monday" not in df.columns or "approve" not in df.columns:
+        return {}
+    df["week_monday"] = pd.to_datetime(df["week_monday"], errors="coerce")
+    for c in ["approve", "disapprove", "dk"]:
+        if c in df.columns:
+            df[c] = pd.to_numeric(df[c], errors="coerce")
+    df = df.dropna(subset=["week_monday", "approve"]).sort_values("week_monday")
+    if df.empty:
+        return {}
+    latest = df.iloc[-1]
+    prev = df.iloc[-2] if len(df) >= 2 else None
+    out = {
+        "week_monday": latest["week_monday"].strftime("%Y-%m-%d"),
+        "approve": float(latest["approve"]),
+        "disapprove": float(latest["disapprove"]) if "disapprove" in df.columns and pd.notna(latest.get("disapprove")) else None,
+        "dk": float(latest["dk"]) if "dk" in df.columns and pd.notna(latest.get("dk")) else None,
+    }
+    if prev is not None and pd.notna(prev.get("approve")):
+        out["approve_delta"] = float(latest["approve"] - prev["approve"])
     return out
 
 
@@ -792,6 +824,7 @@ def render_html(
     articles_df: pd.DataFrame,
     latest_date: str,
     backtest_overall: dict,
+    president_overall: dict,
 ) -> None:
     now_kst = datetime.now(tz=ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d %H:%M:%S KST")
     cache_bust = datetime.now(tz=ZoneInfo("Asia/Seoul")).strftime("%Y%m%d%H%M%S")
@@ -806,12 +839,32 @@ def render_html(
     rmse_vals = [r["rmse"] for r in ranking_rows if r["rmse"] is not None]
     rmse_avg = sum(rmse_vals) / len(rmse_vals) if rmse_vals else 0.0
     cards.append({"label": "예측 오차(RMSE)", "value": f"{rmse_avg:.2f}", "sub": "정당 평균"})
+    if president_overall:
+        approve = president_overall.get("approve")
+        delta = president_overall.get("approve_delta")
+        if approve is not None:
+            if delta is None:
+                sub = f"국정수행 긍정 (주차 {president_overall.get('week_monday', '-')})"
+            else:
+                sign = "+" if float(delta) >= 0 else ""
+                sub = f"전주 대비 {sign}{float(delta):.2f}%p (주차 {president_overall.get('week_monday', '-')})"
+            cards.append({"label": "대통령 국정수행 긍정", "value": f"{float(approve):.2f}%", "sub": sub})
+    else:
+        cards.append({"label": "대통령 국정수행 긍정", "value": "-", "sub": "집계 데이터 없음"})
     if backtest_overall.get("improvement_pct") is not None:
         cards.append(
             {
                 "label": "백테스트 MAE 개선",
                 "value": f"{float(backtest_overall['improvement_pct']):+.1f}%",
                 "sub": "legacy 대비 ssm",
+            }
+        )
+    if backtest_overall.get("improvement_exog_pct") is not None:
+        cards.append(
+            {
+                "label": "외생변수 MAE 개선",
+                "value": f"{float(backtest_overall['improvement_exog_pct']):+.1f}%",
+                "sub": "ssm 대비 ssm_exog",
             }
         )
 
@@ -902,6 +955,18 @@ def render_html(
                 f"최근 롤링 백테스트 기준 MAE는 legacy {legacy_mae:.3f}, "
                 f"ssm {ssm_mae:.3f}이며 개선율은 {improve:+.2f}%입니다."
             )
+    if backtest_overall.get("ssm_exog_mae") is not None:
+        ssm_exog_mae = backtest_overall.get("ssm_exog_mae")
+        improve_exog = backtest_overall.get("improvement_exog_pct")
+        if ssm_exog_mae is not None and improve_exog is not None:
+            backtest_note += (
+                f" 외생변수(대통령 긍정지표) 포함 시 MAE는 {ssm_exog_mae:.3f}, "
+                f"ssm 대비 개선율은 {improve_exog:+.2f}%입니다."
+            )
+    pres_method_note = (
+        "대통령 국정수행 평가는 NESDC 공개 XLSX에서 문항(대통령/국정/직무/수행/평가)을 자동 탐지해 "
+        "긍정·부정·유보를 추출하고, 표본수 가중 주간 집계로 반영합니다. 데이터가 없는 주차는 보간하지 않습니다."
+    )
     html = f"""<!doctype html>
 <html lang=\"ko\">
 <head>
@@ -946,6 +1011,7 @@ def render_html(
       <details>
         <summary>방법론 (클릭하여 펼치기)</summary>
         <p class=\"method-p\">2023년부터 2025년 6월 선거까지, 여론조사기관의 정당지지율과 실제 선거결과를 비교해 정확도(MAE)를 산출했습니다. 이후 정확도 상위 클러스터(9개 기관)만 사용해 합성 시계열을 만들고, 기관별 가중치는 1/MAE를 정규화해 적용합니다. 주간 업데이트에서는 Huber 손실 기반으로 가중치 안정성을 유지하도록 설계했습니다.</p>
+        <p class=\"method-p\">{pres_method_note}</p>
         <p class=\"method-p\">{backtest_note}</p>
         <table><thead><tr><th>조사기관</th><th>MAE</th><th>가중치(%)</th></tr></thead><tbody>{''.join(weight_rows)}</tbody></table>
       </details>
@@ -986,6 +1052,7 @@ def main():
     weights = load_weights(base, outputs)
     articles, news_source = resolve_news_articles(base, outputs)
     backtest_overall = load_backtest_overall(outputs)
+    president_overall = load_president_approval_overall(outputs)
     traces, ranking_rows = build_party_payload(blended, forecast)
 
     latest_date = str(pd.to_datetime(blended["date_end"]).max().date())
@@ -997,6 +1064,7 @@ def main():
         articles,
         latest_date=latest_date,
         backtest_overall=backtest_overall,
+        president_overall=president_overall,
     )
     print(f"News source: {news_source}, rows={len(articles)}")
     print("Wrote docs/index.html, docs/style.css, docs/app.js")

@@ -70,15 +70,19 @@ jobs:
       - name: Build forecast outputs
         run: |
           python src/pipeline.py
-          python src/forecast.py --model ssm --regime-guard on
-          python src/backtest_report.py --regime-guard on
+          python src/president_approval_pipeline.py
+          python src/forecast.py --model ssm --regime-guard on --exog-approval on
+          python src/backtest_report.py --regime-guard on --exog-approval on
           python src/generate_site.py
 
       - name: Validate generated news payload
         run: |
           test -f docs/news_latest.json
+          test -f outputs/president_approval_weekly.csv
+          test -f outputs/president_approval_quality_report.csv
           python - <<'PY'
           import json
+          import pandas as pd
           from pathlib import Path
           p = Path("docs/news_latest.json")
           data = json.loads(p.read_text(encoding="utf-8"))
@@ -87,6 +91,9 @@ jobs:
             assert isinstance(row, dict), f"row {i} must be an object"
             for k in ("date", "source", "title", "url"):
               assert k in row, f"row {i} missing key: {k}"
+          wk = pd.read_csv("outputs/president_approval_weekly.csv")
+          required = {"week_monday", "approve", "disapprove", "dk", "n_obs", "total_sample_n"}
+          assert required.issubset(set(wk.columns)), "president_approval_weekly.csv schema mismatch"
           print("news_latest.json validation ok, rows=", len(data))
           PY
 
