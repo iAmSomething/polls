@@ -136,33 +136,61 @@
     return rows;
   }
 
-  async function fetchRecentPollNews() {
-    const grid = document.getElementById("news-grid");
-    if (!grid) return;
+  function stripHtml(s) {
+    return String(s || "").replace(/<[^>]*>/g, " ");
+  }
 
-    const phrase = "중앙선거여론조사심의위원회";
-    const q = encodeURIComponent(`"${phrase}"`);
-    const rssUrl = `https://news.google.com/rss/search?q=${q}&hl=ko&gl=KR&ceid=KR:ko`;
+  async function fetchViaCandidates(rssUrl) {
     const candidates = [
       `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`,
-      `https://r.jina.ai/http://news.google.com/rss/search?q=${q}&hl=ko&gl=KR&ceid=KR:ko`
+      `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`,
+      `https://r.jina.ai/http://${rssUrl.replace(/^https?:\/\//, "")}`
     ];
-
-    let xmlText = "";
     for (const u of candidates) {
       try {
         const res = await fetch(u, { cache: "no-store" });
         if (!res.ok) continue;
-        xmlText = await res.text();
-        if (xmlText && xmlText.includes("<item>")) break;
+        const text = await res.text();
+        if (!text) continue;
+        if (u.includes("/get?url=")) {
+          const j = JSON.parse(text);
+          const contents = j && j.contents ? String(j.contents) : "";
+          if (contents.includes("<item>")) return contents;
+        } else if (text.includes("<item>")) {
+          return text;
+        }
       } catch (_) {}
     }
-    if (!xmlText) return;
+    return "";
+  }
+
+  async function fetchRecentPollNews() {
+    const grid = document.getElementById("news-grid");
+    const status = document.getElementById("news-status");
+    if (!grid) return;
+
+    const phrase = "중앙선거여론조사심의위원회";
+    if (status) status.textContent = "기사 목록 불러오는 중...";
+
+    const qStrict = encodeURIComponent(`"${phrase}"`);
+    const qBroad = encodeURIComponent(`${phrase} 여론조사`);
+    const rssStrict = `https://news.google.com/rss/search?q=${qStrict}&hl=ko&gl=KR&ceid=KR:ko`;
+    const rssBroad = `https://news.google.com/rss/search?q=${qBroad}&hl=ko&gl=KR&ceid=KR:ko`;
+
+    let xmlText = await fetchViaCandidates(rssStrict);
+    if (!xmlText) xmlText = await fetchViaCandidates(rssBroad);
+    if (!xmlText) {
+      if (status) status.textContent = "자동 기사 로딩 실패(프록시 차단 가능). 잠시 후 새로고침 해주세요.";
+      return;
+    }
 
     const rows = parseRss(xmlText)
-      .filter((r) => (r.title + " " + r.desc).includes(phrase))
+      .filter((r) => stripHtml(r.title + " " + r.desc).includes(phrase))
       .slice(0, 6);
-    if (!rows.length) return;
+    if (!rows.length) {
+      if (status) status.textContent = "조건에 맞는 최신 기사가 없습니다.";
+      return;
+    }
 
     grid.innerHTML = rows.map((r) => {
       const d = r.date ? r.date.toISOString().slice(0, 10) : "";
@@ -174,6 +202,7 @@
         </a>
       `;
     }).join("");
+    if (status) status.textContent = `자동 갱신 완료 (${rows.length}건)`;
   }
 
   fetchRecentPollNews();

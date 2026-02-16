@@ -8,11 +8,13 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 
 PARTY_STYLES = {
-    "더불어민주당": {"color": "#6EC1E4", "aliases": ["더불어민주당"]},
-    "국민의힘": {"color": "#E6002D", "aliases": ["국민의힘", "국민의 힘"]},
+    "더불어민주당": {"color": "#003B96", "aliases": ["더불어민주당"]},
+    "국민의힘": {"color": "#E61E2B", "aliases": ["국민의힘", "국민의 힘"]},
     "지지정당 없음": {"color": "#7A7A7A", "aliases": ["지지정당\n없음", "지지정당 없음", "무당층"]},
-    "개혁신당": {"color": "#F18D00", "aliases": ["개혁신당"]},
+    "개혁신당": {"color": "#FF7210", "aliases": ["개혁신당"]},
     "조국혁신당": {"color": "#003A8C", "aliases": ["조국혁신당"]},
+    "정의당": {"color": "#FFED00", "aliases": ["정의당"]},
+    "진보당": {"color": "#C9152C", "aliases": ["진보당"]},
 }
 PARTY_ORDER = ["더불어민주당", "국민의힘", "지지정당 없음", "개혁신당", "조국혁신당"]
 POLLSTERS = [
@@ -94,6 +96,7 @@ body {
 .rank-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
 .spark { margin-top: 6px; opacity: .9; }
 .news { margin-top: 14px; }
+.news-status { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
 .news-grid { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0,1fr)); }
 .news-card {
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
@@ -260,33 +263,61 @@ APP_JS = """
     return rows;
   }
 
-  async function fetchRecentPollNews() {
-    const grid = document.getElementById("news-grid");
-    if (!grid) return;
+  function stripHtml(s) {
+    return String(s || "").replace(/<[^>]*>/g, " ");
+  }
 
-    const phrase = "중앙선거여론조사심의위원회";
-    const q = encodeURIComponent(`"${phrase}"`);
-    const rssUrl = `https://news.google.com/rss/search?q=${q}&hl=ko&gl=KR&ceid=KR:ko`;
+  async function fetchViaCandidates(rssUrl) {
     const candidates = [
       `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`,
-      `https://r.jina.ai/http://news.google.com/rss/search?q=${q}&hl=ko&gl=KR&ceid=KR:ko`
+      `https://api.allorigins.win/get?url=${encodeURIComponent(rssUrl)}`,
+      `https://r.jina.ai/http://${rssUrl.replace(/^https?:\\/\\//, "")}`
     ];
-
-    let xmlText = "";
     for (const u of candidates) {
       try {
         const res = await fetch(u, { cache: "no-store" });
         if (!res.ok) continue;
-        xmlText = await res.text();
-        if (xmlText && xmlText.includes("<item>")) break;
+        const text = await res.text();
+        if (!text) continue;
+        if (u.includes("/get?url=")) {
+          const j = JSON.parse(text);
+          const contents = j && j.contents ? String(j.contents) : "";
+          if (contents.includes("<item>")) return contents;
+        } else if (text.includes("<item>")) {
+          return text;
+        }
       } catch (_) {}
     }
-    if (!xmlText) return;
+    return "";
+  }
+
+  async function fetchRecentPollNews() {
+    const grid = document.getElementById("news-grid");
+    const status = document.getElementById("news-status");
+    if (!grid) return;
+
+    const phrase = "중앙선거여론조사심의위원회";
+    if (status) status.textContent = "기사 목록 불러오는 중...";
+
+    const qStrict = encodeURIComponent(`"${phrase}"`);
+    const qBroad = encodeURIComponent(`${phrase} 여론조사`);
+    const rssStrict = `https://news.google.com/rss/search?q=${qStrict}&hl=ko&gl=KR&ceid=KR:ko`;
+    const rssBroad = `https://news.google.com/rss/search?q=${qBroad}&hl=ko&gl=KR&ceid=KR:ko`;
+
+    let xmlText = await fetchViaCandidates(rssStrict);
+    if (!xmlText) xmlText = await fetchViaCandidates(rssBroad);
+    if (!xmlText) {
+      if (status) status.textContent = "자동 기사 로딩 실패(프록시 차단 가능). 잠시 후 새로고침 해주세요.";
+      return;
+    }
 
     const rows = parseRss(xmlText)
-      .filter((r) => (r.title + " " + r.desc).includes(phrase))
+      .filter((r) => stripHtml(r.title + " " + r.desc).includes(phrase))
       .slice(0, 6);
-    if (!rows.length) return;
+    if (!rows.length) {
+      if (status) status.textContent = "조건에 맞는 최신 기사가 없습니다.";
+      return;
+    }
 
     grid.innerHTML = rows.map((r) => {
       const d = r.date ? r.date.toISOString().slice(0, 10) : "";
@@ -298,6 +329,7 @@ APP_JS = """
         </a>
       `;
     }).join("");
+    if (status) status.textContent = `자동 갱신 완료 (${rows.length}건)`;
   }
 
   fetchRecentPollNews();
@@ -577,7 +609,7 @@ def render_html(docs_dir: Path, traces: list[dict], ranking_rows: list[dict], we
       <aside class=\"panel\"><div class=\"panel-title\" style=\"margin-bottom:8px;\">예측 랭킹</div><div class=\"rank-wrap\">{''.join(ranking_html)}</div></aside>
     </section>
 
-    <section class=\"news\"><div class=\"panel-title\" style=\"margin: 0 0 8px;\">최근 여론조사 기사 링크</div><div id=\"news-grid\" class=\"news-grid\">{''.join(article_cards)}</div></section>
+    <section class=\"news\"><div class=\"panel-title\" style=\"margin: 0 0 8px;\">최근 여론조사 기사 링크</div><div id=\"news-status\" class=\"news-status\">대기 중...</div><div id=\"news-grid\" class=\"news-grid\">{''.join(article_cards)}</div></section>
 
     <section class=\"method\">
       <details>

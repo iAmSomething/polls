@@ -64,6 +64,7 @@ body {
 .rank-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
 .spark { margin-top: 6px; opacity: .9; }
 .news { margin-top: 14px; }
+.news-status { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
 .news-grid { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0,1fr)); }
 .news-card {
   background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
