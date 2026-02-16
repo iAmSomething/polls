@@ -117,6 +117,7 @@ def draw_trend_with_forecast(blended: pd.DataFrame, forecast: pd.DataFrame, out_
 
 def render_html(docs_dir: Path, forecast_sorted: pd.DataFrame, latest_date: str) -> None:
     now_kst = datetime.now(tz=ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d %H:%M:%S %Z")
+    cache_bust = datetime.now(tz=ZoneInfo("Asia/Seoul")).strftime("%Y%m%d%H%M%S")
     rows = []
     for _, r in forecast_sorted.iterrows():
         party = str(r["party"])
@@ -145,7 +146,7 @@ def render_html(docs_dir: Path, forecast_sorted: pd.DataFrame, latest_date: str)
   <div class="meta">최근 조사 반영일: {latest_date} | 페이지 갱신: {now_kst}</div>
 
   <h2>합성 추세 + 다음주 예측치(우측 마커)</h2>
-  <img src="assets/trend_top5.png" alt="Trend chart" />
+  <img src="assets/trend_top5.png?v={cache_bust}" alt="Trend chart" />
 
   <h3>예측 표</h3>
   <table>
