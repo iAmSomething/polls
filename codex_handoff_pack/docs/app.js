@@ -60,41 +60,68 @@
     return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
   }
 
+  function isTouchDevice() {
+    return (
+      (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
+      ("ontouchstart" in window) ||
+      (navigator.maxTouchPoints > 0)
+    );
+  }
+
+  function isMobileViewport() {
+    return window.matchMedia && window.matchMedia("(max-width: 980px)").matches;
+  }
+
   function buildLayout() {
     const dark = isDarkMode();
+    const compactHover = isTouchDevice() || isMobileViewport();
     return {
       paper_bgcolor: "rgba(0,0,0,0)",
       plot_bgcolor: dark ? "#152338" : "#F8FAFD",
       font: { color: dark ? "#EAF0FA" : "#1A2332", family: "Inter, Pretendard, sans-serif" },
-      margin: { l: 55, r: 20, t: 10, b: 44 },
-      hovermode: "x unified",
+      margin: { l: 55, r: 20, t: 72, b: 44 },
+      hovermode: compactHover ? "closest" : "x unified",
+      dragmode: "pan",
       hoverlabel: {
         bgcolor: dark ? "#111A2B" : "#FFFFFF",
         bordercolor: "#8FB3FF",
-        font: { color: dark ? "#EAF0FA" : "#1A2332", size: 13, family: "Inter, Pretendard, sans-serif" },
+        font: { color: dark ? "#EAF0FA" : "#1A2332", size: compactHover ? 11 : 13, family: "Inter, Pretendard, sans-serif" },
         align: "left",
-        namelength: -1
+        namelength: compactHover ? 32 : -1
       },
       xaxis: {
         gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)",
         linecolor: dark ? "rgba(158,176,204,0.24)" : "rgba(100,116,139,0.35)",
-        showspikes: true,
+        showspikes: !compactHover,
         spikemode: "across",
         spikecolor: dark ? "rgba(158,176,204,0.5)" : "rgba(71,85,105,0.5)",
         spikedash: "dot",
-        spikethickness: 1
+        spikethickness: 1,
+        fixedrange: true
       },
       yaxis: {
         title: "지지율(%)",
         gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)",
-        zeroline: false
+        zeroline: false,
+        fixedrange: true
       },
-      legend: { orientation: "h", y: 1.08, x: 0 }
+      legend: {
+        orientation: "h",
+        x: 0,
+        xanchor: "left",
+        y: 1.02,
+        yanchor: "bottom"
+      }
     };
   }
 
   function renderChart() {
-    Plotly.react(chartDiv, buildTraces(), buildLayout(), { displayModeBar: false, responsive: true });
+    Plotly.react(chartDiv, buildTraces(), buildLayout(), {
+      displayModeBar: false,
+      responsive: true,
+      scrollZoom: false,
+      doubleClick: false
+    });
   }
 
   renderChart();
@@ -104,7 +131,23 @@
     else if (mq.addListener) mq.addListener(renderChart);
   }
 
+  if (isTouchDevice()) {
+    chartDiv.addEventListener("touchend", () => {
+      setTimeout(() => Plotly.Fx.unhover(chartDiv), 0);
+    }, { passive: true });
+  }
+
   const fbtns = [...document.querySelectorAll(".fbtn")];
+  const hiddenParties = new Set();
+
+  function applyPartyVisibility() {
+    const vis = chartDiv.data.map((t) => (hiddenParties.has(t.legendgroup) ? "legendonly" : true));
+    Plotly.restyle(chartDiv, { visible: vis });
+    document.querySelectorAll(".rank-card").forEach((c) => {
+      c.classList.toggle("muted", hiddenParties.has(c.dataset.party));
+    });
+  }
+
   function setBtnActive(key) { fbtns.forEach((b) => b.classList.toggle("active", b.dataset.range === key)); }
   function endDate() {
     let d = null;
@@ -124,9 +167,9 @@
     btn.addEventListener("click", () => {
       const key = btn.dataset.range;
       if (key === "reset") {
-        const op = chartDiv.data.map(() => 1);
-        Plotly.restyle(chartDiv, "opacity", op);
-        document.querySelectorAll(".rank-card").forEach((c) => c.classList.remove("active"));
+        hiddenParties.clear();
+        applyPartyVisibility();
+        document.querySelectorAll(".rank-card").forEach((c) => c.classList.remove("active", "muted"));
         return;
       }
       setBtnActive(key);
@@ -144,9 +187,10 @@
   rankCards.forEach((card) => {
     card.addEventListener("click", () => {
       const party = card.dataset.party;
-      const op = chartDiv.data.map((t) => (t.legendgroup === party ? 1 : 0.15));
-      Plotly.restyle(chartDiv, "opacity", op);
-      rankCards.forEach((c) => c.classList.toggle("active", c.dataset.party === party));
+      if (hiddenParties.has(party)) hiddenParties.delete(party);
+      else hiddenParties.add(party);
+      applyPartyVisibility();
+      card.classList.toggle("active", !hiddenParties.has(party));
     });
   });
 

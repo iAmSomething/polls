@@ -90,7 +90,7 @@ body {
 .insight-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .insight-value { font-size: 28px; font-weight: 800; line-height: 1.1; }
 .insight-sub { margin-top: 4px; color: var(--muted); font-size: 12px; }
-.main-grid { display: grid; gap: 14px; grid-template-columns: minmax(0,1.7fr) minmax(0,1fr); }
+.main-grid { display: grid; gap: 14px; grid-template-columns: minmax(0,1.7fr) minmax(0,1fr); align-items: start; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
 .panel-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .panel-title { font-size: 15px; font-weight: 700; }
@@ -111,6 +111,7 @@ body {
   padding: 10px; cursor: pointer;
 }
 .rank-card.active { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(46,108,246,.28) inset; }
+.rank-card.muted { opacity: .55; }
 .rank-head { display: flex; align-items: center; gap: 8px; }
 .rank-num { font-weight: 700; width: 18px; color: var(--muted); }
 .party-dot { width: 10px; height: 10px; border-radius: 50%; }
@@ -152,7 +153,14 @@ th { color: var(--muted); text-align: left; font-weight: 600; }
 @media (max-width: 980px) {
   .insights { grid-template-columns: 1fr; }
   .main-grid { grid-template-columns: 1fr; }
-  #chart { height: 440px; }
+  .panel { padding: 10px; }
+  .panel-h { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .filters { width: 100%; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+  .fbtn { white-space: nowrap; min-height: 34px; }
+  #chart { height: 360px; }
+  .rank-card { padding: 12px; }
+  .rank-pred { font-size: 20px; }
+  .chart-caption { font-size: 11px; line-height: 1.4; }
   .news-grid { grid-template-columns: 1fr; }
 }
 """.strip()
@@ -220,41 +228,68 @@ APP_JS = """
     return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
   }
 
+  function isTouchDevice() {
+    return (
+      (window.matchMedia && window.matchMedia("(pointer: coarse)").matches) ||
+      ("ontouchstart" in window) ||
+      (navigator.maxTouchPoints > 0)
+    );
+  }
+
+  function isMobileViewport() {
+    return window.matchMedia && window.matchMedia("(max-width: 980px)").matches;
+  }
+
   function buildLayout() {
     const dark = isDarkMode();
+    const compactHover = isTouchDevice() || isMobileViewport();
     return {
       paper_bgcolor: "rgba(0,0,0,0)",
       plot_bgcolor: dark ? "#152338" : "#F8FAFD",
       font: { color: dark ? "#EAF0FA" : "#1A2332", family: "Inter, Pretendard, sans-serif" },
-      margin: { l: 55, r: 20, t: 10, b: 44 },
-      hovermode: "x unified",
+      margin: { l: 55, r: 20, t: 72, b: 44 },
+      hovermode: compactHover ? "closest" : "x unified",
+      dragmode: "pan",
       hoverlabel: {
         bgcolor: dark ? "#111A2B" : "#FFFFFF",
         bordercolor: "#8FB3FF",
-        font: { color: dark ? "#EAF0FA" : "#1A2332", size: 13, family: "Inter, Pretendard, sans-serif" },
+        font: { color: dark ? "#EAF0FA" : "#1A2332", size: compactHover ? 11 : 13, family: "Inter, Pretendard, sans-serif" },
         align: "left",
-        namelength: -1
+        namelength: compactHover ? 32 : -1
       },
       xaxis: {
         gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)",
         linecolor: dark ? "rgba(158,176,204,0.24)" : "rgba(100,116,139,0.35)",
-        showspikes: true,
+        showspikes: !compactHover,
         spikemode: "across",
         spikecolor: dark ? "rgba(158,176,204,0.5)" : "rgba(71,85,105,0.5)",
         spikedash: "dot",
-        spikethickness: 1
+        spikethickness: 1,
+        fixedrange: true
       },
       yaxis: {
         title: "지지율(%)",
         gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)",
-        zeroline: false
+        zeroline: false,
+        fixedrange: true
       },
-      legend: { orientation: "h", y: 1.08, x: 0 }
+      legend: {
+        orientation: "h",
+        x: 0,
+        xanchor: "left",
+        y: 1.02,
+        yanchor: "bottom"
+      }
     };
   }
 
   function renderChart() {
-    Plotly.react(chartDiv, buildTraces(), buildLayout(), { displayModeBar: false, responsive: true });
+    Plotly.react(chartDiv, buildTraces(), buildLayout(), {
+      displayModeBar: false,
+      responsive: true,
+      scrollZoom: false,
+      doubleClick: false
+    });
   }
 
   renderChart();
@@ -264,7 +299,23 @@ APP_JS = """
     else if (mq.addListener) mq.addListener(renderChart);
   }
 
+  if (isTouchDevice()) {
+    chartDiv.addEventListener("touchend", () => {
+      setTimeout(() => Plotly.Fx.unhover(chartDiv), 0);
+    }, { passive: true });
+  }
+
   const fbtns = [...document.querySelectorAll(".fbtn")];
+  const hiddenParties = new Set();
+
+  function applyPartyVisibility() {
+    const vis = chartDiv.data.map((t) => (hiddenParties.has(t.legendgroup) ? "legendonly" : true));
+    Plotly.restyle(chartDiv, { visible: vis });
+    document.querySelectorAll(".rank-card").forEach((c) => {
+      c.classList.toggle("muted", hiddenParties.has(c.dataset.party));
+    });
+  }
+
   function setBtnActive(key) { fbtns.forEach((b) => b.classList.toggle("active", b.dataset.range === key)); }
   function endDate() {
     let d = null;
@@ -284,9 +335,9 @@ APP_JS = """
     btn.addEventListener("click", () => {
       const key = btn.dataset.range;
       if (key === "reset") {
-        const op = chartDiv.data.map(() => 1);
-        Plotly.restyle(chartDiv, "opacity", op);
-        document.querySelectorAll(".rank-card").forEach((c) => c.classList.remove("active"));
+        hiddenParties.clear();
+        applyPartyVisibility();
+        document.querySelectorAll(".rank-card").forEach((c) => c.classList.remove("active", "muted"));
         return;
       }
       setBtnActive(key);
@@ -304,9 +355,10 @@ APP_JS = """
   rankCards.forEach((card) => {
     card.addEventListener("click", () => {
       const party = card.dataset.party;
-      const op = chartDiv.data.map((t) => (t.legendgroup === party ? 1 : 0.15));
-      Plotly.restyle(chartDiv, "opacity", op);
-      rankCards.forEach((c) => c.classList.toggle("active", c.dataset.party === party));
+      if (hiddenParties.has(party)) hiddenParties.delete(party);
+      else hiddenParties.add(party);
+      applyPartyVisibility();
+      card.classList.toggle("active", !hiddenParties.has(party));
     });
   });
 
