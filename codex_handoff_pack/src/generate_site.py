@@ -2103,6 +2103,128 @@ def load_latest_poll_results(outputs: Path, max_rows: int = 6) -> list[dict]:
     return rows
 
 
+def build_insight_cards_html(cards: list[dict]) -> str:
+    rows = []
+    for c in cards:
+        tooltip_html = ""
+        if c.get("tooltip"):
+            tip = str(c.get("tooltip", "")).replace('"', "&quot;")
+            tooltip_html = (
+                f' <span class="metric-tooltip" tabindex="0" aria-label="RMSE 설명" data-tip="{tip}">ⓘ</span>'
+            )
+        rows.append(
+            f"""
+            <article class=\"insight-card {'featured' if c.get('featured') else ''} {'hero' if c.get('hero') else ''}\">
+              <div class=\"insight-label\">{c['label']}{tooltip_html}</div>
+              <div class=\"insight-value\">{c['value']}</div>
+              <div class=\"insight-sub\">{c['sub']}</div>
+            </article>
+            """
+        )
+    return "".join(rows)
+
+
+def build_ranking_html(ranking_rows: list[dict]) -> str:
+    rows = []
+    for i, r in enumerate(ranking_rows, 1):
+        sign = "▲" if r["delta"] > 0 else ("▼" if r["delta"] < 0 else "■")
+        delta_txt = f"{sign} {abs(r['delta']):.2f}"
+        rmse_txt = f"{r['rmse']:.2f}" if r["rmse"] is not None else "-"
+        band_txt = (
+            f"80% 구간 {r['pred_lo_80']:.2f}% ~ {r['pred_hi_80']:.2f}%"
+            if r["pred_lo_80"] is not None and r["pred_hi_80"] is not None
+            else "80% 구간 -"
+        )
+        rows.append(
+            f"""
+            <article class=\"rank-card\" data-party=\"{r['party']}\">
+              <div class=\"rank-head\">
+                <div class=\"rank-num\">{i}.</div>
+                <div class=\"party-dot\" style=\"background:{r['color']}\"></div>
+                <div class=\"rank-party\">{r.get('display_party', r['party'])}</div>
+              </div>
+              <div class=\"rank-main\">
+                <span class=\"rank-pred\">{r['pred']:.2f}<small>%</small></span>
+                <span class=\"rank-delta\">{delta_txt}</span>
+              </div>
+              <div class=\"rank-sub\">RMSE {rmse_txt} <span class=\"metric-tooltip\" tabindex=\"0\" aria-label=\"RMSE 설명\" data-tip=\"RMSE는 예측값과 실제값 차이의 평균적인 크기를 뜻하며 낮을수록 정확합니다.\">ⓘ</span></div>
+              <div class=\"rank-band\">{band_txt}</div>
+              <div class=\"spark\">{r['spark_svg']}</div>
+            </article>
+            """
+        )
+    return "".join(rows)
+
+
+def build_article_cards_html(articles_df: pd.DataFrame) -> str:
+    rows = []
+    for _, a in articles_df.iterrows():
+        d = pd.to_datetime(a.get("published_at", a["date"]), errors="coerce")
+        dtxt = d.strftime("%Y-%m-%d %H:%M") if pd.notna(d) else pd.to_datetime(a["date"]).strftime("%Y-%m-%d")
+        source = str(a.get("source", "")).strip() or "출처"
+        title = str(a.get("title", "")).strip()
+        url = str(a.get("url", "")).strip()
+        rows.append(
+            f"""
+            <a class=\"news-card\" href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">
+              <div class=\"news-date\">{dtxt}</div>
+              <div class=\"news-title\">{title}</div>
+              <div class=\"news-source\">{source}</div>
+            </a>
+            """
+        )
+    return "".join(rows)
+
+
+def build_pres_rows_html(president_table_rows: list[dict]) -> str:
+    rows = []
+    for r in president_table_rows:
+        publisher = str(r["publisher"])
+        p_color = pollster_color(publisher)
+        src = "-"
+        if r["source_url"]:
+            label = r["source_title"] if r["source_title"] else "링크"
+            src = f'<a class="ext-link" href="{r["source_url"]}" target="_blank" rel="noopener noreferrer">{label}</a>'
+        period = f'{r["week_start"]} ~ {r["week_end"]}' if r["week_end"] else r["week_start"]
+        rows.append(
+            f"""
+            <tr>
+              <td>{period}</td>
+              <td>{r['approve']:.1f}</td>
+              <td>{r['disapprove']:.1f}</td>
+              <td><span class="pollster-chip" style="background:{p_color};"></span>{publisher}</td>
+              <td>{src}</td>
+            </tr>
+            """
+        )
+    if not rows:
+        return "<tr><td colspan='5'>대통령 주간 데이터가 없습니다.</td></tr>"
+    return "".join(rows)
+
+
+def build_weight_rows_html(weights_df: pd.DataFrame) -> str:
+    rows = []
+    for _, r in weights_df.iterrows():
+        agency = str(r.get("조사기관", ""))
+        mae = pd.to_numeric(r.get("mae"), errors="coerce")
+        w_pct = pd.to_numeric(r.get("weight_pct"), errors="coerce")
+        mae_txt = f"{float(mae):.3f}" if pd.notna(mae) else "-"
+        wp = float(w_pct) if pd.notna(w_pct) else 0.0
+        rows.append(
+            f"""
+            <tr>
+              <td>{agency}</td>
+              <td>{mae_txt}</td>
+              <td>
+                <div class=\"wbar-wrap\"><div class=\"wbar\" style=\"width:{wp:.2f}%\"></div></div>
+                <span class=\"wlabel\">{wp:.2f}%</span>
+              </td>
+            </tr>
+            """
+        )
+    return "".join(rows)
+
+
 def render_html(
     docs_dir: Path,
     traces: list[dict],
@@ -2194,113 +2316,11 @@ def render_html(
             }
         )
 
-    cards_html_rows = []
-    for c in cards:
-        tooltip_html = ""
-        if c.get("tooltip"):
-            tip = str(c.get("tooltip", "")).replace('"', "&quot;")
-            tooltip_html = (
-                f' <span class="metric-tooltip" tabindex="0" aria-label="RMSE 설명" data-tip="{tip}">ⓘ</span>'
-            )
-        cards_html_rows.append(
-            f"""
-            <article class=\"insight-card {'featured' if c.get('featured') else ''} {'hero' if c.get('hero') else ''}\">
-              <div class=\"insight-label\">{c['label']}{tooltip_html}</div>
-              <div class=\"insight-value\">{c['value']}</div>
-              <div class=\"insight-sub\">{c['sub']}</div>
-            </article>
-            """
-        )
-    cards_html = "".join(cards_html_rows)
-
-    ranking_html = []
-    for i, r in enumerate(ranking_rows, 1):
-        sign = "▲" if r["delta"] > 0 else ("▼" if r["delta"] < 0 else "■")
-        delta_txt = f"{sign} {abs(r['delta']):.2f}"
-        rmse_txt = f"{r['rmse']:.2f}" if r["rmse"] is not None else "-"
-        band_txt = (
-            f"80% 구간 {r['pred_lo_80']:.2f}% ~ {r['pred_hi_80']:.2f}%"
-            if r["pred_lo_80"] is not None and r["pred_hi_80"] is not None
-            else "80% 구간 -"
-        )
-        ranking_html.append(
-            f"""
-            <article class=\"rank-card\" data-party=\"{r['party']}\">
-              <div class=\"rank-head\">
-                <div class=\"rank-num\">{i}.</div>
-                <div class=\"party-dot\" style=\"background:{r['color']}\"></div>
-                <div class=\"rank-party\">{r.get('display_party', r['party'])}</div>
-              </div>
-              <div class=\"rank-main\">
-                <span class=\"rank-pred\">{r['pred']:.2f}<small>%</small></span>
-                <span class=\"rank-delta\">{delta_txt}</span>
-              </div>
-              <div class=\"rank-sub\">RMSE {rmse_txt} <span class=\"metric-tooltip\" tabindex=\"0\" aria-label=\"RMSE 설명\" data-tip=\"RMSE는 예측값과 실제값 차이의 평균적인 크기를 뜻하며 낮을수록 정확합니다.\">ⓘ</span></div>
-              <div class=\"rank-band\">{band_txt}</div>
-              <div class=\"spark\">{r['spark_svg']}</div>
-            </article>
-            """
-        )
-
-    article_cards = []
-    for _, a in articles_df.iterrows():
-        d = pd.to_datetime(a.get("published_at", a["date"]), errors="coerce")
-        dtxt = d.strftime("%Y-%m-%d %H:%M") if pd.notna(d) else pd.to_datetime(a["date"]).strftime("%Y-%m-%d")
-        source = str(a.get("source", "")).strip() or "출처"
-        title = str(a.get("title", "")).strip()
-        url = str(a.get("url", "")).strip()
-        article_cards.append(
-            f"""
-            <a class=\"news-card\" href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">
-              <div class=\"news-date\">{dtxt}</div>
-              <div class=\"news-title\">{title}</div>
-              <div class=\"news-source\">{source}</div>
-            </a>
-            """
-        )
-
-    pres_rows_html = []
-    for r in president_table_rows:
-        publisher = str(r["publisher"])
-        p_color = pollster_color(publisher)
-        src = "-"
-        if r["source_url"]:
-            label = r["source_title"] if r["source_title"] else "링크"
-            src = f'<a class="ext-link" href="{r["source_url"]}" target="_blank" rel="noopener noreferrer">{label}</a>'
-        period = f'{r["week_start"]} ~ {r["week_end"]}' if r["week_end"] else r["week_start"]
-        pres_rows_html.append(
-            f"""
-            <tr>
-              <td>{period}</td>
-              <td>{r['approve']:.1f}</td>
-              <td>{r['disapprove']:.1f}</td>
-              <td><span class="pollster-chip" style="background:{p_color};"></span>{publisher}</td>
-              <td>{src}</td>
-            </tr>
-            """
-        )
-    if not pres_rows_html:
-        pres_rows_html.append("<tr><td colspan='5'>대통령 주간 데이터가 없습니다.</td></tr>")
-
-    weight_rows = []
-    for _, r in weights_df.iterrows():
-        agency = str(r.get("조사기관", ""))
-        mae = pd.to_numeric(r.get("mae"), errors="coerce")
-        w_pct = pd.to_numeric(r.get("weight_pct"), errors="coerce")
-        mae_txt = f"{float(mae):.3f}" if pd.notna(mae) else "-"
-        wp = float(w_pct) if pd.notna(w_pct) else 0.0
-        weight_rows.append(
-            f"""
-            <tr>
-              <td>{agency}</td>
-              <td>{mae_txt}</td>
-              <td>
-                <div class=\"wbar-wrap\"><div class=\"wbar\" style=\"width:{wp:.2f}%\"></div></div>
-                <span class=\"wlabel\">{wp:.2f}%</span>
-              </td>
-            </tr>
-            """
-        )
+    cards_html = build_insight_cards_html(cards)
+    ranking_html = build_ranking_html(ranking_rows)
+    article_cards = build_article_cards_html(articles_df)
+    pres_rows_html = build_pres_rows_html(president_table_rows)
+    weight_rows = build_weight_rows_html(weights_df)
 
     payload_json = json.dumps(
         {
@@ -2392,7 +2412,7 @@ def render_html(
         <div id=\"chart\"></div>
         <div class=\"chart-caption\"><strong>해석 안내:</strong> 각 선에는 스무딩 중심선과 적응형 오차폭 기반 반투명 밴드가 함께 표시됩니다(기준 오차폭 약 ±3%). 대통령 긍정/부정은 보정되지 않은 raw 값입니다.</div>
       </article>
-      <aside class=\"panel\"><div class=\"panel-title\" style=\"margin-bottom:8px;\">예측 랭킹 <small>Forecast Ranking</small></div><div class=\"rank-wrap\">{''.join(ranking_html)}</div></aside>
+      <aside class=\"panel\"><div class=\"panel-title\" style=\"margin-bottom:8px;\">예측 랭킹 <small>Forecast Ranking</small></div><div class=\"rank-wrap\">{ranking_html}</div></aside>
     </section>
 
     <section id=\"latest-poll-section\" class=\"latest-poll\">
@@ -2416,7 +2436,7 @@ def render_html(
         <div class=\"panel-title\" style=\"margin: 0;\">최근 여론조사 기사 링크 <small>Recent Coverage</small></div>
         <div id=\"news-status\" class=\"status-badge stale\" aria-live=\"polite\">대기 중...</div>
       </div>
-      <div id=\"news-grid\" class=\"news-grid\">{''.join(article_cards)}</div>
+      <div id=\"news-grid\" class=\"news-grid\">{article_cards}</div>
     </section>
 
     <section class=\"panel\" style=\"margin-top:14px;\">
@@ -2425,7 +2445,7 @@ def render_html(
         <thead>
           <tr><th>조사기간(주차)</th><th>긍정(%)</th><th>부정(%)</th><th>조사기관</th><th>출처</th></tr>
         </thead>
-        <tbody>{''.join(pres_rows_html)}</tbody>
+        <tbody>{pres_rows_html}</tbody>
       </table>
     </section>
 
@@ -2435,7 +2455,7 @@ def render_html(
         <p class=\"method-p\">2023년부터 2025년 6월 선거까지, 여론조사기관의 정당지지율과 실제 선거결과를 비교해 정확도(MAE)를 산출했습니다. 이후 정확도 상위 클러스터(9개 기관)만 사용해 합성 시계열을 만들고, 기관별 가중치는 1/MAE를 정규화해 적용합니다. 주간 업데이트에서는 Huber 손실 기반으로 가중치 안정성을 유지하도록 설계했습니다.</p>
         <p class=\"method-p\">{pres_method_note}</p>
         <p class=\"method-p\">{backtest_note}</p>
-        <table><thead><tr><th>조사기관</th><th>MAE</th><th>가중치(%)</th></tr></thead><tbody>{''.join(weight_rows)}</tbody></table>
+        <table><thead><tr><th>조사기관</th><th>MAE</th><th>가중치(%)</th></tr></thead><tbody>{weight_rows}</tbody></table>
       </details>
     </section>
   </div>
