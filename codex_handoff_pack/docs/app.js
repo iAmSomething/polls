@@ -6,10 +6,91 @@
   const presidentRaw = payload.president_raw || {};
   const chartDiv = document.getElementById("chart");
   if (!chartDiv) return;
+  const BAND_BASE_HALF_WIDTH = 2.2;
+  const BAND_VOL_MULTIPLIER = 0.85;
+  const BAND_MIN_HALF_WIDTH = 1.8;
+  const BAND_MAX_HALF_WIDTH = 4.2;
+  const BAND_OPACITY = 0.30;
+  const BAND_CENTER_WINDOW = 7;
+  const BAND_WIDTH_WINDOW = 7;
+
+  function hexToRgba(hex, alpha) {
+    const clean = String(hex || "").replace("#", "").trim();
+    if (clean.length !== 6) return `rgba(70, 95, 135, ${alpha})`;
+    const r = parseInt(clean.slice(0, 2), 16);
+    const g = parseInt(clean.slice(2, 4), 16);
+    const b = parseInt(clean.slice(4, 6), 16);
+    if (![r, g, b].every((v) => Number.isFinite(v))) return `rgba(70, 95, 135, ${alpha})`;
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+  }
+
+  function smoothSeries(values, windowSize) {
+    const src = (values || []).map((v) => (Number.isFinite(v) ? Number(v) : null));
+    const half = Math.max(1, Math.floor(windowSize / 2));
+    const out = [];
+    for (let i = 0; i < src.length; i++) {
+      if (src[i] === null) {
+        out.push(null);
+        continue;
+      }
+      let wSum = 0;
+      let vSum = 0;
+      for (let j = Math.max(0, i - half); j <= Math.min(src.length - 1, i + half); j++) {
+        const v = src[j];
+        if (v === null) continue;
+        const w = half + 1 - Math.abs(i - j);
+        wSum += w;
+        vSum += w * v;
+      }
+      out.push(wSum > 0 ? (vSum / wSum) : src[i]);
+    }
+    return out;
+  }
+
+  function clamp(v, lo, hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
+
+  function buildSmoothedBand(y) {
+    const raw = (y || []).map((v) => (Number.isFinite(v) ? Number(v) : null));
+    const center = smoothSeries(raw, BAND_CENTER_WINDOW);
+    const residualAbs = raw.map((v, i) => {
+      if (v === null || center[i] === null) return null;
+      return Math.abs(v - center[i]);
+    });
+    const localVol = smoothSeries(residualAbs, BAND_WIDTH_WINDOW);
+    const halfWidth = localVol.map((v) => {
+      const vol = v === null ? 0.0 : v;
+      return clamp(BAND_BASE_HALF_WIDTH + BAND_VOL_MULTIPLIER * vol, BAND_MIN_HALF_WIDTH, BAND_MAX_HALF_WIDTH);
+    });
+    const upper = center.map((v, i) => {
+      if (v === null) return null;
+      return Math.min(100, v + halfWidth[i]);
+    });
+    const lower = center.map((v, i) => {
+      if (v === null) return null;
+      return Math.max(0, v - halfWidth[i]);
+    });
+    return { upper, lower };
+  }
 
   function buildTraces() {
     const out = [];
     tracesData.forEach((p) => {
+      const band = buildSmoothedBand(p.actual_y);
+      out.push({
+        x: p.actual_x, y: band.upper, type: "scatter", mode: "lines",
+        legendgroup: p.party, showlegend: false, hoverinfo: "skip",
+        line: { color: "rgba(0,0,0,0)", width: 0, shape: "spline", smoothing: 0.65 },
+        meta: "band"
+      });
+      out.push({
+        x: p.actual_x, y: band.lower, type: "scatter", mode: "lines",
+        legendgroup: p.party, showlegend: false, hoverinfo: "skip",
+        line: { color: "rgba(0,0,0,0)", width: 0, shape: "spline", smoothing: 0.65 },
+        fill: "tonexty", fillcolor: hexToRgba(p.color, BAND_OPACITY),
+        meta: "band"
+      });
       out.push({
         x: p.actual_x, y: p.actual_y, type: "scatter", mode: "lines", name: p.party,
         legendgroup: p.party, line: { color: p.color, width: 2.7 },
@@ -30,6 +111,31 @@
       });
     });
     if (Array.isArray(presidentRaw.x) && presidentRaw.x.length) {
+      const approveBand = buildSmoothedBand(presidentRaw.approve || []);
+      out.push({
+        x: presidentRaw.x,
+        y: approveBand.upper,
+        type: "scatter",
+        mode: "lines",
+        legendgroup: "president_raw_approve",
+        showlegend: false,
+        hoverinfo: "skip",
+        line: { color: "rgba(0,0,0,0)", width: 0, shape: "spline", smoothing: 0.65 },
+        meta: "band"
+      });
+      out.push({
+        x: presidentRaw.x,
+        y: approveBand.lower,
+        type: "scatter",
+        mode: "lines",
+        legendgroup: "president_raw_approve",
+        showlegend: false,
+        hoverinfo: "skip",
+        line: { color: "rgba(0,0,0,0)", width: 0, shape: "spline", smoothing: 0.65 },
+        fill: "tonexty",
+        fillcolor: hexToRgba("#1D9BF0", BAND_OPACITY),
+        meta: "band"
+      });
       out.push({
         x: presidentRaw.x,
         y: presidentRaw.approve || [],
@@ -40,6 +146,31 @@
         line: { color: "#1D9BF0", width: 2, dash: "dash" },
         marker: { size: 4, color: "#1D9BF0" },
         hovertemplate: "<b>대통령 긍정평가(raw)</b>: %{y:.2f}%<extra></extra>"
+      });
+      const disapproveBand = buildSmoothedBand(presidentRaw.disapprove || []);
+      out.push({
+        x: presidentRaw.x,
+        y: disapproveBand.upper,
+        type: "scatter",
+        mode: "lines",
+        legendgroup: "president_raw_disapprove",
+        showlegend: false,
+        hoverinfo: "skip",
+        line: { color: "rgba(0,0,0,0)", width: 0, shape: "spline", smoothing: 0.65 },
+        meta: "band"
+      });
+      out.push({
+        x: presidentRaw.x,
+        y: disapproveBand.lower,
+        type: "scatter",
+        mode: "lines",
+        legendgroup: "president_raw_disapprove",
+        showlegend: false,
+        hoverinfo: "skip",
+        line: { color: "rgba(0,0,0,0)", width: 0, shape: "spline", smoothing: 0.65 },
+        fill: "tonexty",
+        fillcolor: hexToRgba("#D83A3A", BAND_OPACITY),
+        meta: "band"
       });
       out.push({
         x: presidentRaw.x,
@@ -155,18 +286,24 @@
     }, { passive: true });
   }
 
-  const fbtns = [...document.querySelectorAll(".fbtn")];
+  const rangeBtns = [...document.querySelectorAll(".fbtn[data-range]")];
+  const bandBtn = document.getElementById("toggle-band");
   const hiddenParties = new Set();
+  let showBands = true;
 
   function applyPartyVisibility() {
-    const vis = chartDiv.data.map((t) => (hiddenParties.has(t.legendgroup) ? "legendonly" : true));
+    const vis = chartDiv.data.map((t) => {
+      if (hiddenParties.has(t.legendgroup)) return "legendonly";
+      if (!showBands && t.meta === "band") return "legendonly";
+      return true;
+    });
     Plotly.restyle(chartDiv, { visible: vis });
     document.querySelectorAll(".rank-card").forEach((c) => {
       c.classList.toggle("muted", hiddenParties.has(c.dataset.party));
     });
   }
 
-  function setBtnActive(key) { fbtns.forEach((b) => b.classList.toggle("active", b.dataset.range === key)); }
+  function setBtnActive(key) { rangeBtns.forEach((b) => b.classList.toggle("active", b.dataset.range === key)); }
   function endDate() {
     let d = null;
     tracesData.forEach((p) => {
@@ -181,7 +318,7 @@
     return d;
   }
 
-  fbtns.forEach((btn) => {
+  rangeBtns.forEach((btn) => {
     btn.addEventListener("click", () => {
       const key = btn.dataset.range;
       if (key === "reset") {
@@ -200,6 +337,15 @@
       Plotly.relayout(chartDiv, { "xaxis.range": [start, e] });
     });
   });
+
+  if (bandBtn) {
+    bandBtn.addEventListener("click", () => {
+      showBands = !showBands;
+      bandBtn.classList.toggle("active", showBands);
+      bandBtn.textContent = showBands ? "오차 밴드 ON" : "오차 밴드 OFF";
+      applyPartyVisibility();
+    });
+  }
 
   const rankCards = [...document.querySelectorAll(".rank-card")];
   rankCards.forEach((card) => {

@@ -64,11 +64,12 @@
             <button class="fbtn" data-range="6m">6M</button>
             <button class="fbtn" data-range="1y">1Y</button>
             <button class="fbtn" data-range="all">All</button>
+            <button class="fbtn active" id="toggle-band">오차 밴드 ON</button>
             <button class="fbtn" data-range="reset">정당 강조 해제</button>
           </div>
         </div>
         <div id="chart"></div>
-        <div class="chart-caption">대통령 긍정평가, 부정평가는 계산되지 않은 raw값입니다.</div>
+        <div class="chart-caption">각 선에는 스무딩 중심선 + 적응형 오차폭 기반 반투명 밴드가 오버레이됩니다(기준 오차폭 약 ±3%). 대통령 긍정/부정은 계산되지 않은 raw값입니다.</div>
       </article>
       <aside class="panel"><div class="panel-title" style="margin-bottom:8px;">예측 랭킹</div><div class="rank-wrap">
             <article class="rank-card" data-party="더불어민주당">
