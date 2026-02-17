@@ -9,9 +9,15 @@ from datetime import datetime
 import pandas as pd
 
 
-def run_cmd(cmd: list[str], cwd: Path) -> None:
+def run_cmd(cmd: list[str], cwd: Path) -> bool:
     print('RUN:', ' '.join(cmd))
-    subprocess.run(cmd, cwd=str(cwd), check=True)
+    try:
+        subprocess.run(cmd, cwd=str(cwd), check=True)
+        return True
+    except subprocess.CalledProcessError as e:
+        # NESDC endpoints may fail transiently; keep the workflow alive and retry next schedule.
+        print(f'Command failed (exit={e.returncode}). Will retry on next run.')
+        return False
 
 
 def compute_feedback(base: Path, pre_forecast: pd.DataFrame | None, pre_last_date: pd.Timestamp | None) -> None:
@@ -99,7 +105,10 @@ def main() -> None:
         pre_last_date = pre_wt['date_end'].max()
 
     d = today_kst.strftime('%Y-%m-%d')
-    run_cmd([py, 'src/fetch_nesdc_weekly.py', '--week-start', d, '--week-end', d, '--pages', '3'], base)
+    ok = run_cmd([py, 'src/fetch_nesdc_weekly.py', '--week-start', d, '--week-end', d, '--pages', '3'], base)
+    if not ok:
+        print('Fetch failed. Skip this run and retry at next schedule.')
+        return
 
     manifest = base / 'outputs' / 'nesdc_fetch_manifest.csv'
     if not manifest.exists():
@@ -121,7 +130,10 @@ def main() -> None:
         print('Today post exists but no xlsx attachment. Keep waiting for next run.')
         return
 
-    run_cmd([py, 'src/apply_nesdc_weekly_update.py', '--rebuild'], base)
+    ok = run_cmd([py, 'src/apply_nesdc_weekly_update.py', '--rebuild'], base)
+    if not ok:
+        print('Apply update failed. Skip this run and retry at next schedule.')
+        return
     compute_feedback(base, pre_forecast, pre_last_date)
 
 
