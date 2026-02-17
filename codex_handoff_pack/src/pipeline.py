@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import argparse
 import re
+from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -51,6 +52,50 @@ BASE_COLS = {
     "date_end",
     "date_mid",
 }
+
+
+@dataclass(frozen=True)
+class PipelineConfig:
+    input_xlsx: Optional[str]
+    mae_xlsx: Optional[str]
+    data_dir: str
+    out: str
+    house_effect: str
+    house_lambda: float
+    house_clip: float
+    house_min_obs: int
+    house_out: str
+    sample_size_weight: str
+    sample_eps: float
+
+
+def parse_args() -> PipelineConfig:
+    parser = argparse.ArgumentParser(description="Build weighted blended poll time series.")
+    parser.add_argument("--input-xlsx", default=None, help="Raw polling workbook path or filename under --data-dir")
+    parser.add_argument("--mae-xlsx", default=None, help="Pollster MAE workbook path or filename under --data-dir")
+    parser.add_argument("--data-dir", default="data", help="Directory to search for input files")
+    parser.add_argument("--out", default="outputs/weighted_time_series.xlsx", help="Output XLSX path")
+    parser.add_argument("--house-effect", choices=["on", "off"], default="on", help="Enable time-varying house-effect adjustment")
+    parser.add_argument("--house-lambda", type=float, default=0.8, help="EWMA lambda for house-effect update")
+    parser.add_argument("--house-clip", type=float, default=6.0, help="Absolute clip for lagged house bias (percentage points)")
+    parser.add_argument("--house-min-obs", type=int, default=3, help="Minimum prior observations per pollster-party to apply bias adjustment")
+    parser.add_argument("--house-out", default="outputs/house_effect_timeseries.csv", help="House-effect diagnostic CSV path")
+    parser.add_argument("--sample-size-weight", choices=["on", "off"], default="on", help="Enable sample-size-aware observation weighting")
+    parser.add_argument("--sample-eps", type=float, default=0.01, help="Probability clip epsilon for variance weighting")
+    ns = parser.parse_args()
+    return PipelineConfig(
+        input_xlsx=ns.input_xlsx,
+        mae_xlsx=ns.mae_xlsx,
+        data_dir=ns.data_dir,
+        out=ns.out,
+        house_effect=ns.house_effect,
+        house_lambda=ns.house_lambda,
+        house_clip=ns.house_clip,
+        house_min_obs=ns.house_min_obs,
+        house_out=ns.house_out,
+        sample_size_weight=ns.sample_size_weight,
+        sample_eps=ns.sample_eps,
+    )
 
 
 def _normalize_path(data_dir: Path, explicit: Optional[str]) -> Optional[Path]:
@@ -195,14 +240,7 @@ def compute_weights_from_mae(mae_xlsx: Path) -> Dict[str, float]:
     Weight = 1/MAE, normalized to sum to 1.
     """
     wdf = pd.read_excel(mae_xlsx, sheet_name=0)
-
-    mae_col = None
-    for c in wdf.columns:
-        if "MAE" in str(c).upper():
-            mae_col = c
-            break
-    if mae_col is None:
-        raise ValueError("MAE column not found in mae_xlsx")
+    mae_col = _find_mae_column(wdf)
 
     wdf = wdf[wdf["조사기관"].isin(POLLSTERS)].copy()
     wdf[mae_col] = pd.to_numeric(wdf[mae_col], errors="coerce")
@@ -215,13 +253,7 @@ def compute_weights_from_mae(mae_xlsx: Path) -> Dict[str, float]:
 
 def build_weights_table(mae_xlsx: Path, weights: Dict[str, float]) -> pd.DataFrame:
     wdf = pd.read_excel(mae_xlsx, sheet_name=0)
-    mae_col = None
-    for c in wdf.columns:
-        if "MAE" in str(c).upper():
-            mae_col = c
-            break
-    if mae_col is None:
-        raise ValueError("MAE column not found in mae_xlsx")
+    mae_col = _find_mae_column(wdf)
 
     wdf = wdf[wdf["조사기관"].isin(POLLSTERS)].copy()
     wdf[mae_col] = pd.to_numeric(wdf[mae_col], errors="coerce")
@@ -401,23 +433,16 @@ def apply_time_varying_house_effect(
     return work, diag_df
 
 
-def main():
-    parser = argparse.ArgumentParser(description="Build weighted blended poll time series.")
-    parser.add_argument("--input-xlsx", default=None, help="Raw polling workbook path or filename under --data-dir")
-    parser.add_argument("--mae-xlsx", default=None, help="Pollster MAE workbook path or filename under --data-dir")
-    parser.add_argument("--data-dir", default="data", help="Directory to search for input files")
-    parser.add_argument("--out", default="outputs/weighted_time_series.xlsx", help="Output XLSX path")
-    parser.add_argument("--house-effect", choices=["on", "off"], default="on", help="Enable time-varying house-effect adjustment")
-    parser.add_argument("--house-lambda", type=float, default=0.8, help="EWMA lambda for house-effect update")
-    parser.add_argument("--house-clip", type=float, default=6.0, help="Absolute clip for lagged house bias (percentage points)")
-    parser.add_argument("--house-min-obs", type=int, default=3, help="Minimum prior observations per pollster-party to apply bias adjustment")
-    parser.add_argument("--house-out", default="outputs/house_effect_timeseries.csv", help="House-effect diagnostic CSV path")
-    parser.add_argument("--sample-size-weight", choices=["on", "off"], default="on", help="Enable sample-size-aware observation weighting")
-    parser.add_argument("--sample-eps", type=float, default=0.01, help="Probability clip epsilon for variance weighting")
-    args = parser.parse_args()
+def _find_mae_column(df: pd.DataFrame):
+    for c in df.columns:
+        if "MAE" in str(c).upper():
+            return c
+    raise ValueError("MAE column not found in mae_xlsx")
 
+
+def run_pipeline(cfg: PipelineConfig) -> tuple[Path, Path]:
     try:
-        xlsx, mae_xlsx = resolve_inputs(args.input_xlsx, args.mae_xlsx, args.data_dir)
+        xlsx, mae_xlsx = resolve_inputs(cfg.input_xlsx, cfg.mae_xlsx, cfg.data_dir)
     except Exception as e:
         raise SystemExit(
             "Input resolution failed. Place two .xlsx files under data/ or pass --input-xlsx and --mae-xlsx.\n"
@@ -428,34 +453,34 @@ def main():
 
     df = pd.concat([load_sheet(xlsx, s) for s in SHEETS], ignore_index=True)
     weights = compute_weights_from_mae(mae_xlsx)
-    use_sample_w = args.sample_size_weight == "on"
+    use_sample_w = cfg.sample_size_weight == "on"
     house_diag_df = pd.DataFrame()
-    if args.house_effect == "on":
+    if cfg.house_effect == "on":
         df_adj, house_diag_df = apply_time_varying_house_effect(
             df=df,
             weights=weights,
-            ewma_lambda=args.house_lambda,
-            bias_clip=args.house_clip,
-            min_obs=args.house_min_obs,
+            ewma_lambda=cfg.house_lambda,
+            bias_clip=cfg.house_clip,
+            min_obs=cfg.house_min_obs,
             sample_size_weight=use_sample_w,
-            sample_eps=args.sample_eps,
+            sample_eps=cfg.sample_eps,
         )
         blended = blend_time_series(
             df_adj,
             weights,
             sample_size_weight=use_sample_w,
-            sample_eps=args.sample_eps,
+            sample_eps=cfg.sample_eps,
         )
     else:
         blended = blend_time_series(
             df,
             weights,
             sample_size_weight=use_sample_w,
-            sample_eps=args.sample_eps,
+            sample_eps=cfg.sample_eps,
         )
     weights_df = build_weights_table(mae_xlsx, weights)
 
-    out = Path(args.out)
+    out = Path(cfg.out)
     out.parent.mkdir(parents=True, exist_ok=True)
     with pd.ExcelWriter(out, engine="openpyxl") as writer:
         blended.to_excel(writer, sheet_name="weighted_time_series", index=False)
@@ -463,13 +488,19 @@ def main():
 
     weights_csv = out.parent / "weights.csv"
     weights_df.to_csv(weights_csv, index=False)
-    if args.house_effect == "on":
-        house_out = Path(args.house_out)
+    if cfg.house_effect == "on":
+        house_out = Path(cfg.house_out)
         house_out.parent.mkdir(parents=True, exist_ok=True)
         house_diag_df.to_csv(house_out, index=False)
         print("Wrote:", house_out)
     print("Wrote:", out)
     print("Wrote:", weights_csv)
+    return out, weights_csv
+
+
+def main() -> None:
+    cfg = parse_args()
+    run_pipeline(cfg)
 
 
 if __name__ == "__main__":
