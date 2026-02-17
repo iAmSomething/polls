@@ -637,7 +637,9 @@ def load_cached_news_json(base: Path) -> pd.DataFrame:
     for c in cols:
         if c not in df.columns:
             df[c] = ""
-    df["date"] = pd.to_datetime(df["date"], errors="coerce")
+    df["published_at"] = pd.to_datetime(df["published_at"], errors="coerce", utc=True)
+    df["date"] = pd.to_datetime(df["date"], errors="coerce", utc=True)
+    df["_dt"] = df["published_at"].where(df["published_at"].notna(), df["date"])
     df = df.dropna(subset=["date", "title", "url"])
     return dedupe_same_day_same_source(df, limit=12)
 
@@ -870,20 +872,20 @@ def fetch_google_rss_fallback(limit: int = 12) -> pd.DataFrame:
 
 
 def resolve_news_articles(base: Path, outputs: Path) -> tuple[pd.DataFrame, str]:
-    # Priority 1: build-time article fetch + content verification
+    # Priority 1: collector-generated cached JSON (hourly stage1 feed).
+    cached = load_cached_news_json(base)
+    if not cached.empty:
+        return dedupe_same_day_same_source(cached, limit=12), "collector_cached_news_latest_json"
+
+    # Priority 2: build-time article fetch + content verification
     fetched_articles = fetch_google_news_articles()
     if not fetched_articles.empty:
         return dedupe_same_day_same_source(fetched_articles, limit=12), "naver_priority_1_2_3"
 
-    # Priority 2: Google RSS fallback for freshness when naver parsing fails.
+    # Priority 3: Google RSS fallback for freshness when naver parsing fails.
     rss_articles = fetch_google_rss_fallback(limit=12)
     if not rss_articles.empty:
         return dedupe_same_day_same_source(rss_articles, limit=12), "google_rss_priority_1_2_3"
-
-    # Priority 3: keep last successful published list to avoid blank UI on transient failures.
-    cached = load_cached_news_json(base)
-    if not cached.empty:
-        return dedupe_same_day_same_source(cached, limit=12), "cached_news_latest_json"
 
     # Priority 4: manual fallback file (curated), use same priority concept on title text.
     phrase = "중앙선거여론조사심의위원회"
