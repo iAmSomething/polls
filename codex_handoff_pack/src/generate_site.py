@@ -23,6 +23,8 @@ PARTY_STYLES = {
     "진보당": {"color": "#C9152C", "aliases": ["진보당"]},
 }
 PARTY_ORDER = ["더불어민주당", "국민의힘", "지지정당 없음", "개혁신당", "조국혁신당"]
+RENAME_EFFECTIVE_KST = datetime(2026, 3, 1, 0, 0, 0, tzinfo=ZoneInfo("Asia/Seoul"))
+NEW_PPP_NAME_PLACEHOLDER = "새 정당명(미공개)"
 POLLSTERS = [
     "리서치앤리서치",
     "엠브레인퍼블릭",
@@ -37,112 +39,298 @@ POLLSTERS = [
 
 STYLE_CSS = """
 :root {
-  --bg: #F5F7FB;
+  --bg: #F4F7FC;
   --panel: #FFFFFF;
-  --panel-soft: #F7FAFF;
-  --text: #1A2332;
-  --muted: #64748B;
-  --line: #D6DEEA;
-  --accent: #2563EB;
+  --panel-soft: #F6F9FF;
+  --text: #0F1C2E;
+  --muted: #5E728D;
+  --line: #D1DBEA;
+  --line-strong: #A9B9D3;
+  --accent: #1F5FE0;
+  --accent-soft: #DCE9FF;
+  --ok: #0E9F6E;
+  --warn: #C77700;
+  --danger: #C63E3E;
+  --space-1: 6px;
+  --space-2: 10px;
+  --space-3: 14px;
+  --space-4: 18px;
+  --space-5: 24px;
+  --shadow-1: 0 10px 24px rgba(23, 52, 98, 0.07);
 }
 @media (prefers-color-scheme: dark) {
   :root {
     --bg: #0B1220;
-    --panel: #111A2B;
+    --panel: #111A29;
     --panel-soft: #152338;
-    --text: #EAF0FA;
-    --muted: #9EB0CC;
-    --line: #263850;
-    --accent: #6EA8FF;
+    --text: #E8F0FA;
+    --muted: #9FB2CD;
+    --line: #26374F;
+    --line-strong: #3E5577;
+    --accent: #76ACFF;
+    --accent-soft: #1B3358;
+    --ok: #33B889;
+    --warn: #DCA14A;
+    --danger: #E46A6A;
+    --shadow-1: none;
   }
+}
+html[data-theme="light"] {
+  color-scheme: light;
+}
+html[data-theme="dark"] {
+  color-scheme: dark;
 }
 * { box-sizing: border-box; }
 body {
   margin: 0;
-  background: radial-gradient(1200px 500px at 10% -10%, #DCE8FF 0%, var(--bg) 58%);
+  background:
+    radial-gradient(1200px 560px at 6% -12%, #D7E6FF 0%, rgba(215, 230, 255, 0) 62%),
+    radial-gradient(900px 520px at 98% -8%, #E3EEFF 0%, rgba(227, 238, 255, 0) 55%),
+    var(--bg);
   color: var(--text);
   font-family: "Inter","Pretendard",system-ui,sans-serif;
   font-feature-settings: "tnum" 1, "lnum" 1;
 }
 @media (prefers-color-scheme: dark) {
-  body { background: radial-gradient(1200px 500px at 10% -10%, #1B3152 0%, var(--bg) 58%); }
+  body {
+    background:
+      radial-gradient(1200px 560px at 6% -12%, #1B3152 0%, rgba(27, 49, 82, 0) 62%),
+      radial-gradient(900px 520px at 98% -8%, #182743 0%, rgba(24, 39, 67, 0) 55%),
+      var(--bg);
+  }
 }
-.wrap { max-width: 1320px; margin: 0 auto; padding: 24px 18px 44px; }
+.wrap { max-width: 1360px; margin: 0 auto; padding: var(--space-5) var(--space-4) 52px; }
 .top {
-  display: flex; align-items: center; justify-content: space-between;
-  padding-bottom: 14px; border-bottom: 1px solid var(--line); margin-bottom: 18px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--space-3);
+  align-items: center;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--space-4);
 }
 .brand { display: flex; align-items: center; gap: 10px; }
 .logo {
-  width: 26px; height: 26px; border-radius: 6px;
-  background: linear-gradient(135deg, var(--accent), #53A0FF);
+  width: 28px; height: 28px; border-radius: 7px;
+  background: linear-gradient(135deg, var(--accent), #58A4FF);
   box-shadow: 0 0 0 1px rgba(255,255,255,.8) inset;
 }
 @media (prefers-color-scheme: dark) {
   .logo { box-shadow: 0 0 0 1px rgba(255,255,255,.2) inset; }
 }
-.title { font-size: 24px; font-weight: 800; letter-spacing: .1px; }
-.stamp { color: var(--muted); font-size: 13px; }
-.insights { display: grid; gap: 12px; grid-template-columns: repeat(3, minmax(0,1fr)); margin-bottom: 16px; }
+.title { font-size: 24px; font-weight: 800; letter-spacing: .08px; }
+.top-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+.stamp {
+  color: var(--muted);
+  font-size: 13px;
+  padding: 8px 10px;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.freshness-badge {
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  padding: 7px 11px;
+  line-height: 1;
+}
+.freshness-badge.fresh { color: #0A855B; background: rgba(14, 159, 110, 0.12); border-color: rgba(14, 159, 110, 0.3); }
+.freshness-badge.stale { color: #9B5600; background: rgba(199, 119, 0, 0.16); border-color: rgba(199, 119, 0, 0.36); }
+.freshness-badge.old { color: #A53535; background: rgba(198, 62, 62, 0.16); border-color: rgba(198, 62, 62, 0.35); }
+.theme-toggle {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+}
+.theme-btn {
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  padding: 6px 9px;
+  cursor: pointer;
+}
+.theme-btn.active {
+  color: var(--text);
+  background: var(--panel-soft);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+.insights {
+  display: grid;
+  gap: var(--space-2);
+  grid-template-columns: repeat(6, minmax(0,1fr));
+  margin-bottom: var(--space-4);
+}
 .insight-card {
-  background: linear-gradient(180deg, rgba(37,99,235,.04), transparent), var(--panel);
-  border: 1px solid var(--line); border-radius: 12px; padding: 14px 14px 12px;
+  background: linear-gradient(180deg, rgba(31,95,224,.05), transparent), var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 14px;
+  box-shadow: var(--shadow-1);
+}
+.insight-card.featured {
+  grid-column: span 2;
+  border-color: rgba(31,95,224,.32);
+  background: linear-gradient(120deg, rgba(31,95,224,.14), rgba(31,95,224,0.03) 56%), var(--panel);
 }
 .insight-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
-.insight-value { font-size: 28px; font-weight: 800; line-height: 1.1; }
-.insight-sub { margin-top: 4px; color: var(--muted); font-size: 12px; }
-.main-grid { display: grid; gap: 14px; grid-template-columns: minmax(0,1.7fr) minmax(0,1fr); align-items: stretch; }
-.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
-.chart-panel { display: flex; flex-direction: column; min-height: 100%; }
-.panel-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.panel-title { font-size: 15px; font-weight: 700; }
-.filters { display: flex; gap: 6px; flex-wrap: wrap; }
-.fbtn {
-  border: 1px solid var(--line); background: var(--panel-soft); color: var(--text);
-  border-radius: 8px; padding: 6px 10px; font-size: 12px; cursor: pointer;
+.insight-value { font-size: 27px; font-weight: 800; line-height: 1.1; }
+.insight-sub { margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+.main-grid {
+  display: grid;
+  gap: var(--space-3);
+  grid-template-columns: minmax(0,1.72fr) minmax(0,1fr);
+  align-items: stretch;
+  margin-bottom: var(--space-4);
 }
-.fbtn.active { border-color: var(--accent); color: #0F4FD6; background: #E9F1FF; }
-@media (prefers-color-scheme: dark) {
-  .fbtn.active { color: #DCE9FF; background: #1B3358; }
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: var(--shadow-1);
+}
+.chart-panel { display: flex; flex-direction: column; min-height: 100%; }
+.panel-h { display: grid; gap: var(--space-2); margin-bottom: var(--space-2); }
+.panel-title-wrap { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.panel-title { font-size: 16px; font-weight: 800; letter-spacing: .1px; }
+.panel-title small { color: var(--muted); font-size: 12px; font-weight: 600; margin-left: 6px; }
+.panel-help {
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  color: var(--muted);
+  border-radius: 999px;
+  min-width: 22px;
+  min-height: 22px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: help;
+}
+.filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.range-group { display: inline-flex; gap: 6px; padding: 4px; background: var(--panel-soft); border: 1px solid var(--line); border-radius: 10px; }
+.toggle-group { display: inline-flex; align-items: center; gap: 6px; }
+.fbtn {
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 12px;
+  min-height: 36px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.fbtn:hover { border-color: var(--line-strong); }
+.fbtn.active {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.fbtn:focus-visible, .theme-btn:focus-visible, .panel-help:focus-visible, .status-badge:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
 }
 #chart { height: 640px; }
-.chart-caption { margin-top: 8px; color: var(--muted); font-size: 12px; }
+.chart-caption {
+  margin-top: var(--space-2);
+  color: var(--text);
+  background: linear-gradient(180deg, rgba(31,95,224,.07), rgba(31,95,224,.02));
+  border: 1px solid rgba(31,95,224,.28);
+  border-radius: 10px;
+  padding: 10px 11px;
+  font-size: 12px;
+  line-height: 1.55;
+}
+.chart-legend-note {
+  margin-top: var(--space-2);
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-soft);
+}
+.dot-open, .dot-diamond {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+}
+.dot-open { border: 2px solid var(--line-strong); border-radius: 50%; }
+.dot-diamond { transform: rotate(45deg); border: 2px solid var(--line-strong); }
 .rank-wrap { display: grid; gap: 9px; }
 .rank-card {
-  background: var(--panel-soft); border: 1px solid var(--line); border-radius: 10px;
-  padding: 10px; cursor: pointer;
+  background: linear-gradient(180deg, rgba(31,95,224,.035), transparent), var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  padding: 12px;
+  cursor: pointer;
+  min-height: 122px;
 }
 .rank-card.active { border-color: var(--accent); box-shadow: 0 0 0 1px rgba(46,108,246,.28) inset; }
 .rank-card.muted { opacity: .55; }
 .rank-head { display: flex; align-items: center; gap: 8px; }
-.rank-num { font-weight: 700; width: 18px; color: var(--muted); }
+.rank-num { font-weight: 700; width: 20px; color: var(--muted); }
 .party-dot { width: 10px; height: 10px; border-radius: 50%; }
 .rank-party { font-weight: 700; font-size: 14px; }
 .rank-main { margin-top: 4px; display: flex; align-items: baseline; justify-content: space-between; }
 .rank-pred { font-size: 23px; font-weight: 800; letter-spacing: .2px; }
 .rank-pred small { font-size: 12px; color: var(--muted); margin-left: 3px; }
 .rank-delta { font-size: 13px; color: var(--muted); }
-.rank-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
-.rank-band { font-size: 12px; color: #46608B; margin-top: 2px; }
-@media (prefers-color-scheme: dark) {
-  .rank-band { color: #C5D7F6; }
+.rank-sub { font-size: 12px; color: var(--muted); margin-top: 3px; }
+.rank-band { font-size: 12px; color: var(--text); margin-top: 2px; }
+.spark { margin-top: 8px; opacity: 1; }
+.section-title-row { display: flex; align-items: center; justify-content: space-between; margin: 0 0 10px; gap: var(--space-2); }
+.status-badge {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 700;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  padding: 6px 10px;
 }
-.spark { margin-top: 6px; opacity: .9; }
-.news { margin-top: 14px; }
-.news-status { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
+.status-badge.fresh { color: #0A855B; border-color: rgba(14, 159, 110, 0.3); background: rgba(14, 159, 110, 0.12); }
+.status-badge.stale { color: #9B5600; border-color: rgba(199, 119, 0, 0.32); background: rgba(199, 119, 0, 0.14); }
+.status-badge.old { color: #A53535; border-color: rgba(198, 62, 62, 0.32); background: rgba(198, 62, 62, 0.14); }
+.news { margin-top: var(--space-4); }
 .news-grid { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0,1fr)); }
 .news-card {
-  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
-  padding: 10px 11px; text-decoration: none; color: var(--text); display: block; min-height: 92px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 11px;
+  text-decoration: none;
+  color: var(--text);
+  display: block;
+  min-height: 102px;
 }
-.news-card:hover { border-color: #7AA5E8; }
-@media (prefers-color-scheme: dark) {
-  .news-card:hover { border-color: #4F78AD; }
-}
-.news-date { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
-.news-title { font-size: 13px; line-height: 1.45; font-weight: 600; margin-bottom: 6px; }
-.news-source { color: var(--muted); font-size: 12px; }
-.latest-poll { margin-top: 14px; }
+.news-card:hover { border-color: var(--line-strong); }
+.news-date { color: var(--muted); font-size: 12px; margin-bottom: 5px; font-weight: 600; }
+.news-title { font-size: 14px; line-height: 1.42; font-weight: 700; margin-bottom: 7px; }
+.news-source { color: var(--text); font-size: 12px; font-weight: 600; opacity: .82; }
+.latest-poll { margin-top: var(--space-4); }
 .latest-poll-grid { display: grid; gap: 12px; grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); }
 #latest-poll-chart { height: 320px; }
 .latest-poll-list { display: grid; gap: 8px; }
@@ -155,10 +343,10 @@ body {
 .latest-poll-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .latest-poll-pollster { font-size: 14px; font-weight: 700; }
 .latest-poll-date { color: var(--muted); font-size: 12px; }
-.latest-poll-source { color: var(--muted); font-size: 12px; text-decoration: none; }
-.latest-poll-source:hover { text-decoration: underline; }
+.latest-poll-source, td a { color: var(--accent); font-size: 12px; font-weight: 600; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
+.latest-poll-source::after, td a::after { content: " ↗"; font-size: 11px; }
 .latest-poll-values { color: var(--text); font-size: 12px; line-height: 1.6; }
-.poll-compare { margin-top: 14px; }
+.poll-compare { margin-top: var(--space-4); }
 .poll-compare-grid { display: grid; gap: 12px; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); }
 #poll-compare-chart { height: 320px; }
 .poll-compare-list { display: grid; gap: 8px; }
@@ -176,33 +364,139 @@ body {
 details { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 12px 8px; }
 summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
 .method-p { color: var(--muted); line-height: 1.6; font-size: 14px; margin: 6px 0 12px; }
-table { width: 100%; border-collapse: collapse; }
-th, td { border-bottom: 1px solid var(--line); padding: 8px 6px; font-size: 13px; }
-th { color: var(--muted); text-align: left; font-weight: 600; }
+table { width: 100%; border-collapse: separate; border-spacing: 0; }
+th, td { border-bottom: 1px solid var(--line); padding: 10px 8px; font-size: 14px; line-height: 1.5; vertical-align: top; }
+th { color: var(--muted); text-align: left; font-weight: 700; font-size: 13px; }
+tbody tr:nth-child(odd) td { background: rgba(31,95,224,0.03); }
+tbody tr:hover td { background: rgba(31,95,224,0.07); }
 .wbar-wrap { display: inline-block; width: 180px; height: 8px; border-radius: 999px; background: #E4EBF8; margin-right: 8px; vertical-align: middle; }
 .wbar { height: 100%; border-radius: 999px; background: linear-gradient(90deg, #2E6CF6, #76A2FF); }
 .wlabel { color: var(--text); font-size: 12px; }
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  border: 0;
+}
 @media (max-width: 980px) {
-  .insights { grid-template-columns: 1fr; }
+  .top { grid-template-columns: 1fr; }
+  .top-meta { justify-content: flex-start; }
+  .insights { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .insight-card.featured { grid-column: span 1; }
   .main-grid { grid-template-columns: 1fr; }
   .panel { padding: 10px; }
-  .panel-h { flex-direction: column; align-items: flex-start; gap: 8px; }
-  .filters { width: 100%; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+  .panel-h { gap: 8px; }
+  .filters { width: 100%; display: grid; grid-template-columns: 1fr; }
+  .range-group { width: 100%; overflow-x: auto; }
+  .toggle-group { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
   .fbtn { white-space: nowrap; min-height: 34px; }
   #chart { height: 420px; }
   .rank-card { padding: 12px; }
   .rank-pred { font-size: 20px; }
-  .chart-caption { font-size: 11px; line-height: 1.4; }
+  .chart-caption { font-size: 12px; line-height: 1.5; }
   .news-grid { grid-template-columns: 1fr; }
   .latest-poll-grid { grid-template-columns: 1fr; }
   #latest-poll-chart { height: 280px; }
   .poll-compare-grid { grid-template-columns: 1fr; }
   #poll-compare-chart { height: 280px; }
 }
+@media (max-width: 768px) {
+  .insights { grid-template-columns: 1fr; }
+  .title { font-size: 22px; }
+  .stamp { width: 100%; }
+  th, td { font-size: 13px; padding: 9px 7px; }
+  .news-title { font-size: 13px; }
+}
 """.strip()
 
 APP_JS = """
 (function () {
+  const THEME_STORAGE_KEY = "wk_poll_theme_mode";
+
+  function getThemeMode() {
+    const v = localStorage.getItem(THEME_STORAGE_KEY);
+    if (v === "light" || v === "dark" || v === "system") return v;
+    return "system";
+  }
+
+  function applyTheme(mode) {
+    const root = document.documentElement;
+    if (mode === "system") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", mode);
+    }
+    localStorage.setItem(THEME_STORAGE_KEY, mode);
+    document.querySelectorAll(".theme-btn").forEach((btn) => {
+      const active = btn.dataset.theme === mode;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+
+  function initThemeToggle() {
+    const mode = getThemeMode();
+    applyTheme(mode);
+    document.querySelectorAll(".theme-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const next = btn.dataset.theme || "system";
+        applyTheme(next);
+        const chart = document.getElementById("chart");
+        if (chart && window.Plotly && chart.data) {
+          Plotly.react(chart, chart.data, buildLayout(), {
+            displayModeBar: false,
+            responsive: true,
+            scrollZoom: false,
+            doubleClick: false
+          });
+        }
+      });
+    });
+  }
+
+  function daysBetween(a, b) {
+    const ms = b.getTime() - a.getTime();
+    if (!Number.isFinite(ms)) return null;
+    return Math.floor(ms / 86400000);
+  }
+
+  function updateFreshnessBadge() {
+    const badge = document.getElementById("freshness-badge");
+    const stamp = document.getElementById("stamp");
+    if (!badge || !stamp) return;
+    const latestRaw = stamp.dataset.latestDate || "";
+    const updatedRaw = stamp.dataset.updatedAt || "";
+    const latest = latestRaw ? new Date(`${latestRaw}T00:00:00+09:00`) : null;
+    const updated = updatedRaw ? new Date(updatedRaw) : null;
+    if (!latest || Number.isNaN(latest.getTime()) || !updated || Number.isNaN(updated.getTime())) {
+      badge.textContent = "최신성 확인 불가";
+      badge.className = "freshness-badge stale";
+      return;
+    }
+    const diff = daysBetween(latest, updated);
+    if (diff === null) return;
+    if (diff < 0) {
+      badge.className = "freshness-badge old";
+      badge.textContent = `반영일이 갱신시각보다 미래 (${Math.abs(diff)}일)`;
+    } else if (diff <= 3) {
+      badge.className = "freshness-badge fresh";
+      badge.textContent = `데이터 최신성 높음 · ${diff}일 차`;
+    } else if (diff <= 10) {
+      badge.className = "freshness-badge stale";
+      badge.textContent = `데이터 시차 ${diff}일`;
+    } else {
+      badge.className = "freshness-badge old";
+      badge.textContent = `데이터 시차 큼 · ${diff}일`;
+    }
+  }
+
+  initThemeToggle();
+  updateFreshnessBadge();
+
   const dataEl = document.getElementById("poll-data");
   if (!dataEl) return;
   const payload = JSON.parse(dataEl.textContent);
@@ -287,7 +581,11 @@ APP_JS = """
 
   function buildTraces() {
     const out = [];
-    tracesData.forEach((p) => {
+    const dashStyles = ["solid", "dash", "dot", "longdash", "dashdot"];
+    const markerSymbols = ["circle", "square", "triangle-up", "cross", "star"];
+    tracesData.forEach((p, idx) => {
+      const dash = dashStyles[idx % dashStyles.length];
+      const symbol = markerSymbols[idx % markerSymbols.length];
       const band = buildSmoothedBand(p.actual_y);
       out.push({
         x: p.actual_x, y: band.upper, type: "scatter", mode: "lines",
@@ -303,8 +601,8 @@ APP_JS = """
         meta: "band"
       });
       out.push({
-        x: p.actual_x, y: p.actual_y, type: "scatter", mode: "lines", name: p.party,
-        legendgroup: p.party, line: { color: p.color, width: 2.7 },
+        x: p.actual_x, y: p.actual_y, type: "scatter", mode: "lines", name: (p.display_party || p.party),
+        legendgroup: p.party, line: { color: p.color, width: 2.7, dash },
         hovertemplate: "<b>%{fullData.name}</b>: %{y:.2f}%<extra></extra>"
       });
       out.push({
@@ -314,11 +612,11 @@ APP_JS = """
       });
       out.push({
         x: [p.pred_x], y: [p.pred_y], type: "scatter", mode: "markers+text",
-        legendgroup: p.party, showlegend: false,
-        marker: { color: p.color, size: 10, line: { color: "#DDE8FF", width: 1 } },
+        legendgroup: p.party, showlegend: false, meta: (p.display_party || p.party),
+        marker: { color: p.color, size: 10, symbol, line: { color: "#DDE8FF", width: 1 } },
         text: ["예측치"], textposition: "middle right", textfont: { color: p.color, size: 11 },
         customdata: [[p.pred_lo_80, p.pred_hi_80]],
-        hovertemplate: "<b>%{fullData.legendgroup} 예측</b><br>%{y:.2f}%<br>80% 구간: %{customdata[0]:.2f}% ~ %{customdata[1]:.2f}%<extra></extra>"
+        hovertemplate: "<b>%{meta} 예측</b><br>%{y:.2f}%<br>80% 구간: %{customdata[0]:.2f}% ~ %{customdata[1]:.2f}%<extra></extra>"
       });
     });
     if (Array.isArray(latestPollResults) && latestPollResults.length) {
@@ -329,6 +627,7 @@ APP_JS = """
       if (pollDate) {
         parties.forEach((row) => {
           const party = row.party;
+          const displayParty = row.display_party || row.party || "";
           const val = Number(row.value);
           if (!party || !Number.isFinite(val)) return;
           const exists = tracesData.some((t) => t.party === party);
@@ -342,7 +641,7 @@ APP_JS = """
             showlegend: false,
             legendgroup: party,
             marker: { symbol: "diamond", size: 10, color, line: { color: "#DDE8FF", width: 1 } },
-            hovertemplate: `<b>최신 여론조사</b><br>${pollster} (${pollDate})<br>${party}: %{y:.1f}%<extra></extra>`
+            hovertemplate: `<b>최신 여론조사</b><br>${pollster} (${pollDate})<br>${displayParty}: %{y:.1f}%<extra></extra>`
           });
         });
       }
@@ -425,6 +724,9 @@ APP_JS = """
   }
 
   function isDarkMode() {
+    const explicit = document.documentElement.getAttribute("data-theme");
+    if (explicit === "dark") return true;
+    if (explicit === "light") return false;
     return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
   }
 
@@ -595,7 +897,13 @@ APP_JS = """
     });
   }
 
-  function setBtnActive(key) { rangeBtns.forEach((b) => b.classList.toggle("active", b.dataset.range === key)); }
+  function setBtnActive(key) {
+    rangeBtns.forEach((b) => {
+      const active = b.dataset.range === key;
+      b.classList.toggle("active", active);
+      b.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
   function endDate() {
     let d = null;
     tracesData.forEach((p) => {
@@ -611,6 +919,10 @@ APP_JS = """
   }
 
   rangeBtns.forEach((btn) => {
+    if (btn.dataset.range !== "reset") {
+      btn.setAttribute("role", "button");
+      btn.setAttribute("aria-pressed", btn.classList.contains("active") ? "true" : "false");
+    }
     btn.addEventListener("click", () => {
       const key = btn.dataset.range;
       if (key === "reset") {
@@ -631,10 +943,12 @@ APP_JS = """
   });
 
   if (bandBtn) {
+    bandBtn.setAttribute("aria-pressed", "true");
     bandBtn.addEventListener("click", () => {
       showBands = !showBands;
       bandBtn.classList.toggle("active", showBands);
       bandBtn.textContent = showBands ? "오차 밴드 ON" : "오차 밴드 OFF";
+      bandBtn.setAttribute("aria-pressed", showBands ? "true" : "false");
       applyPartyVisibility();
     });
   }
@@ -929,9 +1243,15 @@ APP_JS = """
     const grid = document.getElementById("news-grid");
     const status = document.getElementById("news-status");
     if (!grid) return;
+    function setStatus(text, tone) {
+      if (!status) return;
+      status.textContent = text;
+      status.classList.remove("fresh", "stale", "old");
+      if (tone) status.classList.add(tone);
+    }
 
     const phrase = "중앙선거여론조사심의위원회";
-    if (status) status.textContent = "기사 목록 불러오는 중...";
+    setStatus("기사 목록 불러오는 중...", "stale");
 
     // Primary: same-origin static JSON generated at build time.
     try {
@@ -949,11 +1269,11 @@ APP_JS = """
               <div class="news-source">${esc(r.source || "출처")}</div>
             </a>
           `).join("");
-          if (status) status.textContent = `자동 갱신 완료 (${Math.min(sorted.length, 6)}건)`;
+          setStatus(`자동 갱신 완료 (${Math.min(sorted.length, 6)}건)`, "fresh");
           return;
         }
         if (Array.isArray(rows) && rows.length === 0) {
-          if (status) status.textContent = "조건에 맞는 최신 기사 없음";
+          setStatus("조건에 맞는 최신 기사 없음", "stale");
           return;
         }
       }
@@ -961,7 +1281,7 @@ APP_JS = """
 
     const debugProxy = new URLSearchParams(window.location.search).get("newsProxy") === "1";
     if (!debugProxy) {
-      if (status) status.textContent = "빌드 시점 수집 데이터 표시 중";
+      setStatus("빌드 시점 수집 데이터 표시 중", "stale");
       return;
     }
 
@@ -973,19 +1293,19 @@ APP_JS = """
     let xmlText = await fetchViaCandidates(rssStrict);
     if (!xmlText) xmlText = await fetchViaCandidates(rssBroad);
     if (!xmlText) {
-      if (status) status.textContent = "디버그 프록시 로딩 실패(정적 데이터 유지)";
+      setStatus("디버그 프록시 로딩 실패(정적 데이터 유지)", "old");
       return;
     }
     const rows = parseRss(xmlText).filter((r) => stripHtml(r.title + " " + r.desc).includes(phrase)).slice(0, 6);
     if (!rows.length) {
-      if (status) status.textContent = "디버그 프록시 결과 없음(정적 데이터 유지)";
+      setStatus("디버그 프록시 결과 없음(정적 데이터 유지)", "old");
       return;
     }
     grid.innerHTML = rows.map((r) => {
       const d = r.date && !Number.isNaN(r.date.getTime()) ? formatRelative(r.date) : "";
       return `<a class="news-card" href="${esc(r.link)}" target="_blank" rel="noopener noreferrer"><div class="news-date">${esc(d)}</div><div class="news-title">${esc(r.title)}</div><div class="news-source">${esc(r.source)}</div></a>`;
     }).join("");
-    if (status) status.textContent = `디버그 프록시 갱신 (${rows.length}건)`;
+    setStatus(`디버그 프록시 갱신 (${rows.length}건)`, "fresh");
   }
 
   fetchRecentPollNews();
@@ -1002,6 +1322,16 @@ def canonical_party_name(name: str) -> str:
             if s == a:
                 return canonical
     return s
+
+
+def party_display_name(party: str, as_of_kst: datetime | None = None) -> str:
+    p = canonical_party_name(party)
+    if p != "국민의힘":
+        return p
+    ts = as_of_kst or datetime.now(tz=ZoneInfo("Asia/Seoul"))
+    if ts < RENAME_EFFECTIVE_KST:
+        return f"국민의힘 / {NEW_PPP_NAME_PLACEHOLDER}"
+    return NEW_PPP_NAME_PLACEHOLDER
 
 
 def load_blended(outputs: Path) -> pd.DataFrame:
@@ -1495,6 +1825,21 @@ def load_president_approval_table_rows(outputs: Path, max_rows: int = 24) -> lis
 def sparkline_svg(values: list[float], color: str) -> str:
     if not values:
         return ""
+    def darken_hex(hex_color: str, ratio: float = 0.18) -> str:
+        s = str(hex_color or "").strip().lstrip("#")
+        if len(s) != 6:
+            return "#385887"
+        try:
+            r = int(s[0:2], 16)
+            g = int(s[2:4], 16)
+            b = int(s[4:6], 16)
+        except ValueError:
+            return "#385887"
+        r = max(0, min(255, int(r * (1.0 - ratio))))
+        g = max(0, min(255, int(g * (1.0 - ratio))))
+        b = max(0, min(255, int(b * (1.0 - ratio))))
+        return f"#{r:02X}{g:02X}{b:02X}"
+
     w, h = 130, 28
     mn, mx = min(values), max(values)
     if mx - mn < 1e-9:
@@ -1505,14 +1850,17 @@ def sparkline_svg(values: list[float], color: str) -> str:
         y = h - ((v - mn) / (mx - mn)) * h
         pts.append(f"{x:.2f},{y:.2f}")
     poly = " ".join(pts)
+    stroke = darken_hex(color)
     return (
         f"<svg viewBox='0 0 {w} {h}' width='{w}' height='{h}' aria-hidden='true'>"
-        f"<polyline fill='none' stroke='{color}' stroke-width='2' points='{poly}' />"
+        f"<polyline fill='none' stroke='{stroke}' stroke-width='2.4' stroke-linecap='round' points='{poly}' />"
         "</svg>"
     )
 
 
-def build_party_payload(blended: pd.DataFrame, forecast: pd.DataFrame) -> tuple[list[dict], list[dict]]:
+def build_party_payload(
+    blended: pd.DataFrame, forecast: pd.DataFrame, as_of_kst: datetime | None = None
+) -> tuple[list[dict], list[dict]]:
     df = blended.copy()
     df["date_end"] = pd.to_datetime(df["date_end"])
     df = df.sort_values("date_end")
@@ -1555,6 +1903,7 @@ def build_party_payload(blended: pd.DataFrame, forecast: pd.DataFrame) -> tuple[
         traces.append(
             {
                 "party": party,
+                "display_party": party_display_name(party, as_of_kst),
                 "color": color,
                 "actual_x": [d.strftime("%Y-%m-%d") for d in valid["x"]],
                 "actual_y": [float(v) for v in valid["y"]],
@@ -1569,6 +1918,7 @@ def build_party_payload(blended: pd.DataFrame, forecast: pd.DataFrame) -> tuple[
         ranking_rows.append(
             {
                 "party": party,
+                "display_party": party_display_name(party, as_of_kst),
                 "color": color,
                 "pred": pred,
                 "rmse": rmse,
@@ -1612,7 +1962,14 @@ def load_latest_poll_results(outputs: Path, max_rows: int = 6) -> list[dict]:
                 continue
             v = pd.to_numeric(r.get(c), errors="coerce")
             if pd.notna(v):
-                party_rows.append({"party": canonical_party_name(str(c)), "value": float(v)})
+                canonical = canonical_party_name(str(c))
+                party_rows.append(
+                    {
+                        "party": canonical,
+                        "display_party": party_display_name(canonical),
+                        "value": float(v),
+                    }
+                )
         party_rows = sorted(party_rows, key=lambda x: x["value"], reverse=True)
         rows.append(
             {
@@ -1645,12 +2002,19 @@ def render_html(
     if len(ranking_rows) >= 2:
         lead = ranking_rows[0]
         second = ranking_rows[1]
-        cards.append({"label": "1위 정당 / 격차", "value": f"{lead['party']}", "sub": f"{(lead['pred'] - second['pred']):.2f}%p"})
+        cards.append(
+            {
+                "label": "1위 정당 / 격차",
+                "value": f"{lead.get('display_party', lead['party'])}",
+                "sub": f"{(lead['pred'] - second['pred']):.2f}%p",
+                "featured": True,
+            }
+        )
     swing = sum(abs(float(r["delta"])) for r in ranking_rows) / len(ranking_rows) if ranking_rows else 0.0
-    cards.append({"label": "이번주 평균 변동폭", "value": f"{swing:.2f}%p", "sub": "예측치-직전실측"})
+    cards.append({"label": "이번주 평균 변동폭", "value": f"{swing:.2f}%p", "sub": "예측치-직전실측", "featured": True})
     rmse_vals = [r["rmse"] for r in ranking_rows if r["rmse"] is not None]
     rmse_avg = sum(rmse_vals) / len(rmse_vals) if rmse_vals else 0.0
-    cards.append({"label": "예측 오차(RMSE)", "value": f"{rmse_avg:.2f}", "sub": "정당 평균"})
+    cards.append({"label": "평균 예측 오차 (RMSE)", "value": f"{rmse_avg:.2f}", "sub": "정당 평균", "featured": True})
     if president_overall:
         approve = president_overall.get("approve")
         delta = president_overall.get("approve_delta")
@@ -1660,15 +2024,16 @@ def render_html(
             else:
                 sign = "+" if float(delta) >= 0 else ""
                 sub = f"전주 대비 {sign}{float(delta):.2f}%p (주차 {president_overall.get('week_monday', '-')})"
-            cards.append({"label": "대통령 국정수행 긍정", "value": f"{float(approve):.2f}%", "sub": sub})
+            cards.append({"label": "대통령 국정수행 긍정", "value": f"{float(approve):.2f}%", "sub": sub, "featured": False})
     else:
-        cards.append({"label": "대통령 국정수행 긍정", "value": "-", "sub": "집계 데이터 없음"})
+        cards.append({"label": "대통령 국정수행 긍정", "value": "-", "sub": "집계 데이터 없음", "featured": False})
     if backtest_overall.get("improvement_pct") is not None:
         cards.append(
             {
                 "label": "백테스트 MAE 개선",
                 "value": f"{float(backtest_overall['improvement_pct']):+.1f}%",
                 "sub": "legacy 대비 ssm",
+                "featured": False,
             }
         )
     if backtest_overall.get("improvement_exog_pct") is not None:
@@ -1677,12 +2042,13 @@ def render_html(
                 "label": "외생변수 MAE 개선",
                 "value": f"{float(backtest_overall['improvement_exog_pct']):+.1f}%",
                 "sub": "ssm 대비 ssm_exog",
+                "featured": False,
             }
         )
 
     cards_html = "".join(
         f"""
-        <article class=\"insight-card\">
+        <article class=\"insight-card {'featured' if c.get('featured') else ''}\">
           <div class=\"insight-label\">{c['label']}</div>
           <div class=\"insight-value\">{c['value']}</div>
           <div class=\"insight-sub\">{c['sub']}</div>
@@ -1707,7 +2073,7 @@ def render_html(
               <div class=\"rank-head\">
                 <div class=\"rank-num\">{i}.</div>
                 <div class=\"party-dot\" style=\"background:{r['color']}\"></div>
-                <div class=\"rank-party\">{r['party']}</div>
+                <div class=\"rank-party\">{r.get('display_party', r['party'])}</div>
               </div>
               <div class=\"rank-main\">
                 <span class=\"rank-pred\">{r['pred']:.2f}<small>%</small></span>
@@ -1820,7 +2186,15 @@ def render_html(
   <div class=\"wrap\">
     <header class=\"top\">
       <div class=\"brand\"><div class=\"logo\" aria-hidden=\"true\"></div><div class=\"title\">Weekly Korean Poll Tracker</div></div>
-      <div class=\"stamp\">최근 조사 반영일 {latest_date} | 페이지 갱신 {now_kst}</div>
+      <div class=\"top-meta\">
+        <div id=\"freshness-badge\" class=\"freshness-badge stale\" aria-live=\"polite\">최신성 계산 중...</div>
+        <div class=\"theme-toggle\" role=\"group\" aria-label=\"테마 선택\">
+          <button class=\"theme-btn\" type=\"button\" data-theme=\"light\" aria-pressed=\"false\">라이트</button>
+          <button class=\"theme-btn\" type=\"button\" data-theme=\"dark\" aria-pressed=\"false\">다크</button>
+          <button class=\"theme-btn\" type=\"button\" data-theme=\"system\" aria-pressed=\"false\">시스템</button>
+        </div>
+        <div id=\"stamp\" class=\"stamp\" data-latest-date=\"{latest_date}\" data-updated-at=\"{datetime.now(tz=ZoneInfo('Asia/Seoul')).isoformat()}\">최근 조사 반영일 {latest_date} | 페이지 갱신 {now_kst}</div>
+      </div>
     </header>
 
     <section class=\"insights\">{cards_html}</section>
@@ -1828,24 +2202,36 @@ def render_html(
     <section class=\"main-grid\">
       <article class=\"panel chart-panel\">
         <div class=\"panel-h\">
-          <div class=\"panel-title\">정당 지지율 추세 + 다음주 예측치</div>
+          <div class=\"panel-title-wrap\">
+            <div class=\"panel-title\">정당 지지율 추세 + 다음주 예측치 <small>Party Trend & Next-Week Forecast</small></div>
+            <button class=\"panel-help\" type=\"button\" title=\"실선은 최근 추세, 점선은 다음주 예측, 다이아는 최신 실측값입니다.\" aria-label=\"차트 도움말\">i</button>
+          </div>
           <div class=\"filters\">
-            <button class=\"fbtn active\" data-range=\"3m\">3M</button>
-            <button class=\"fbtn\" data-range=\"6m\">6M</button>
-            <button class=\"fbtn\" data-range=\"1y\">1Y</button>
-            <button class=\"fbtn\" data-range=\"all\">All</button>
-            <button class=\"fbtn active\" id=\"toggle-band\">오차 밴드 ON</button>
-            <button class=\"fbtn\" data-range=\"reset\">정당 강조 해제</button>
+            <div class=\"range-group\" role=\"group\" aria-label=\"시간 범위\">
+              <button class=\"fbtn active\" data-range=\"3m\" aria-pressed=\"true\">3M</button>
+              <button class=\"fbtn\" data-range=\"6m\" aria-pressed=\"false\">6M</button>
+              <button class=\"fbtn\" data-range=\"1y\" aria-pressed=\"false\">1Y</button>
+              <button class=\"fbtn\" data-range=\"all\" aria-pressed=\"false\">All</button>
+            </div>
+            <div class=\"toggle-group\" role=\"group\" aria-label=\"보조 컨트롤\">
+              <button class=\"fbtn active\" id=\"toggle-band\" type=\"button\" aria-pressed=\"true\">오차 밴드 ON</button>
+              <button class=\"fbtn\" data-range=\"reset\" type=\"button\">정당 강조 해제</button>
+            </div>
           </div>
         </div>
         <div id=\"chart\"></div>
-        <div class=\"chart-caption\">각 선에는 스무딩 중심선 + 적응형 오차폭 기반 반투명 밴드가 오버레이됩니다(기준 오차폭 약 ±3%). 대통령 긍정/부정은 계산되지 않은 raw값입니다.</div>
+        <div class=\"chart-legend-note\">
+          <span class=\"legend-chip\"><span class=\"dot-open\" aria-hidden=\"true\"></span>예측치(빈 원)</span>
+          <span class=\"legend-chip\"><span class=\"dot-diamond\" aria-hidden=\"true\"></span>최신 조사(다이아)</span>
+          <span class=\"legend-chip\">색상 + 도형으로 구분 (색맹친화 보강)</span>
+        </div>
+        <div class=\"chart-caption\"><strong>해석 안내:</strong> 각 선에는 스무딩 중심선과 적응형 오차폭 기반 반투명 밴드가 함께 표시됩니다(기준 오차폭 약 ±3%). 대통령 긍정/부정은 보정되지 않은 raw 값입니다.</div>
       </article>
-      <aside class=\"panel\"><div class=\"panel-title\" style=\"margin-bottom:8px;\">예측 랭킹</div><div class=\"rank-wrap\">{''.join(ranking_html)}</div></aside>
+      <aside class=\"panel\"><div class=\"panel-title\" style=\"margin-bottom:8px;\">예측 랭킹 <small>Forecast Ranking</small></div><div class=\"rank-wrap\">{''.join(ranking_html)}</div></aside>
     </section>
 
     <section id=\"latest-poll-section\" class=\"latest-poll\">
-      <div class=\"panel-title\" style=\"margin: 0 0 8px;\">최신 여론조사 결과</div>
+      <div class=\"panel-title\" style=\"margin: 0 0 8px;\">최신 여론조사 결과 <small>Latest Poll Snapshot</small></div>
       <div class=\"latest-poll-grid\">
         <article class=\"panel\"><div id=\"latest-poll-chart\"></div></article>
         <article class=\"panel\"><div id=\"latest-poll-list\" class=\"latest-poll-list\"></div></article>
@@ -1853,17 +2239,23 @@ def render_html(
     </section>
 
     <section id=\"poll-compare-section\" class=\"poll-compare\">
-      <div class=\"panel-title\" style=\"margin: 0 0 8px;\">예측치 대비 최신 여론조사 차이</div>
+      <div class=\"panel-title\" style=\"margin: 0 0 8px;\">예측치 대비 최신 여론조사 차이 <small>Forecast vs Latest Poll</small></div>
       <div class=\"poll-compare-grid\">
         <article class=\"panel\"><div id=\"poll-compare-chart\"></div></article>
         <article class=\"panel\"><div id=\"poll-compare-list\" class=\"poll-compare-list\"></div></article>
       </div>
     </section>
 
-    <section class=\"news\"><div class=\"panel-title\" style=\"margin: 0 0 8px;\">최근 여론조사 기사 링크</div><div id=\"news-status\" class=\"news-status\">대기 중...</div><div id=\"news-grid\" class=\"news-grid\">{''.join(article_cards)}</div></section>
+    <section class=\"news\">
+      <div class=\"section-title-row\">
+        <div class=\"panel-title\" style=\"margin: 0;\">최근 여론조사 기사 링크 <small>Recent Coverage</small></div>
+        <div id=\"news-status\" class=\"status-badge stale\" aria-live=\"polite\">대기 중...</div>
+      </div>
+      <div id=\"news-grid\" class=\"news-grid\">{''.join(article_cards)}</div>
+    </section>
 
     <section class=\"panel\" style=\"margin-top:14px;\">
-      <div class=\"panel-title\" style=\"margin-bottom:8px;\">대통령 국정수행 주간 표</div>
+      <div class=\"panel-title\" style=\"margin-bottom:8px;\">대통령 국정수행 주간 표 <small>Weekly Presidential Approval Table</small></div>
       <table>
         <thead>
           <tr><th>조사기간(주차)</th><th>긍정(%)</th><th>부정(%)</th><th>조사기관</th><th>출처</th></tr>
@@ -1928,7 +2320,9 @@ def main():
     president_raw_series = load_president_approval_raw_series(outputs)
     president_table_rows = load_president_approval_table_rows(outputs)
     latest_poll_results = load_latest_poll_results(outputs)
-    traces, ranking_rows = build_party_payload(blended, forecast)
+    traces, ranking_rows = build_party_payload(
+        blended, forecast, as_of_kst=datetime.now(tz=ZoneInfo("Asia/Seoul"))
+    )
 
     latest_date = str(pd.to_datetime(blended["date_end"]).max().date())
     render_html(

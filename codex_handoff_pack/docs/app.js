@@ -1,4 +1,86 @@
 (function () {
+  const THEME_STORAGE_KEY = "wk_poll_theme_mode";
+
+  function getThemeMode() {
+    const v = localStorage.getItem(THEME_STORAGE_KEY);
+    if (v === "light" || v === "dark" || v === "system") return v;
+    return "system";
+  }
+
+  function applyTheme(mode) {
+    const root = document.documentElement;
+    if (mode === "system") {
+      root.removeAttribute("data-theme");
+    } else {
+      root.setAttribute("data-theme", mode);
+    }
+    localStorage.setItem(THEME_STORAGE_KEY, mode);
+    document.querySelectorAll(".theme-btn").forEach((btn) => {
+      const active = btn.dataset.theme === mode;
+      btn.classList.toggle("active", active);
+      btn.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
+
+  function initThemeToggle() {
+    const mode = getThemeMode();
+    applyTheme(mode);
+    document.querySelectorAll(".theme-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const next = btn.dataset.theme || "system";
+        applyTheme(next);
+        const chart = document.getElementById("chart");
+        if (chart && window.Plotly && chart.data) {
+          Plotly.react(chart, chart.data, buildLayout(), {
+            displayModeBar: false,
+            responsive: true,
+            scrollZoom: false,
+            doubleClick: false
+          });
+        }
+      });
+    });
+  }
+
+  function daysBetween(a, b) {
+    const ms = b.getTime() - a.getTime();
+    if (!Number.isFinite(ms)) return null;
+    return Math.floor(ms / 86400000);
+  }
+
+  function updateFreshnessBadge() {
+    const badge = document.getElementById("freshness-badge");
+    const stamp = document.getElementById("stamp");
+    if (!badge || !stamp) return;
+    const latestRaw = stamp.dataset.latestDate || "";
+    const updatedRaw = stamp.dataset.updatedAt || "";
+    const latest = latestRaw ? new Date(`${latestRaw}T00:00:00+09:00`) : null;
+    const updated = updatedRaw ? new Date(updatedRaw) : null;
+    if (!latest || Number.isNaN(latest.getTime()) || !updated || Number.isNaN(updated.getTime())) {
+      badge.textContent = "최신성 확인 불가";
+      badge.className = "freshness-badge stale";
+      return;
+    }
+    const diff = daysBetween(latest, updated);
+    if (diff === null) return;
+    if (diff < 0) {
+      badge.className = "freshness-badge old";
+      badge.textContent = `반영일이 갱신시각보다 미래 (${Math.abs(diff)}일)`;
+    } else if (diff <= 3) {
+      badge.className = "freshness-badge fresh";
+      badge.textContent = `데이터 최신성 높음 · ${diff}일 차`;
+    } else if (diff <= 10) {
+      badge.className = "freshness-badge stale";
+      badge.textContent = `데이터 시차 ${diff}일`;
+    } else {
+      badge.className = "freshness-badge old";
+      badge.textContent = `데이터 시차 큼 · ${diff}일`;
+    }
+  }
+
+  initThemeToggle();
+  updateFreshnessBadge();
+
   const dataEl = document.getElementById("poll-data");
   if (!dataEl) return;
   const payload = JSON.parse(dataEl.textContent);
@@ -83,7 +165,11 @@
 
   function buildTraces() {
     const out = [];
-    tracesData.forEach((p) => {
+    const dashStyles = ["solid", "dash", "dot", "longdash", "dashdot"];
+    const markerSymbols = ["circle", "square", "triangle-up", "cross", "star"];
+    tracesData.forEach((p, idx) => {
+      const dash = dashStyles[idx % dashStyles.length];
+      const symbol = markerSymbols[idx % markerSymbols.length];
       const band = buildSmoothedBand(p.actual_y);
       out.push({
         x: p.actual_x, y: band.upper, type: "scatter", mode: "lines",
@@ -100,7 +186,7 @@
       });
       out.push({
         x: p.actual_x, y: p.actual_y, type: "scatter", mode: "lines", name: p.party,
-        legendgroup: p.party, line: { color: p.color, width: 2.7 },
+        legendgroup: p.party, line: { color: p.color, width: 2.7, dash },
         hovertemplate: "<b>%{fullData.name}</b>: %{y:.2f}%<extra></extra>"
       });
       out.push({
@@ -111,7 +197,7 @@
       out.push({
         x: [p.pred_x], y: [p.pred_y], type: "scatter", mode: "markers+text",
         legendgroup: p.party, showlegend: false,
-        marker: { color: p.color, size: 10, line: { color: "#DDE8FF", width: 1 } },
+        marker: { color: p.color, size: 10, symbol, line: { color: "#DDE8FF", width: 1 } },
         text: ["예측치"], textposition: "middle right", textfont: { color: p.color, size: 11 },
         customdata: [[p.pred_lo_80, p.pred_hi_80]],
         hovertemplate: "<b>%{fullData.legendgroup} 예측</b><br>%{y:.2f}%<br>80% 구간: %{customdata[0]:.2f}% ~ %{customdata[1]:.2f}%<extra></extra>"
@@ -221,6 +307,9 @@
   }
 
   function isDarkMode() {
+    const explicit = document.documentElement.getAttribute("data-theme");
+    if (explicit === "dark") return true;
+    if (explicit === "light") return false;
     return window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches;
   }
 
@@ -391,7 +480,13 @@
     });
   }
 
-  function setBtnActive(key) { rangeBtns.forEach((b) => b.classList.toggle("active", b.dataset.range === key)); }
+  function setBtnActive(key) {
+    rangeBtns.forEach((b) => {
+      const active = b.dataset.range === key;
+      b.classList.toggle("active", active);
+      b.setAttribute("aria-pressed", active ? "true" : "false");
+    });
+  }
   function endDate() {
     let d = null;
     tracesData.forEach((p) => {
@@ -407,6 +502,10 @@
   }
 
   rangeBtns.forEach((btn) => {
+    if (btn.dataset.range !== "reset") {
+      btn.setAttribute("role", "button");
+      btn.setAttribute("aria-pressed", btn.classList.contains("active") ? "true" : "false");
+    }
     btn.addEventListener("click", () => {
       const key = btn.dataset.range;
       if (key === "reset") {
@@ -427,10 +526,12 @@
   });
 
   if (bandBtn) {
+    bandBtn.setAttribute("aria-pressed", "true");
     bandBtn.addEventListener("click", () => {
       showBands = !showBands;
       bandBtn.classList.toggle("active", showBands);
       bandBtn.textContent = showBands ? "오차 밴드 ON" : "오차 밴드 OFF";
+      bandBtn.setAttribute("aria-pressed", showBands ? "true" : "false");
       applyPartyVisibility();
     });
   }
@@ -725,9 +826,15 @@
     const grid = document.getElementById("news-grid");
     const status = document.getElementById("news-status");
     if (!grid) return;
+    function setStatus(text, tone) {
+      if (!status) return;
+      status.textContent = text;
+      status.classList.remove("fresh", "stale", "old");
+      if (tone) status.classList.add(tone);
+    }
 
     const phrase = "중앙선거여론조사심의위원회";
-    if (status) status.textContent = "기사 목록 불러오는 중...";
+    setStatus("기사 목록 불러오는 중...", "stale");
 
     // Primary: same-origin static JSON generated at build time.
     try {
@@ -745,11 +852,11 @@
               <div class="news-source">${esc(r.source || "출처")}</div>
             </a>
           `).join("");
-          if (status) status.textContent = `자동 갱신 완료 (${Math.min(sorted.length, 6)}건)`;
+          setStatus(`자동 갱신 완료 (${Math.min(sorted.length, 6)}건)`, "fresh");
           return;
         }
         if (Array.isArray(rows) && rows.length === 0) {
-          if (status) status.textContent = "조건에 맞는 최신 기사 없음";
+          setStatus("조건에 맞는 최신 기사 없음", "stale");
           return;
         }
       }
@@ -757,7 +864,7 @@
 
     const debugProxy = new URLSearchParams(window.location.search).get("newsProxy") === "1";
     if (!debugProxy) {
-      if (status) status.textContent = "빌드 시점 수집 데이터 표시 중";
+      setStatus("빌드 시점 수집 데이터 표시 중", "stale");
       return;
     }
 
@@ -769,19 +876,19 @@
     let xmlText = await fetchViaCandidates(rssStrict);
     if (!xmlText) xmlText = await fetchViaCandidates(rssBroad);
     if (!xmlText) {
-      if (status) status.textContent = "디버그 프록시 로딩 실패(정적 데이터 유지)";
+      setStatus("디버그 프록시 로딩 실패(정적 데이터 유지)", "old");
       return;
     }
     const rows = parseRss(xmlText).filter((r) => stripHtml(r.title + " " + r.desc).includes(phrase)).slice(0, 6);
     if (!rows.length) {
-      if (status) status.textContent = "디버그 프록시 결과 없음(정적 데이터 유지)";
+      setStatus("디버그 프록시 결과 없음(정적 데이터 유지)", "old");
       return;
     }
     grid.innerHTML = rows.map((r) => {
       const d = r.date && !Number.isNaN(r.date.getTime()) ? formatRelative(r.date) : "";
       return `<a class="news-card" href="${esc(r.link)}" target="_blank" rel="noopener noreferrer"><div class="news-date">${esc(d)}</div><div class="news-title">${esc(r.title)}</div><div class="news-source">${esc(r.source)}</div></a>`;
     }).join("");
-    if (status) status.textContent = `디버그 프록시 갱신 (${rows.length}건)`;
+    setStatus(`디버그 프록시 갱신 (${rows.length}건)`, "fresh");
   }
 
   fetchRecentPollNews();
