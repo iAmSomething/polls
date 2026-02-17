@@ -246,44 +246,40 @@
     };
   }
 
-  function getGlobalDateRange() {
-    const dates = [];
+  function getIntroRange() {
+    let end = null;
     tracesData.forEach((p) => {
-      ["actual_x", "forecast_x"].forEach((k) => {
-        (p[k] || []).forEach((x) => {
-          const d = new Date(x);
-          if (!Number.isNaN(d.getTime())) dates.push(d);
-        });
-      });
       if (p.pred_x) {
         const d = new Date(p.pred_x);
-        if (!Number.isNaN(d.getTime())) dates.push(d);
+        if (!Number.isNaN(d.getTime()) && (!end || d > end)) end = d;
       }
     });
-    (presidentRaw.x || []).forEach((x) => {
-      const d = new Date(x);
-      if (!Number.isNaN(d.getTime())) dates.push(d);
-    });
-    if (!dates.length) return null;
-    dates.sort((a, b) => a - b);
-    return { start: dates[0], end: dates[dates.length - 1] };
+    if (!end) return null;
+    const start = new Date(end);
+    start.setMonth(start.getMonth() - 3);
+    const introEnd = new Date(start);
+    introEnd.setDate(introEnd.getDate() + 14);
+    if (introEnd >= end) return { start, introEnd: new Date(end), end };
+    return { start, introEnd, end };
   }
 
   function animateSeriesRevealOnce() {
     if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const range = getGlobalDateRange();
+    const range = getIntroRange();
     if (!range) return;
     const startMs = range.start.getTime();
+    const introMs = range.introEnd.getTime();
     const endMs = range.end.getTime();
-    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || startMs >= endMs) return;
+    if (!Number.isFinite(startMs) || !Number.isFinite(introMs) || !Number.isFinite(endMs)) return;
+    if (startMs >= introMs || introMs > endMs) return;
 
-    Plotly.relayout(chartDiv, { "xaxis.range": [range.start, range.start] }).then(() => {
+    Plotly.relayout(chartDiv, { "xaxis.range": [range.start, range.introEnd] }).then(() => {
       Plotly.animate(
         chartDiv,
         { layout: { "xaxis.range": [range.start, range.end] } },
         {
-          transition: { duration: 1200, easing: "cubic-in-out" },
-          frame: { duration: 1200, redraw: false },
+          transition: { duration: 950, easing: "cubic-in-out" },
+          frame: { duration: 950, redraw: false },
           mode: "immediate"
         }
       );
