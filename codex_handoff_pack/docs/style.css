@@ -459,6 +459,7 @@ tbody tr:last-child td { border-bottom: none; }
   min-height: 110px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
 }
+.news-card + .news-card { border-top: 1px solid rgba(255, 255, 255, 0.08); }
 .news-card:hover { border-color: var(--line-strong); background: linear-gradient(180deg, rgba(var(--accent-1), .14), rgba(var(--accent-2), .08)); }
 .news-date { color: rgb(var(--muted)); font-size: var(--fs-0); margin-bottom: 5px; font-weight: 600; }
 .news-title { font-size: var(--fs-1); line-height: 1.42; font-weight: 700; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed rgba(255, 255, 255, 0.2); }
@@ -480,6 +481,7 @@ tbody tr:last-child td { border-bottom: none; }
   gap: 8px;
   margin-bottom: 6px;
 }
+.latest-poll-source { display: inline-block; margin-top: 6px; }
 .latest-poll-pollster, .poll-compare-party { font-size: var(--fs-1); font-weight: 700; }
 .latest-poll-date, .poll-compare-meta { color: rgb(var(--muted)); font-size: var(--fs-0); }
 .latest-poll-values { color: rgb(var(--text)); font-size: var(--fs-0); line-height: 1.6; }
