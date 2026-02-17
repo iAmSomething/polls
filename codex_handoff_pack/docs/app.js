@@ -273,7 +273,7 @@
         orientation: "h",
         x: 0,
         xanchor: "left",
-        y: 1.02,
+        y: 1.08,
         yanchor: "bottom"
       }
     };
@@ -501,8 +501,9 @@
           labels,
           values,
           hole: 0.42,
+          showlegend: false,
           sort: false,
-          textinfo: "label+percent",
+          textinfo: "label",
           marker: { colors, line: { color: dark ? "#1B2638" : "#FFFFFF", width: 1 } },
           hovertemplate: "<b>%{label}</b>: %{value:.1f}%<extra></extra>",
         }
@@ -510,7 +511,7 @@
       {
         paper_bgcolor: "rgba(0,0,0,0)",
         plot_bgcolor: dark ? "#152338" : "#F8FAFD",
-        margin: { l: 20, r: 20, t: 36, b: 20 },
+        margin: { l: 20, r: 20, t: 52, b: 20 },
         font: { color: dark ? "#EAF0FA" : "#1A2332", family: "Inter, Pretendard, sans-serif" },
         title: {
           text: `${top.pollster || "최신 조사"} · ${top.date_end || ""}`,
@@ -518,7 +519,6 @@
           xanchor: "left",
           font: { size: 13 }
         },
-        legend: { orientation: "h", x: 0, y: -0.08 },
       },
       { displayModeBar: false, responsive: true }
     );
