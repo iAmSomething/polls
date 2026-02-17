@@ -416,8 +416,52 @@ APP_JS = """
     };
   }
 
+  function getGlobalDateRange() {
+    const dates = [];
+    tracesData.forEach((p) => {
+      ["actual_x", "forecast_x"].forEach((k) => {
+        (p[k] || []).forEach((x) => {
+          const d = new Date(x);
+          if (!Number.isNaN(d.getTime())) dates.push(d);
+        });
+      });
+      if (p.pred_x) {
+        const d = new Date(p.pred_x);
+        if (!Number.isNaN(d.getTime())) dates.push(d);
+      }
+    });
+    (presidentRaw.x || []).forEach((x) => {
+      const d = new Date(x);
+      if (!Number.isNaN(d.getTime())) dates.push(d);
+    });
+    if (!dates.length) return null;
+    dates.sort((a, b) => a - b);
+    return { start: dates[0], end: dates[dates.length - 1] };
+  }
+
+  function animateSeriesRevealOnce() {
+    if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    const range = getGlobalDateRange();
+    if (!range) return;
+    const startMs = range.start.getTime();
+    const endMs = range.end.getTime();
+    if (!Number.isFinite(startMs) || !Number.isFinite(endMs) || startMs >= endMs) return;
+
+    Plotly.relayout(chartDiv, { "xaxis.range": [range.start, range.start] }).then(() => {
+      Plotly.animate(
+        chartDiv,
+        { layout: { "xaxis.range": [range.start, range.end] } },
+        {
+          transition: { duration: 1200, easing: "cubic-in-out" },
+          frame: { duration: 1200, redraw: false },
+          mode: "immediate"
+        }
+      );
+    });
+  }
+
   function renderChart() {
-    Plotly.react(chartDiv, buildTraces(), buildLayout(), {
+    return Plotly.react(chartDiv, buildTraces(), buildLayout(), {
       displayModeBar: false,
       responsive: true,
       scrollZoom: false,
@@ -438,7 +482,22 @@ APP_JS = """
 
   function renderAndSync() {
     syncChartHeightToRanking();
-    renderChart();
+    const shouldAnimate = !chartDiv.dataset.animated;
+    const renderPromise = renderChart();
+    if (renderPromise && typeof renderPromise.then === "function") {
+      renderPromise.then(() => {
+        if (shouldAnimate) {
+          animateSeriesRevealOnce();
+          chartDiv.dataset.animated = "1";
+        }
+        Plotly.Plots.resize(chartDiv);
+      });
+      return;
+    }
+    if (shouldAnimate) {
+      animateSeriesRevealOnce();
+      chartDiv.dataset.animated = "1";
+    }
     Plotly.Plots.resize(chartDiv);
   }
 
