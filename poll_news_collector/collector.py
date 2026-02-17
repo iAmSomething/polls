@@ -6,6 +6,8 @@ import datetime as dt
 import json
 import re
 import sqlite3
+import time
+import urllib.parse
 from pathlib import Path
 from typing import Iterable
 
@@ -13,7 +15,12 @@ import feedparser
 import requests
 from bs4 import BeautifulSoup
 
-RSS_URL = "https://news.google.com/rss/search?q=%EC%97%AC%EB%A1%A0%EC%A1%B0%EC%82%AC&hl=ko&gl=KR&ceid=KR:ko"
+RSS_QUERIES = [
+    "여론조사",
+    "정당 지지율 여론조사",
+    "리얼미터 여론조사",
+    "한국리서치 여론조사",
+]
 POLLING_ORGS = {
     "리서치앤리서치": ["리서치앤리서치"],
     "엠브레인퍼블릭": ["엠브레인퍼블릭", "엠브레인"],
@@ -26,12 +33,19 @@ POLLING_ORGS = {
     "코리아리서치인터내셔널": ["코리아리서치인터내셔널", "코리아리서치"],
 }
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+NAVER_SEARCH_URL = "https://search.naver.com/search.naver"
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Collect polling-related news articles")
     parser.add_argument("--base-dir", default=".", help="Base directory for DB and collected files")
     parser.add_argument("--window-minutes", type=int, default=60, help="Look-back window in minutes")
+    parser.add_argument(
+        "--rss-query",
+        action="append",
+        default=[],
+        help="Additional Google News RSS query. Can be passed multiple times.",
+    )
     parser.add_argument(
         "--recent-json-out",
         default=None,
@@ -85,6 +99,131 @@ def parse_published(entry: feedparser.FeedParserDict) -> dt.datetime | None:
     if getattr(entry, "updated_parsed", None):
         return dt.datetime(*entry.updated_parsed[:6], tzinfo=dt.timezone.utc)
     return None
+
+
+def build_rss_url(query: str) -> str:
+    return f"https://news.google.com/rss/search?q={urllib.parse.quote(query)}&hl=ko&gl=KR&ceid=KR:ko"
+
+
+def fetch_rss_entries(queries: list[str]) -> list[feedparser.FeedParserDict]:
+    # Aggregate multiple RSS queries and dedupe by entry link.
+    seen_links: set[str] = set()
+    merged: list[feedparser.FeedParserDict] = []
+    for q in queries:
+        url = build_rss_url(q)
+        feed = feedparser.parse(url)
+        for entry in getattr(feed, "entries", []):
+            link = str(getattr(entry, "link", "")).strip()
+            if not link or link in seen_links:
+                continue
+            seen_links.add(link)
+            merged.append(entry)
+    return merged
+
+
+def _parse_naver_time(raw: str, now_local: dt.datetime) -> dt.datetime | None:
+    s = (raw or "").strip()
+    if not s:
+        return None
+
+    m = re.search(r"(\d+)\s*분\s*전", s)
+    if m:
+        return (now_local - dt.timedelta(minutes=int(m.group(1)))).astimezone(dt.timezone.utc)
+    m = re.search(r"(\d+)\s*시간\s*전", s)
+    if m:
+        return (now_local - dt.timedelta(hours=int(m.group(1)))).astimezone(dt.timezone.utc)
+    m = re.search(r"(\d+)\s*일\s*전", s)
+    if m:
+        return (now_local - dt.timedelta(days=int(m.group(1)))).astimezone(dt.timezone.utc)
+
+    m = re.search(r"(\d{4})\.(\d{1,2})\.(\d{1,2})\.", s)
+    if m:
+        y, mo, d = map(int, m.groups())
+        try:
+            local_midnight = now_local.replace(year=y, month=mo, day=d, hour=0, minute=0, second=0, microsecond=0)
+            return local_midnight.astimezone(dt.timezone.utc)
+        except ValueError:
+            return None
+    return None
+
+
+def _fetch_page_title(url: str) -> str:
+    try:
+        resp = requests.get(url, headers={"User-Agent": USER_AGENT}, timeout=8, allow_redirects=True)
+        resp.raise_for_status()
+    except Exception:
+        return ""
+    soup = BeautifulSoup(resp.text, "html.parser")
+    og = soup.find("meta", attrs={"property": "og:title"})
+    if og and og.get("content"):
+        return str(og.get("content", "")).strip()
+    if soup.title and soup.title.string:
+        return str(soup.title.string).strip()
+    return ""
+
+
+def fetch_naver_entries(queries: list[str], per_query_limit: int = 12) -> list[feedparser.FeedParserDict]:
+    merged: list[feedparser.FeedParserDict] = []
+    seen_links: set[str] = set()
+    now_local = dt.datetime.now().astimezone()
+    title_cache: dict[str, str] = {}
+
+    for q in queries:
+        params = {"where": "news", "query": q, "sort": "1", "pd": "1"}
+        try:
+            resp = requests.get(
+                NAVER_SEARCH_URL,
+                params=params,
+                headers={"User-Agent": USER_AGENT},
+                timeout=12,
+            )
+            resp.raise_for_status()
+        except Exception as exc:
+            print(f"[fallback] naver fetch failed: {q} ({exc})")
+            continue
+
+        soup = BeautifulSoup(resp.text, "html.parser")
+        cards = soup.select("div.sds-comps-profile")
+        added = 0
+        for card in cards:
+            keep_btn = card.find("button", attrs={"data-url": True})
+            link = str(keep_btn.get("data-url", "") if keep_btn else "").strip()
+            if not link or link in seen_links:
+                continue
+
+            info_text = " ".join(card.stripped_strings)
+            published_utc = _parse_naver_time(info_text, now_local)
+            if not published_utc:
+                continue
+
+            source_node = card.select_one("a[href*='media.naver.com/press/']")
+            source = source_node.get_text(" ", strip=True) if source_node else "네이버뉴스"
+
+            if link in title_cache:
+                title = title_cache[link]
+            else:
+                title = _fetch_page_title(link)
+                title_cache[link] = title
+            if not title:
+                continue
+
+            seen_links.add(link)
+            merged.append(
+                feedparser.FeedParserDict(
+                    {
+                        "title": title,
+                        "link": link,
+                        "published_parsed": published_utc.utctimetuple(),
+                        "source": feedparser.FeedParserDict({"title": source}),
+                    }
+                )
+            )
+            added += 1
+            if added >= per_query_limit:
+                break
+        # Reduce chance of temporary blocking when running multiple queries.
+        time.sleep(0.2)
+    return merged
 
 
 def sanitize_filename(name: str, max_len: int = 100) -> str:
@@ -250,6 +389,7 @@ def upsert_article(
 def collect_once(
     base_dir: Path,
     window_minutes: int,
+    rss_queries: list[str] | None = None,
     dry_run: bool = False,
     recent_json_out: Path | None = None,
     recent_limit: int = 12,
@@ -261,10 +401,19 @@ def collect_once(
     now_utc = dt.datetime.now(dt.timezone.utc)
     threshold = now_utc - dt.timedelta(minutes=window_minutes)
     backfill_threshold = now_utc - dt.timedelta(hours=max(1, backfill_hours))
+    queries = [q.strip() for q in (rss_queries or RSS_QUERIES) if str(q).strip()]
+    rss_entries = fetch_rss_entries(queries)
+    naver_entries = fetch_naver_entries(queries)
+    entries: list[feedparser.FeedParserDict] = []
+    seen_links: set[str] = set()
+    for e in [*rss_entries, *naver_entries]:
+        link = str(getattr(e, "link", "")).strip()
+        if not link or link in seen_links:
+            continue
+        seen_links.add(link)
+        entries.append(e)
 
-    feed = feedparser.parse(RSS_URL)
-
-    total = len(feed.entries)
+    total = len(entries)
     recent = 0  # Stage 1: passed the time-window filter.
     org_matched = 0  # Stage 2: passed pollster-name match in article body.
     org_missed = 0
@@ -272,7 +421,7 @@ def collect_once(
     stage1_rows: list[dict] = []
     backfill_rows: list[dict] = []
 
-    for entry in feed.entries:
+    for entry in entries:
         title = getattr(entry, "title", "(no title)")
         raw_url = getattr(entry, "link", "")
         published = parse_published(entry)
@@ -349,6 +498,9 @@ def collect_once(
         f"saved={saved}, "
         f"stage1_exported={exported_recent}, "
         f"stage1_backfill_pool={len(backfill_rows)}, "
+        f"rss_queries={len(queries)}, "
+        f"rss_total={len(rss_entries)}, "
+        f"fallback_naver_total={len(naver_entries)}, "
         f"threshold_utc={threshold.isoformat()}"
     )
 
@@ -364,6 +516,7 @@ def main() -> None:
     collect_once(
         base_dir=base_dir,
         window_minutes=args.window_minutes,
+        rss_queries=[*RSS_QUERIES, *[q.strip() for q in args.rss_query if str(q).strip()]],
         dry_run=args.dry_run,
         recent_json_out=recent_json_out,
         recent_limit=args.recent_limit,
