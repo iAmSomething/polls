@@ -361,6 +361,7 @@ tbody tr:last-child td { border-bottom: none; }
   font-weight: 600;
   border-radius: var(--r-sm);
   padding: 6px 9px;
+  min-height: 36px;
   cursor: pointer;
 }
 .theme-btn.active {
@@ -582,6 +583,16 @@ summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
 .wbar-wrap { display: inline-block; width: 180px; height: 8px; border-radius: 999px; background: var(--surface-2); margin-right: 8px; vertical-align: middle; }
 .wbar { height: 100%; border-radius: 999px; background: var(--primary); }
 .wlabel { color: var(--text); font-size: var(--fs-caption); }
+.table-scroll {
+  max-height: 440px;
+  overflow: auto;
+  border-radius: var(--r-lg);
+}
+.table-scroll .table,
+.table-scroll table {
+  border-radius: 0;
+  border: 0;
+}
 .sr-only {
   position: absolute !important;
   width: 1px;
@@ -2647,12 +2658,14 @@ def render_html(
     <section class=\"results-grid section\">
       <article class=\"panel\">
         <div class=\"panel-title card-header\">대통령 국정수행 주간 표 <small>Weekly Presidential Approval Table</small></div>
-        <table class=\"table\">
-          <thead>
-            <tr><th>조사기간(주차)</th><th>긍정(%)</th><th>부정(%)</th><th>조사기관</th><th>출처</th></tr>
-          </thead>
-          <tbody>{''.join(pres_rows_html)}</tbody>
-        </table>
+        <div class=\"table-scroll\">
+          <table class=\"table\">
+            <thead>
+              <tr><th>조사기간(주차)</th><th>긍정(%)</th><th>부정(%)</th><th>조사기관</th><th>출처</th></tr>
+            </thead>
+            <tbody>{''.join(pres_rows_html)}</tbody>
+          </table>
+        </div>
       </article>
 
       <article class=\"panel\">

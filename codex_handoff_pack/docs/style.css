@@ -304,6 +304,7 @@ tbody tr:last-child td { border-bottom: none; }
   font-weight: 600;
   border-radius: var(--r-sm);
   padding: 6px 9px;
+  min-height: 36px;
   cursor: pointer;
 }
 .theme-btn.active {
@@ -525,6 +526,16 @@ summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
 .wbar-wrap { display: inline-block; width: 180px; height: 8px; border-radius: 999px; background: var(--surface-2); margin-right: 8px; vertical-align: middle; }
 .wbar { height: 100%; border-radius: 999px; background: var(--primary); }
 .wlabel { color: var(--text); font-size: var(--fs-caption); }
+.table-scroll {
+  max-height: 440px;
+  overflow: auto;
+  border-radius: var(--r-lg);
+}
+.table-scroll .table,
+.table-scroll table {
+  border-radius: 0;
+  border: 0;
+}
 .sr-only {
   position: absolute !important;
   width: 1px;
