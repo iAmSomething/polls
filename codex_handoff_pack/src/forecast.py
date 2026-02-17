@@ -7,10 +7,24 @@ from __future__ import annotations
 
 import argparse
 import json
+from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+Z80 = 1.2815515655446004
+
+
+@dataclass(frozen=True)
+class ForecastConfig:
+    model: str
+    window_weeks: int
+    horizon_weeks: int
+    regime_guard: str
+    regime_q_scale: float
+    exog_approval: str
+    approval_weekly_csv: str
 
 
 def forecast_next(series: pd.Series, horizon_weeks: int = 1, window_weeks: int = 16) -> tuple[float, float]:
@@ -229,7 +243,7 @@ def to_weekly(blended: pd.DataFrame, date_col: str = "date_end") -> pd.DataFrame
     return weekly
 
 
-def main():
+def parse_args() -> ForecastConfig:
     ap = argparse.ArgumentParser(description="Forecast next-week party support from blended series.")
     ap.add_argument("--model", choices=["legacy", "ssm"], default="ssm")
     ap.add_argument("--window-weeks", type=int, default=24)
@@ -238,60 +252,86 @@ def main():
     ap.add_argument("--regime-q-scale", type=float, default=2.0, help="Q scale when regime shift is triggered")
     ap.add_argument("--exog-approval", choices=["off", "on"], default="off")
     ap.add_argument("--approval-weekly-csv", default="outputs/president_approval_weekly.csv")
-    args = ap.parse_args()
+    ns = ap.parse_args()
+    return ForecastConfig(
+        model=ns.model,
+        window_weeks=ns.window_weeks,
+        horizon_weeks=ns.horizon_weeks,
+        regime_guard=ns.regime_guard,
+        regime_q_scale=ns.regime_q_scale,
+        exog_approval=ns.exog_approval,
+        approval_weekly_csv=ns.approval_weekly_csv,
+    )
 
-    outputs_dir = Path("outputs")
+
+def load_blended_input(outputs_dir: Path) -> pd.DataFrame:
     blended_path = outputs_dir / "weighted_time_series.xlsx"
-
     if blended_path.exists():
-        blended = pd.read_excel(blended_path)
+        return pd.read_excel(blended_path)
+    fallback_path = outputs_dir / "weighted_poll_9_agencies_all_parties_2025_present.xlsx"
+    if not fallback_path.exists():
+        raise FileNotFoundError(
+            "No blended input found. Expected either "
+            "'outputs/weighted_time_series.xlsx' or "
+            "'outputs/weighted_poll_9_agencies_all_parties_2025_present.xlsx'."
+        )
+    return pd.read_excel(fallback_path, sheet_name="weighted_time_series")
+
+
+def build_forecast_row(
+    party: str,
+    series: pd.Series,
+    cfg: ForecastConfig,
+    q_scale: float,
+    approval_weekly: pd.Series,
+) -> dict:
+    if cfg.model == "legacy":
+        pred, sigma = forecast_next(series, horizon_weeks=cfg.horizon_weeks, window_weeks=cfg.window_weeks)
+        row = {"party": party, "next_week_pred": pred, "rmse": sigma, "pred_sd": np.nan}
     else:
-        fallback_path = outputs_dir / "weighted_poll_9_agencies_all_parties_2025_present.xlsx"
-        if not fallback_path.exists():
-            raise FileNotFoundError(
-                "No blended input found. Expected either "
-                "'outputs/weighted_time_series.xlsx' or "
-                "'outputs/weighted_poll_9_agencies_all_parties_2025_present.xlsx'."
+        if cfg.exog_approval == "on":
+            pred, pred_sd, sigma = forecast_next_ssm_with_exog(
+                series=series,
+                approval_weekly=approval_weekly,
+                horizon_weeks=cfg.horizon_weeks,
+                window_weeks=cfg.window_weeks,
+                q_scale=q_scale,
             )
-        blended = pd.read_excel(fallback_path, sheet_name="weighted_time_series")
+        else:
+            pred, pred_sd, sigma = forecast_next_ssm(
+                series, horizon_weeks=cfg.horizon_weeks, window_weeks=cfg.window_weeks, q_scale=q_scale
+            )
+        row = {"party": party, "next_week_pred": pred, "rmse": sigma, "pred_sd": pred_sd}
+    if pd.notna(row["pred_sd"]):
+        row["pred_lo_80"] = float(row["next_week_pred"] - Z80 * row["pred_sd"])
+        row["pred_hi_80"] = float(row["next_week_pred"] + Z80 * row["pred_sd"])
+    else:
+        row["pred_lo_80"] = np.nan
+        row["pred_hi_80"] = np.nan
+    row["model"] = cfg.model
+    row["exog_approval"] = cfg.exog_approval
+    return row
 
+
+def run_forecast(cfg: ForecastConfig) -> tuple[pd.DataFrame, dict]:
+    outputs_dir = Path("outputs")
+    blended = load_blended_input(outputs_dir)
     weekly = to_weekly(blended)
-    regime = detect_regime_shift(weekly) if args.regime_guard == "on" else {"triggered": False, "reasons": ["disabled"], "score": 0.0}
-    q_scale = args.regime_q_scale if regime.get("triggered", False) else 1.0
-    approval_weekly = load_approval_weekly(Path(args.approval_weekly_csv)) if args.exog_approval == "on" else pd.Series(dtype=float)
-
-    forecast_rows = []
-    for col in weekly.columns:
-        if args.model == "legacy":
-            pred, sigma = forecast_next(
-                weekly[col], horizon_weeks=args.horizon_weeks, window_weeks=args.window_weeks
-            )
-            row = {"party": col, "next_week_pred": pred, "rmse": sigma, "pred_sd": np.nan}
-        else:
-            if args.exog_approval == "on":
-                pred, pred_sd, sigma = forecast_next_ssm_with_exog(
-                    series=weekly[col],
-                    approval_weekly=approval_weekly,
-                    horizon_weeks=args.horizon_weeks,
-                    window_weeks=args.window_weeks,
-                    q_scale=q_scale,
-                )
-            else:
-                pred, pred_sd, sigma = forecast_next_ssm(
-                    weekly[col], horizon_weeks=args.horizon_weeks, window_weeks=args.window_weeks, q_scale=q_scale
-                )
-            row = {"party": col, "next_week_pred": pred, "rmse": sigma, "pred_sd": pred_sd}
-        z80 = 1.2815515655446004
-        if pd.notna(row["pred_sd"]):
-            row["pred_lo_80"] = float(row["next_week_pred"] - z80 * row["pred_sd"])
-            row["pred_hi_80"] = float(row["next_week_pred"] + z80 * row["pred_sd"])
-        else:
-            row["pred_lo_80"] = np.nan
-            row["pred_hi_80"] = np.nan
-        row["model"] = args.model
-        row["exog_approval"] = args.exog_approval
-        forecast_rows.append(row)
-
+    regime = (
+        detect_regime_shift(weekly)
+        if cfg.regime_guard == "on"
+        else {"triggered": False, "reasons": ["disabled"], "score": 0.0}
+    )
+    q_scale = cfg.regime_q_scale if regime.get("triggered", False) else 1.0
+    approval_weekly = (
+        load_approval_weekly(Path(cfg.approval_weekly_csv))
+        if cfg.exog_approval == "on"
+        else pd.Series(dtype=float)
+    )
+    forecast_rows = [
+        build_forecast_row(col, weekly[col], cfg, q_scale, approval_weekly)
+        for col in weekly.columns
+    ]
     out = pd.DataFrame(forecast_rows)
     outputs_dir.mkdir(parents=True, exist_ok=True)
     out.to_excel(outputs_dir / "forecast_next_week.xlsx", index=False)
@@ -301,13 +341,19 @@ def main():
         "reasons": regime.get("reasons", []),
         "score": float(regime.get("score", 0.0)),
         "q_scale_applied": float(q_scale),
-        "model": args.model,
-        "exog_approval": args.exog_approval,
+        "model": cfg.model,
+        "exog_approval": cfg.exog_approval,
         "approval_rows": int(len(approval_weekly)),
     }
     regime_out.write_text(json.dumps(regime_payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print("Wrote:", regime_out)
     print(out.sort_values("rmse").head(10))
+    return out, regime_payload
+
+
+def main() -> None:
+    cfg = parse_args()
+    run_forecast(cfg)
 
 
 if __name__ == "__main__":
