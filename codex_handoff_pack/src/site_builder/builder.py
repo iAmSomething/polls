@@ -302,6 +302,7 @@ tbody tr:last-child td { border-bottom: none; }
   border-bottom: 1px solid var(--line);
 }
 .brand { display: flex; align-items: center; gap: var(--s-sm); }
+.brand-copy { display: grid; gap: var(--s-xs); }
 .logo {
   width: 14px;
   height: 14px;
@@ -309,6 +310,7 @@ tbody tr:last-child td { border-bottom: none; }
   background: var(--primary);
 }
 .title { font-size: var(--fs-h1); font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+.subtitle { font-size: var(--fs-caption); color: var(--muted); }
 .top-meta { display: flex; align-items: center; gap: var(--s-sm); justify-content: flex-end; flex-wrap: wrap; }
 .time-banner-row { grid-column: 1 / -1; display: flex; justify-content: center; }
 .time-banner {
@@ -972,31 +974,34 @@ APP_JS = """
     const compactHover = isTouchDevice() || isMobileViewport();
     return {
       paper_bgcolor: "rgba(0,0,0,0)",
-      plot_bgcolor: dark ? "#152338" : "#F8FAFD",
-      font: { color: dark ? "#EAF0FA" : "#1A2332", family: "Inter, Pretendard, sans-serif" },
-      margin: { l: 55, r: 20, t: 92, b: 44 },
+      plot_bgcolor: dark ? "#16191F" : "#FFFFFF",
+      font: { color: dark ? "#E8EAF0" : "#111827", family: "Inter, Pretendard, sans-serif", size: 14 },
+      margin: { l: 58, r: 24, t: 92, b: 48 },
       hovermode: compactHover ? "closest" : "x unified",
       dragmode: "pan",
       hoverlabel: {
-        bgcolor: dark ? "#111A2B" : "#FFFFFF",
-        bordercolor: "#8FB3FF",
-        font: { color: dark ? "#EAF0FA" : "#1A2332", size: compactHover ? 11 : 13, family: "Inter, Pretendard, sans-serif" },
+        bgcolor: dark ? "#0F1217" : "#FFFFFF",
+        bordercolor: dark ? "#2A2E37" : "#E1E5EB",
+        font: { color: dark ? "#E8EAF0" : "#111827", size: compactHover ? 12 : 14, family: "Inter, Pretendard, sans-serif" },
         align: "left",
         namelength: compactHover ? 32 : -1
       },
       xaxis: {
-        gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)",
-        linecolor: dark ? "rgba(158,176,204,0.24)" : "rgba(100,116,139,0.35)",
+        tickfont: { size: 14 },
+        gridcolor: dark ? "rgba(156,163,175,0.22)" : "rgba(107,114,128,0.20)",
+        linecolor: dark ? "rgba(156,163,175,0.32)" : "rgba(107,114,128,0.35)",
         showspikes: !compactHover,
         spikemode: "across",
-        spikecolor: dark ? "rgba(158,176,204,0.5)" : "rgba(71,85,105,0.5)",
+        spikecolor: dark ? "rgba(156,163,175,0.45)" : "rgba(107,114,128,0.45)",
         spikedash: "dot",
         spikethickness: 1,
         fixedrange: true
       },
       yaxis: {
         title: "지지율(%)",
-        gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)",
+        titlefont: { size: 14 },
+        tickfont: { size: 14 },
+        gridcolor: dark ? "rgba(156,163,175,0.22)" : "rgba(107,114,128,0.20)",
         zeroline: false,
         fixedrange: true
       },
@@ -1004,12 +1009,12 @@ APP_JS = """
         orientation: "h",
         x: 0,
         xanchor: "left",
-        y: 1.16,
+        y: 1.14,
         yanchor: "bottom",
-        bgcolor: dark ? "rgba(17,26,41,0.88)" : "rgba(255,255,255,0.92)",
-        bordercolor: dark ? "rgba(110,138,174,0.45)" : "rgba(106,125,160,0.45)",
+        bgcolor: dark ? "rgba(22,25,31,0.96)" : "rgba(247,249,251,0.96)",
+        bordercolor: dark ? "#2A2E37" : "#E1E5EB",
         borderwidth: 1,
-        font: { size: 12 }
+        font: { size: 14 }
       }
     };
   }
@@ -2591,7 +2596,13 @@ def render_html(
   <div class=\"app-bg\">
   <div class=\"wrap container\">
     <header class=\"top section-tight\">
-      <div class=\"brand\"><div class=\"logo\" aria-hidden=\"true\"></div><div class=\"title\">Weekly Korean Poll Tracker</div></div>
+      <div class=\"brand\">
+        <div class=\"logo\" aria-hidden=\"true\"></div>
+        <div class=\"brand-copy\">
+          <div class=\"title\">Weekly Korean Poll Tracker</div>
+          <div class=\"subtitle\">여론조사 데이터 대시보드</div>
+        </div>
+      </div>
       <div class=\"top-meta\">
         <div id=\"freshness-badge\" class=\"freshness-badge stale\" aria-live=\"polite\">최신성 계산 중...</div>
         <div class=\"theme-toggle\" role=\"group\" aria-label=\"테마 선택\">

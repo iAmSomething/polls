@@ -245,6 +245,7 @@ tbody tr:last-child td { border-bottom: none; }
   border-bottom: 1px solid var(--line);
 }
 .brand { display: flex; align-items: center; gap: var(--s-sm); }
+.brand-copy { display: grid; gap: var(--s-xs); }
 .logo {
   width: 14px;
   height: 14px;
@@ -252,6 +253,7 @@ tbody tr:last-child td { border-bottom: none; }
   background: var(--primary);
 }
 .title { font-size: var(--fs-h1); font-weight: 700; letter-spacing: -0.02em; line-height: 1.2; }
+.subtitle { font-size: var(--fs-caption); color: var(--muted); }
 .top-meta { display: flex; align-items: center; gap: var(--s-sm); justify-content: flex-end; flex-wrap: wrap; }
 .time-banner-row { grid-column: 1 / -1; display: flex; justify-content: center; }
 .time-banner {
