@@ -516,6 +516,7 @@ tbody tr:last-child td { border-bottom: none; }
   min-height: 110px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.02));
 }
+.news-card + .news-card { border-top: 1px solid rgba(255, 255, 255, 0.08); }
 .news-card:hover { border-color: var(--line-strong); background: linear-gradient(180deg, rgba(var(--accent-1), .14), rgba(var(--accent-2), .08)); }
 .news-date { color: rgb(var(--muted)); font-size: var(--fs-0); margin-bottom: 5px; font-weight: 600; }
 .news-title { font-size: var(--fs-1); line-height: 1.42; font-weight: 700; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px dashed rgba(255, 255, 255, 0.2); }
@@ -537,6 +538,7 @@ tbody tr:last-child td { border-bottom: none; }
   gap: 8px;
   margin-bottom: 6px;
 }
+.latest-poll-source { display: inline-block; margin-top: 6px; }
 .latest-poll-pollster, .poll-compare-party { font-size: var(--fs-1); font-weight: 700; }
 .latest-poll-date, .poll-compare-meta { color: rgb(var(--muted)); font-size: var(--fs-0); }
 .latest-poll-values { color: rgb(var(--text)); font-size: var(--fs-0); line-height: 1.6; }
@@ -2617,7 +2619,7 @@ def render_html(
     </section>
 
     <section id=\"latest-poll-section\" class=\"latest-poll section-tight\">
-      <div class=\"panel-title\" style=\"margin: 0 0 8px;\">최신 여론조사 결과 <small>Latest Poll Snapshot</small></div>
+      <div class=\"panel-title card-header\">최신 여론조사 결과 <small>Latest Poll Snapshot</small></div>
       <div class=\"latest-poll-grid\">
         <article class=\"panel\"><div id=\"latest-poll-chart\"></div></article>
         <article class=\"panel\"><div id=\"latest-poll-list\" class=\"latest-poll-list\"></div></article>
@@ -2625,7 +2627,7 @@ def render_html(
     </section>
 
     <section id=\"poll-compare-section\" class=\"poll-compare section-tight\">
-      <div class=\"panel-title\" style=\"margin: 0 0 8px;\">예측치 대비 최신 여론조사 차이 <small>Forecast vs Latest Poll</small></div>
+      <div class=\"panel-title card-header\">예측치 대비 최신 여론조사 차이 <small>Forecast vs Latest Poll</small></div>
       <div class=\"poll-compare-grid\">
         <article class=\"panel\"><div id=\"poll-compare-chart\"></div></article>
         <article class=\"panel\"><div id=\"poll-compare-list\" class=\"poll-compare-list\"></div></article>
@@ -2633,7 +2635,7 @@ def render_html(
     </section>
 
     <section class=\"panel section-tight\">
-      <div class=\"panel-title\" style=\"margin-bottom:8px;\">대통령 국정수행 주간 표 <small>Weekly Presidential Approval Table</small></div>
+      <div class=\"panel-title card-header\">대통령 국정수행 주간 표 <small>Weekly Presidential Approval Table</small></div>
       <table class=\"table\">
         <thead>
           <tr><th>조사기간(주차)</th><th>긍정(%)</th><th>부정(%)</th><th>조사기관</th><th>출처</th></tr>
