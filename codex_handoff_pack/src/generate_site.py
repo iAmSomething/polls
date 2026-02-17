@@ -4,6 +4,7 @@ import json
 import re
 import urllib.parse
 import urllib.request
+import feedparser
 import xml.etree.ElementTree as ET
 from email.utils import parsedate_to_datetime
 from datetime import datetime
@@ -783,18 +784,83 @@ def fetch_google_news_articles(
     return dedupe_same_day_same_source(out, limit=limit)
 
 
+def fetch_google_rss_fallback(limit: int = 12) -> pd.DataFrame:
+    phrase = "중앙선거여론조사심의위원회"
+    pollster_keywords = [str(x).strip() for x in POLLSTERS if str(x).strip()]
+    queries = [f'"{phrase}"', f"{phrase} 여론조사", "여론조사"]
+
+    rows = []
+    seen = set()
+
+    def _priority(text: str) -> int | None:
+        if phrase in text:
+            return 1
+        if any(k in text for k in pollster_keywords):
+            return 2
+        if "여론조사" in text:
+            return 3
+        return None
+
+    for q in queries:
+        try:
+            rss = (
+                "https://news.google.com/rss/search"
+                f"?q={urllib.parse.quote(q)}&hl=ko&gl=KR&ceid=KR:ko"
+            )
+            entries = getattr(feedparser.parse(rss), "entries", [])
+        except Exception:
+            entries = []
+
+        for e in entries[:80]:
+            title = str(getattr(e, "title", "")).strip()
+            desc = str(getattr(e, "summary", "")).strip()
+            link = str(getattr(e, "link", "")).strip()
+            src = str(getattr(getattr(e, "source", None), "title", "")).strip() or "Google News"
+            txt = re.sub(r"\s+", " ", f"{title} {desc}")
+            p = _priority(txt)
+            if p is None or not link or link in seen:
+                continue
+            seen.add(link)
+            pub = pd.to_datetime(str(getattr(e, "published", "")), errors="coerce")
+            if pd.isna(pub):
+                pub = pd.Timestamp.now(tz=ZoneInfo("Asia/Seoul"))
+            rows.append(
+                {
+                    "date": pd.to_datetime(pub).date().isoformat(),
+                    "source": src,
+                    "title": title,
+                    "url": link,
+                    "priority": p,
+                    "_dt": pd.to_datetime(pub),
+                }
+            )
+
+    if not rows:
+        return pd.DataFrame(columns=["date", "source", "title", "url"])
+    out = pd.DataFrame(rows).drop_duplicates(subset=["url"]).copy()
+    out = out.sort_values(["priority", "_dt"], ascending=[True, False], na_position="last")
+    out["date"] = pd.to_datetime(out["date"], errors="coerce")
+    out = out.dropna(subset=["date", "title", "url"])
+    return dedupe_same_day_same_source(out, limit=limit)
+
+
 def resolve_news_articles(base: Path, outputs: Path) -> tuple[pd.DataFrame, str]:
     # Priority 1: build-time article fetch + content verification
     fetched_articles = fetch_google_news_articles()
     if not fetched_articles.empty:
         return dedupe_same_day_same_source(fetched_articles, limit=12), "naver_priority_1_2_3"
 
-    # Priority 2: keep last successful published list to avoid blank UI on transient failures.
+    # Priority 2: Google RSS fallback for freshness when naver parsing fails.
+    rss_articles = fetch_google_rss_fallback(limit=12)
+    if not rss_articles.empty:
+        return dedupe_same_day_same_source(rss_articles, limit=12), "google_rss_priority_1_2_3"
+
+    # Priority 3: keep last successful published list to avoid blank UI on transient failures.
     cached = load_cached_news_json(base)
     if not cached.empty:
         return dedupe_same_day_same_source(cached, limit=12), "cached_news_latest_json"
 
-    # Priority 3: manual fallback file (curated), use same priority concept on title text.
+    # Priority 4: manual fallback file (curated), use same priority concept on title text.
     phrase = "중앙선거여론조사심의위원회"
     pollster_keywords = [str(x).strip() for x in POLLSTERS if str(x).strip()]
     manual = load_recent_articles(base)
