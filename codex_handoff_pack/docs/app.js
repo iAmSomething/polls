@@ -597,7 +597,7 @@
               <div class="latest-poll-date">${esc(row.date_end || "")}</div>
             </div>
             <div class="latest-poll-values">${valueLines}</div>
-            ${sourceUrl ? `<a class="latest-poll-source ext-link" href="${sourceUrl}" target="_blank" rel="noopener noreferrer">기사 링크</a>` : `<div class="latest-poll-source">출처 없음</div>`}
+            ${sourceUrl ? `<a class="latest-poll-source link-out" href="${sourceUrl}" target="_blank" rel="noopener noreferrer">기사 링크</a>` : `<div class="latest-poll-source">출처 없음</div>`}
           </article>
         `;
       }).join("");
@@ -864,7 +864,7 @@
             .map((r) => ({ ...r, _dt: parseNewsDate(r) }))
             .sort((a, b) => (b._dt ? b._dt.getTime() : 0) - (a._dt ? a._dt.getTime() : 0));
           grid.innerHTML = sorted.slice(0, 6).map((r) => `
-            <a class="news-card" href="${esc(r.url || "")}" target="_blank" rel="noopener noreferrer">
+            <a class="news-card link-out" href="${esc(r.url || "")}" target="_blank" rel="noopener noreferrer">
               <div class="news-date">${esc(formatRelative(r._dt) || (r.date || ""))}</div>
               <div class="news-title">${esc(r.title || "")}</div>
               <div class="news-source">${esc(r.source || "출처")}</div>
@@ -904,7 +904,7 @@
     }
     grid.innerHTML = rows.map((r) => {
       const d = r.date && !Number.isNaN(r.date.getTime()) ? formatRelative(r.date) : "";
-      return `<a class="news-card" href="${esc(r.link)}" target="_blank" rel="noopener noreferrer"><div class="news-date">${esc(d)}</div><div class="news-title">${esc(r.title)}</div><div class="news-source">${esc(r.source)}</div></a>`;
+      return `<a class="news-card link-out" href="${esc(r.link)}" target="_blank" rel="noopener noreferrer"><div class="news-date">${esc(d)}</div><div class="news-title">${esc(r.title)}</div><div class="news-source">${esc(r.source)}</div></a>`;
     }).join("");
     setStatus(`디버그 프록시 갱신 (${rows.length}건)`, "fresh");
   }
