@@ -185,7 +185,7 @@
         meta: "band"
       });
       out.push({
-        x: p.actual_x, y: p.actual_y, type: "scatter", mode: "lines", name: p.party,
+        x: p.actual_x, y: p.actual_y, type: "scatter", mode: "lines", name: (p.display_party || p.party),
         legendgroup: p.party, line: { color: p.color, width: 2.7, dash },
         hovertemplate: "<b>%{fullData.name}</b>: %{y:.2f}%<extra></extra>"
       });
@@ -196,11 +196,11 @@
       });
       out.push({
         x: [p.pred_x], y: [p.pred_y], type: "scatter", mode: "markers+text",
-        legendgroup: p.party, showlegend: false,
+        legendgroup: p.party, showlegend: false, meta: (p.display_party || p.party),
         marker: { color: p.color, size: 10, symbol, line: { color: "#DDE8FF", width: 1 } },
         text: ["예측치"], textposition: "middle right", textfont: { color: p.color, size: 11 },
         customdata: [[p.pred_lo_80, p.pred_hi_80]],
-        hovertemplate: "<b>%{fullData.legendgroup} 예측</b><br>%{y:.2f}%<br>80% 구간: %{customdata[0]:.2f}% ~ %{customdata[1]:.2f}%<extra></extra>"
+        hovertemplate: "<b>%{meta} 예측</b><br>%{y:.2f}%<br>80% 구간: %{customdata[0]:.2f}% ~ %{customdata[1]:.2f}%<extra></extra>"
       });
     });
     if (Array.isArray(latestPollResults) && latestPollResults.length) {
@@ -211,6 +211,7 @@
       if (pollDate) {
         parties.forEach((row) => {
           const party = row.party;
+          const displayParty = row.display_party || row.party || "";
           const val = Number(row.value);
           if (!party || !Number.isFinite(val)) return;
           const exists = tracesData.some((t) => t.party === party);
@@ -224,7 +225,7 @@
             showlegend: false,
             legendgroup: party,
             marker: { symbol: "diamond", size: 10, color, line: { color: "#DDE8FF", width: 1 } },
-            hovertemplate: `<b>최신 여론조사</b><br>${pollster} (${pollDate})<br>${party}: %{y:.1f}%<extra></extra>`
+            hovertemplate: `<b>최신 여론조사</b><br>${pollster} (${pollDate})<br>${displayParty}: %{y:.1f}%<extra></extra>`
           });
         });
       }
@@ -571,7 +572,7 @@
       listEl.innerHTML = latestPollResults.slice(0, 6).map((row) => {
         const sourceUrl = esc(row.source_url || "");
         const valueLines = (row.parties || [])
-          .map((p) => `${esc(p.party)} ${Number(p.value).toFixed(1)}%`)
+          .map((p) => `${esc(p.display_party || p.party)} ${Number(p.value).toFixed(1)}%`)
           .join(" · ");
         return `
           <article class="latest-poll-card">
@@ -590,9 +591,9 @@
     if (!chartEl) return;
     const top = latestPollResults[0] || {};
     const pieRows = (top.parties || []).filter((p) => Number.isFinite(Number(p.value)) && Number(p.value) > 0);
-    const labels = pieRows.map((p) => p.party);
+    const labels = pieRows.map((p) => p.display_party || p.party);
     const values = pieRows.map((p) => Number(p.value));
-    const colors = labels.map((p) => partyColorMap[p] || "#94A3B8");
+    const colors = pieRows.map((p) => partyColorMap[p.party] || "#94A3B8");
     const dark = isDarkMode();
     Plotly.react(
       chartEl,
@@ -646,6 +647,7 @@
         if (!Number.isFinite(latest) || !Number.isFinite(pred)) return null;
         return {
           party: p.party,
+          display_party: p.display_party || p.party,
           latest,
           pred,
           delta: latest - pred,
@@ -669,7 +671,7 @@
         return `
           <article class="poll-compare-card">
             <div class="poll-compare-head">
-              <div class="poll-compare-party">${esc(r.party)}</div>
+              <div class="poll-compare-party">${esc(r.display_party || r.party)}</div>
               <div class="poll-compare-delta" style="color:${deltaColor}">${sign}${r.delta.toFixed(1)}%p</div>
             </div>
             <div class="poll-compare-meta">최신 ${r.latest.toFixed(1)}% · 예측 ${r.pred.toFixed(1)}%</div>
@@ -682,7 +684,7 @@
     if (!chartEl) return;
     const dark = isDarkMode();
     const sorted = rows.slice().reverse();
-    const labels = sorted.map((r) => r.party);
+    const labels = sorted.map((r) => r.display_party || r.party);
 
     const traces = [];
     sorted.forEach((r) => {
@@ -690,7 +692,7 @@
         type: "scatter",
         mode: "lines",
         x: [r.pred, r.latest],
-        y: [r.party, r.party],
+        y: [r.display_party || r.party, r.display_party || r.party],
         line: { color: dark ? "rgba(234,240,250,0.35)" : "rgba(26,35,50,0.28)", width: 3 },
         hoverinfo: "skip",
         showlegend: false,

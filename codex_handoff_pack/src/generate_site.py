@@ -988,7 +988,7 @@ APP_JS = """
       listEl.innerHTML = latestPollResults.slice(0, 6).map((row) => {
         const sourceUrl = esc(row.source_url || "");
         const valueLines = (row.parties || [])
-          .map((p) => `${esc(p.party)} ${Number(p.value).toFixed(1)}%`)
+          .map((p) => `${esc(p.display_party || p.party)} ${Number(p.value).toFixed(1)}%`)
           .join(" · ");
         return `
           <article class="latest-poll-card">
@@ -1007,9 +1007,9 @@ APP_JS = """
     if (!chartEl) return;
     const top = latestPollResults[0] || {};
     const pieRows = (top.parties || []).filter((p) => Number.isFinite(Number(p.value)) && Number(p.value) > 0);
-    const labels = pieRows.map((p) => p.party);
+    const labels = pieRows.map((p) => p.display_party || p.party);
     const values = pieRows.map((p) => Number(p.value));
-    const colors = labels.map((p) => partyColorMap[p] || "#94A3B8");
+    const colors = pieRows.map((p) => partyColorMap[p.party] || "#94A3B8");
     const dark = isDarkMode();
     Plotly.react(
       chartEl,
@@ -1063,6 +1063,7 @@ APP_JS = """
         if (!Number.isFinite(latest) || !Number.isFinite(pred)) return null;
         return {
           party: p.party,
+          display_party: p.display_party || p.party,
           latest,
           pred,
           delta: latest - pred,
@@ -1086,7 +1087,7 @@ APP_JS = """
         return `
           <article class="poll-compare-card">
             <div class="poll-compare-head">
-              <div class="poll-compare-party">${esc(r.party)}</div>
+              <div class="poll-compare-party">${esc(r.display_party || r.party)}</div>
               <div class="poll-compare-delta" style="color:${deltaColor}">${sign}${r.delta.toFixed(1)}%p</div>
             </div>
             <div class="poll-compare-meta">최신 ${r.latest.toFixed(1)}% · 예측 ${r.pred.toFixed(1)}%</div>
@@ -1099,7 +1100,7 @@ APP_JS = """
     if (!chartEl) return;
     const dark = isDarkMode();
     const sorted = rows.slice().reverse();
-    const labels = sorted.map((r) => r.party);
+    const labels = sorted.map((r) => r.display_party || r.party);
 
     const traces = [];
     sorted.forEach((r) => {
@@ -1107,7 +1108,7 @@ APP_JS = """
         type: "scatter",
         mode: "lines",
         x: [r.pred, r.latest],
-        y: [r.party, r.party],
+        y: [r.display_party || r.party, r.display_party || r.party],
         line: { color: dark ? "rgba(234,240,250,0.35)" : "rgba(26,35,50,0.28)", width: 3 },
         hoverinfo: "skip",
         showlegend: false,
