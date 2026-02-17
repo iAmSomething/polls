@@ -36,6 +36,23 @@ POLLSTERS = [
     "리얼미터",
     "코리아리서치인터내셔널",
 ]
+POLLSTER_COLOR_MAP = {
+    "리얼미터": "#EF4444",
+    "한국갤럽": "#2563EB",
+    "갤럽": "#2563EB",
+    "한국리서치": "#0EA5A4",
+    "코리아리서치인터내셔널": "#8B5CF6",
+    "코리아리서치": "#8B5CF6",
+    "리서치앤리서치": "#14B8A6",
+    "엠브레인퍼블릭": "#F59E0B",
+    "리서치뷰": "#EC4899",
+    "에이스리서치": "#22C55E",
+    "조원씨앤아이": "#6366F1",
+    "알앤써치": "#06B6D4",
+    "천지일보": "#D946EF",
+    "JTBC": "#0F172A",
+}
+POLLSTER_COLOR_FALLBACK = "#64748B"
 
 STYLE_CSS = """
 :root {
@@ -104,6 +121,7 @@ body {
 .top {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-rows: auto auto;
   gap: var(--space-3);
   align-items: center;
   padding-bottom: var(--space-3);
@@ -127,13 +145,22 @@ body {
   justify-content: flex-end;
   flex-wrap: wrap;
 }
-.stamp {
-  color: var(--muted);
-  font-size: 13px;
-  padding: 8px 10px;
-  background: var(--panel-soft);
-  border: 1px solid var(--line);
-  border-radius: 10px;
+.time-banner-row {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: center;
+}
+.time-banner {
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: .1px;
+  text-align: center;
+  padding: 10px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(31,95,224,.28);
+  background: linear-gradient(180deg, rgba(31,95,224,.16), rgba(31,95,224,.04));
+  box-shadow: var(--shadow-1);
 }
 .freshness-badge {
   font-size: 12px;
@@ -144,8 +171,8 @@ body {
   line-height: 1;
 }
 .freshness-badge.fresh { color: #0A855B; background: rgba(14, 159, 110, 0.12); border-color: rgba(14, 159, 110, 0.3); }
-.freshness-badge.stale { color: #9B5600; background: rgba(199, 119, 0, 0.16); border-color: rgba(199, 119, 0, 0.36); }
-.freshness-badge.old { color: #A53535; background: rgba(198, 62, 62, 0.16); border-color: rgba(198, 62, 62, 0.35); }
+.freshness-badge.stale { color: #9A3700; background: rgba(255, 136, 25, 0.3); border-color: rgba(224, 110, 8, 0.7); }
+.freshness-badge.old { color: #991B1B; background: rgba(255, 82, 82, 0.32); border-color: rgba(210, 29, 29, 0.72); }
 .theme-toggle {
   display: inline-flex;
   gap: 4px;
@@ -187,9 +214,51 @@ body {
   border-color: rgba(31,95,224,.32);
   background: linear-gradient(120deg, rgba(31,95,224,.14), rgba(31,95,224,0.03) 56%), var(--panel);
 }
+.insight-card.hero {
+  border-color: rgba(31,95,224,.7);
+  background: linear-gradient(120deg, rgba(31,95,224,.24), rgba(31,95,224,0.05) 60%), var(--panel);
+  box-shadow: 0 0 0 1px rgba(31,95,224,.28) inset, 0 18px 32px rgba(31,95,224,.18);
+}
 .insight-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .insight-value { font-size: 27px; font-weight: 800; line-height: 1.1; }
+.insight-value small { font-size: 12px; color: var(--muted); font-weight: 700; margin-left: 4px; }
 .insight-sub { margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.4; }
+.metric-tooltip {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-size: 10px;
+  font-weight: 800;
+  cursor: help;
+}
+.metric-tooltip::after {
+  content: attr(data-tip);
+  position: absolute;
+  left: 50%;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  width: 230px;
+  white-space: normal;
+  opacity: 0;
+  pointer-events: none;
+  background: var(--text);
+  color: var(--panel);
+  border-radius: 8px;
+  padding: 7px 9px;
+  font-size: 11px;
+  line-height: 1.35;
+  transition: opacity .16s ease;
+  z-index: 20;
+}
+.metric-tooltip:hover::after, .metric-tooltip:focus-visible::after { opacity: 1; }
 .main-grid {
   display: grid;
   gap: var(--space-3);
@@ -221,7 +290,7 @@ body {
   cursor: help;
 }
 .filters { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.range-group { display: inline-flex; gap: 6px; padding: 4px; background: var(--panel-soft); border: 1px solid var(--line); border-radius: 10px; }
+.range-group { display: inline-flex; gap: 6px; padding: 4px; background: linear-gradient(180deg, rgba(31,95,224,.06), rgba(31,95,224,.01)); border: 1px solid var(--line); border-radius: 10px; }
 .toggle-group { display: inline-flex; align-items: center; gap: 6px; }
 .fbtn {
   border: 1px solid var(--line);
@@ -234,11 +303,13 @@ body {
   font-weight: 700;
   cursor: pointer;
 }
-.fbtn:hover { border-color: var(--line-strong); }
+.fbtn:hover { border-color: var(--line-strong); background: var(--panel-soft); }
+.range-group .fbtn:not(.active) { color: var(--muted); background: transparent; border-color: rgba(120, 138, 167, 0.45); }
 .fbtn.active {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-soft);
+  border-color: #1D4FD7;
+  color: #0E45D0;
+  background: #D5E5FF;
+  box-shadow: inset 0 0 0 1px rgba(29, 79, 215, 0.22);
 }
 .fbtn:focus-visible, .theme-btn:focus-visible, .panel-help:focus-visible, .status-badge:focus-visible {
   outline: 2px solid var(--accent);
@@ -260,6 +331,10 @@ body {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
+}
+.chart-legend-top {
+  margin-top: 0;
+  margin-bottom: 8px;
 }
 .legend-chip {
   display: inline-flex;
@@ -317,7 +392,7 @@ body {
 .news { margin-top: var(--space-4); }
 .news-grid { display: grid; gap: 10px; grid-template-columns: repeat(3, minmax(0,1fr)); }
 .news-card {
-  background: var(--panel);
+  background: linear-gradient(180deg, rgba(31,95,224,.045), rgba(31,95,224,.01));
   border: 1px solid var(--line);
   border-radius: 12px;
   padding: 11px;
@@ -326,9 +401,11 @@ body {
   display: block;
   min-height: 102px;
 }
+.news-card + .news-card { border-top: 1px solid rgba(31,95,224,.12); }
 .news-card:hover { border-color: var(--line-strong); }
 .news-date { color: var(--muted); font-size: 12px; margin-bottom: 5px; font-weight: 600; }
 .news-title { font-size: 14px; line-height: 1.42; font-weight: 700; margin-bottom: 7px; }
+.news-title { padding-bottom: 7px; border-bottom: 1px dashed rgba(120, 138, 167, 0.35); }
 .news-source { color: var(--text); font-size: 12px; font-weight: 600; opacity: .82; }
 .latest-poll { margin-top: var(--space-4); }
 .latest-poll-grid { display: grid; gap: 12px; grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); }
@@ -343,9 +420,26 @@ body {
 .latest-poll-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
 .latest-poll-pollster { font-size: 14px; font-weight: 700; }
 .latest-poll-date { color: var(--muted); font-size: 12px; }
-.latest-poll-source, td a { color: var(--accent); font-size: 12px; font-weight: 600; text-decoration: underline; text-decoration-thickness: 1.5px; text-underline-offset: 2px; }
-.latest-poll-source::after, td a::after { content: " ↗"; font-size: 11px; }
+.ext-link, a.latest-poll-source, td a {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 2px;
+  transition: color .15s ease;
+}
+.ext-link:hover, a.latest-poll-source:hover, td a:hover { color: #0D44D0; }
+.ext-link::after, a.latest-poll-source::after, td a::after { content: " ↗"; font-size: 11px; }
 .latest-poll-values { color: var(--text); font-size: 12px; line-height: 1.6; }
+.pollster-chip {
+  display: inline-block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
 .poll-compare { margin-top: var(--space-4); }
 .poll-compare-grid { display: grid; gap: 12px; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); }
 #poll-compare-chart { height: 320px; }
@@ -383,7 +477,7 @@ tbody tr:hover td { background: rgba(31,95,224,0.07); }
   border: 0;
 }
 @media (max-width: 980px) {
-  .top { grid-template-columns: 1fr; }
+  .top { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
   .top-meta { justify-content: flex-start; }
   .insights { grid-template-columns: repeat(2, minmax(0,1fr)); }
   .insight-card.featured { grid-column: span 1; }
@@ -407,7 +501,7 @@ tbody tr:hover td { background: rgba(31,95,224,0.07); }
 @media (max-width: 768px) {
   .insights { grid-template-columns: 1fr; }
   .title { font-size: 22px; }
-  .stamp { width: 100%; }
+  .time-banner { width: 100%; font-size: 13px; padding: 9px 11px; }
   th, td { font-size: 13px; padding: 9px 7px; }
   .news-title { font-size: 13px; }
 }
@@ -503,6 +597,7 @@ APP_JS = """
   const tracesData = payload.traces || [];
   const presidentRaw = payload.president_raw || {};
   const latestPollResults = payload.latest_poll_results || [];
+  const pollsterColorMap = payload.pollster_color_map || {};
   const partyColorMap = {};
   tracesData.forEach((t) => {
     if (t && t.party && t.color && !partyColorMap[t.party]) {
@@ -554,6 +649,16 @@ APP_JS = """
 
   function clamp(v, lo, hi) {
     return Math.max(lo, Math.min(hi, v));
+  }
+
+  function getPollsterColor(name) {
+    const s = String(name || "").trim();
+    if (!s) return "#64748B";
+    const keys = Object.keys(pollsterColorMap);
+    for (const k of keys) {
+      if (s.includes(k)) return pollsterColorMap[k];
+    }
+    return "#64748B";
   }
 
   function buildSmoothedBand(y) {
@@ -749,7 +854,7 @@ APP_JS = """
       paper_bgcolor: "rgba(0,0,0,0)",
       plot_bgcolor: dark ? "#152338" : "#F8FAFD",
       font: { color: dark ? "#EAF0FA" : "#1A2332", family: "Inter, Pretendard, sans-serif" },
-      margin: { l: 55, r: 20, t: 72, b: 44 },
+      margin: { l: 55, r: 20, t: 92, b: 44 },
       hovermode: compactHover ? "closest" : "x unified",
       dragmode: "pan",
       hoverlabel: {
@@ -779,8 +884,12 @@ APP_JS = """
         orientation: "h",
         x: 0,
         xanchor: "left",
-        y: 1.08,
-        yanchor: "bottom"
+        y: 1.16,
+        yanchor: "bottom",
+        bgcolor: dark ? "rgba(17,26,41,0.88)" : "rgba(255,255,255,0.92)",
+        bordercolor: dark ? "rgba(110,138,174,0.45)" : "rgba(106,125,160,0.45)",
+        borderwidth: 1,
+        font: { size: 12 }
       }
     };
   }
@@ -947,7 +1056,7 @@ APP_JS = """
     bandBtn.addEventListener("click", () => {
       showBands = !showBands;
       bandBtn.classList.toggle("active", showBands);
-      bandBtn.textContent = showBands ? "오차 밴드 ON" : "오차 밴드 OFF";
+      bandBtn.textContent = showBands ? "오차 범위 표시: 켜짐" : "오차 범위 표시: 꺼짐";
       bandBtn.setAttribute("aria-pressed", showBands ? "true" : "false");
       applyPartyVisibility();
     });
@@ -987,17 +1096,18 @@ APP_JS = """
     if (listEl) {
       listEl.innerHTML = latestPollResults.slice(0, 6).map((row) => {
         const sourceUrl = esc(row.source_url || "");
+        const pColor = esc(getPollsterColor(row.pollster || ""));
         const valueLines = (row.parties || [])
           .map((p) => `${esc(p.display_party || p.party)} ${Number(p.value).toFixed(1)}%`)
           .join(" · ");
         return `
           <article class="latest-poll-card">
             <div class="latest-poll-head">
-              <div class="latest-poll-pollster">${esc(row.pollster || "-")}</div>
+              <div class="latest-poll-pollster"><span class="pollster-chip" style="background:${pColor};"></span>${esc(row.pollster || "-")}</div>
               <div class="latest-poll-date">${esc(row.date_end || "")}</div>
             </div>
             <div class="latest-poll-values">${valueLines}</div>
-            ${sourceUrl ? `<a class="latest-poll-source" href="${sourceUrl}" target="_blank" rel="noopener noreferrer">기사 링크</a>` : `<div class="latest-poll-source">출처 없음</div>`}
+            ${sourceUrl ? `<a class="latest-poll-source ext-link" href="${sourceUrl}" target="_blank" rel="noopener noreferrer">기사 링크</a>` : `<div class="latest-poll-source">출처 없음</div>`}
           </article>
         `;
       }).join("");
@@ -1333,6 +1443,16 @@ def party_display_name(party: str, as_of_kst: datetime | None = None) -> str:
     if ts < RENAME_EFFECTIVE_KST:
         return f"국민의힘 / {NEW_PPP_NAME_PLACEHOLDER}"
     return NEW_PPP_NAME_PLACEHOLDER
+
+
+def pollster_color(name: str) -> str:
+    s = str(name or "").strip()
+    if not s:
+        return POLLSTER_COLOR_FALLBACK
+    for key, color in POLLSTER_COLOR_MAP.items():
+        if key in s:
+            return color
+    return POLLSTER_COLOR_FALLBACK
 
 
 def load_blended(outputs: Path) -> pd.DataFrame:
@@ -1826,7 +1946,7 @@ def load_president_approval_table_rows(outputs: Path, max_rows: int = 24) -> lis
 def sparkline_svg(values: list[float], color: str) -> str:
     if not values:
         return ""
-    def darken_hex(hex_color: str, ratio: float = 0.18) -> str:
+    def darken_hex(hex_color: str, ratio: float = 0.28) -> str:
         s = str(hex_color or "").strip().lstrip("#")
         if len(s) != 6:
             return "#385887"
@@ -1854,7 +1974,7 @@ def sparkline_svg(values: list[float], color: str) -> str:
     stroke = darken_hex(color)
     return (
         f"<svg viewBox='0 0 {w} {h}' width='{w}' height='{h}' aria-hidden='true'>"
-        f"<polyline fill='none' stroke='{stroke}' stroke-width='2.4' stroke-linecap='round' points='{poly}' />"
+        f"<polyline fill='none' stroke='{stroke}' stroke-width='2.9' stroke-linecap='round' points='{poly}' />"
         "</svg>"
     )
 
@@ -2009,15 +2129,28 @@ def render_html(
                 "value": f"{lead.get('display_party', lead['party'])}",
                 "sub": f"{(lead['pred'] - second['pred']):.2f}%p",
                 "featured": True,
+                "hero": True,
             }
         )
     swing = sum(abs(float(r["delta"])) for r in ranking_rows) / len(ranking_rows) if ranking_rows else 0.0
-    cards.append({"label": "이번주 평균 변동폭", "value": f"{swing:.2f}%p", "sub": "예측치-직전실측", "featured": True})
+    cards.append(
+        {"label": "이번주 평균 변동폭", "value": f"{swing:.2f}%p", "sub": "예측치-직전실측", "featured": True, "hero": False}
+    )
     rmse_vals = [r["rmse"] for r in ranking_rows if r["rmse"] is not None]
     rmse_avg = sum(rmse_vals) / len(rmse_vals) if rmse_vals else 0.0
-    cards.append({"label": "평균 예측 오차 (RMSE)", "value": f"{rmse_avg:.2f}", "sub": "정당 평균", "featured": True})
+    cards.append(
+        {
+            "label": "평균 예측 오차 (RMSE)",
+            "value": f"{rmse_avg:.2f}",
+            "sub": "정당 평균",
+            "featured": True,
+            "hero": False,
+            "tooltip": "RMSE는 예측값과 실제값 차이의 평균적인 크기를 뜻하며 낮을수록 정확합니다.",
+        }
+    )
     if president_overall:
         approve = president_overall.get("approve")
+        disapprove = president_overall.get("disapprove")
         delta = president_overall.get("approve_delta")
         if approve is not None:
             if delta is None:
@@ -2025,9 +2158,21 @@ def render_html(
             else:
                 sign = "+" if float(delta) >= 0 else ""
                 sub = f"전주 대비 {sign}{float(delta):.2f}%p (주차 {president_overall.get('week_monday', '-')})"
-            cards.append({"label": "대통령 국정수행 긍정", "value": f"{float(approve):.2f}%", "sub": sub, "featured": False})
+            value = f"{float(approve):.2f}%"
+            if disapprove is not None:
+                value += f" <small>(부정 {float(disapprove):.2f}%)</small>"
+            cards.append(
+                {
+                    "label": "대통령 국정수행 긍정",
+                    "value": value,
+                    "sub": sub,
+                    "featured": False,
+                    "hero": False,
+                    "allow_html_value": True,
+                }
+            )
     else:
-        cards.append({"label": "대통령 국정수행 긍정", "value": "-", "sub": "집계 데이터 없음", "featured": False})
+        cards.append({"label": "대통령 국정수행 긍정", "value": "-", "sub": "집계 데이터 없음", "featured": False, "hero": False})
     if backtest_overall.get("improvement_pct") is not None:
         cards.append(
             {
@@ -2035,6 +2180,7 @@ def render_html(
                 "value": f"{float(backtest_overall['improvement_pct']):+.1f}%",
                 "sub": "legacy 대비 ssm",
                 "featured": False,
+                "hero": False,
             }
         )
     if backtest_overall.get("improvement_exog_pct") is not None:
@@ -2044,19 +2190,28 @@ def render_html(
                 "value": f"{float(backtest_overall['improvement_exog_pct']):+.1f}%",
                 "sub": "ssm 대비 ssm_exog",
                 "featured": False,
+                "hero": False,
             }
         )
 
-    cards_html = "".join(
-        f"""
-        <article class=\"insight-card {'featured' if c.get('featured') else ''}\">
-          <div class=\"insight-label\">{c['label']}</div>
-          <div class=\"insight-value\">{c['value']}</div>
-          <div class=\"insight-sub\">{c['sub']}</div>
-        </article>
-        """
-        for c in cards
-    )
+    cards_html_rows = []
+    for c in cards:
+        tooltip_html = ""
+        if c.get("tooltip"):
+            tip = str(c.get("tooltip", "")).replace('"', "&quot;")
+            tooltip_html = (
+                f' <span class="metric-tooltip" tabindex="0" aria-label="RMSE 설명" data-tip="{tip}">ⓘ</span>'
+            )
+        cards_html_rows.append(
+            f"""
+            <article class=\"insight-card {'featured' if c.get('featured') else ''} {'hero' if c.get('hero') else ''}\">
+              <div class=\"insight-label\">{c['label']}{tooltip_html}</div>
+              <div class=\"insight-value\">{c['value']}</div>
+              <div class=\"insight-sub\">{c['sub']}</div>
+            </article>
+            """
+        )
+    cards_html = "".join(cards_html_rows)
 
     ranking_html = []
     for i, r in enumerate(ranking_rows, 1):
@@ -2080,7 +2235,7 @@ def render_html(
                 <span class=\"rank-pred\">{r['pred']:.2f}<small>%</small></span>
                 <span class=\"rank-delta\">{delta_txt}</span>
               </div>
-              <div class=\"rank-sub\">RMSE {rmse_txt}</div>
+              <div class=\"rank-sub\">RMSE {rmse_txt} <span class=\"metric-tooltip\" tabindex=\"0\" aria-label=\"RMSE 설명\" data-tip=\"RMSE는 예측값과 실제값 차이의 평균적인 크기를 뜻하며 낮을수록 정확합니다.\">ⓘ</span></div>
               <div class=\"rank-band\">{band_txt}</div>
               <div class=\"spark\">{r['spark_svg']}</div>
             </article>
@@ -2106,10 +2261,12 @@ def render_html(
 
     pres_rows_html = []
     for r in president_table_rows:
+        publisher = str(r["publisher"])
+        p_color = pollster_color(publisher)
         src = "-"
         if r["source_url"]:
             label = r["source_title"] if r["source_title"] else "링크"
-            src = f'<a href="{r["source_url"]}" target="_blank" rel="noopener noreferrer">{label}</a>'
+            src = f'<a class="ext-link" href="{r["source_url"]}" target="_blank" rel="noopener noreferrer">{label}</a>'
         period = f'{r["week_start"]} ~ {r["week_end"]}' if r["week_end"] else r["week_start"]
         pres_rows_html.append(
             f"""
@@ -2117,7 +2274,7 @@ def render_html(
               <td>{period}</td>
               <td>{r['approve']:.1f}</td>
               <td>{r['disapprove']:.1f}</td>
-              <td>{r['publisher']}</td>
+              <td><span class="pollster-chip" style="background:{p_color};"></span>{publisher}</td>
               <td>{src}</td>
             </tr>
             """
@@ -2146,7 +2303,12 @@ def render_html(
         )
 
     payload_json = json.dumps(
-        {"traces": traces, "president_raw": president_raw_series, "latest_poll_results": latest_poll_results},
+        {
+            "traces": traces,
+            "president_raw": president_raw_series,
+            "latest_poll_results": latest_poll_results,
+            "pollster_color_map": POLLSTER_COLOR_MAP,
+        },
         ensure_ascii=False,
     )
     backtest_note = ""
@@ -2194,7 +2356,9 @@ def render_html(
           <button class=\"theme-btn\" type=\"button\" data-theme=\"dark\" aria-pressed=\"false\">다크</button>
           <button class=\"theme-btn\" type=\"button\" data-theme=\"system\" aria-pressed=\"false\">시스템</button>
         </div>
-        <div id=\"stamp\" class=\"stamp\" data-latest-date=\"{latest_date}\" data-updated-at=\"{datetime.now(tz=ZoneInfo('Asia/Seoul')).isoformat()}\">최근 조사 반영일 {latest_date} | 페이지 갱신 {now_kst}</div>
+      </div>
+      <div class=\"time-banner-row\">
+        <div id=\"stamp\" class=\"time-banner\" data-latest-date=\"{latest_date}\" data-updated-at=\"{datetime.now(tz=ZoneInfo('Asia/Seoul')).isoformat()}\">최신 조사 반영일 {latest_date} · 페이지 갱신 {now_kst}</div>
       </div>
     </header>
 
@@ -2215,17 +2379,17 @@ def render_html(
               <button class=\"fbtn\" data-range=\"all\" aria-pressed=\"false\">All</button>
             </div>
             <div class=\"toggle-group\" role=\"group\" aria-label=\"보조 컨트롤\">
-              <button class=\"fbtn active\" id=\"toggle-band\" type=\"button\" aria-pressed=\"true\">오차 밴드 ON</button>
+              <button class=\"fbtn active\" id=\"toggle-band\" type=\"button\" aria-pressed=\"true\">오차 범위 표시: 켜짐</button>
               <button class=\"fbtn\" data-range=\"reset\" type=\"button\">정당 강조 해제</button>
             </div>
           </div>
         </div>
-        <div id=\"chart\"></div>
-        <div class=\"chart-legend-note\">
+        <div class=\"chart-legend-note chart-legend-top\">
           <span class=\"legend-chip\"><span class=\"dot-open\" aria-hidden=\"true\"></span>예측치(빈 원)</span>
           <span class=\"legend-chip\"><span class=\"dot-diamond\" aria-hidden=\"true\"></span>최신 조사(다이아)</span>
           <span class=\"legend-chip\">색상 + 도형으로 구분 (색맹친화 보강)</span>
         </div>
+        <div id=\"chart\"></div>
         <div class=\"chart-caption\"><strong>해석 안내:</strong> 각 선에는 스무딩 중심선과 적응형 오차폭 기반 반투명 밴드가 함께 표시됩니다(기준 오차폭 약 ±3%). 대통령 긍정/부정은 보정되지 않은 raw 값입니다.</div>
       </article>
       <aside class=\"panel\"><div class=\"panel-title\" style=\"margin-bottom:8px;\">예측 랭킹 <small>Forecast Ranking</small></div><div class=\"rank-wrap\">{''.join(ranking_html)}</div></aside>

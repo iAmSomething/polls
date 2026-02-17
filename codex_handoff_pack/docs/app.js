@@ -87,6 +87,7 @@
   const tracesData = payload.traces || [];
   const presidentRaw = payload.president_raw || {};
   const latestPollResults = payload.latest_poll_results || [];
+  const pollsterColorMap = payload.pollster_color_map || {};
   const partyColorMap = {};
   tracesData.forEach((t) => {
     if (t && t.party && t.color && !partyColorMap[t.party]) {
@@ -138,6 +139,16 @@
 
   function clamp(v, lo, hi) {
     return Math.max(lo, Math.min(hi, v));
+  }
+
+  function getPollsterColor(name) {
+    const s = String(name || "").trim();
+    if (!s) return "#64748B";
+    const keys = Object.keys(pollsterColorMap);
+    for (const k of keys) {
+      if (s.includes(k)) return pollsterColorMap[k];
+    }
+    return "#64748B";
   }
 
   function buildSmoothedBand(y) {
@@ -333,7 +344,7 @@
       paper_bgcolor: "rgba(0,0,0,0)",
       plot_bgcolor: dark ? "#152338" : "#F8FAFD",
       font: { color: dark ? "#EAF0FA" : "#1A2332", family: "Inter, Pretendard, sans-serif" },
-      margin: { l: 55, r: 20, t: 72, b: 44 },
+      margin: { l: 55, r: 20, t: 92, b: 44 },
       hovermode: compactHover ? "closest" : "x unified",
       dragmode: "pan",
       hoverlabel: {
@@ -363,8 +374,12 @@
         orientation: "h",
         x: 0,
         xanchor: "left",
-        y: 1.08,
-        yanchor: "bottom"
+        y: 1.16,
+        yanchor: "bottom",
+        bgcolor: dark ? "rgba(17,26,41,0.88)" : "rgba(255,255,255,0.92)",
+        bordercolor: dark ? "rgba(110,138,174,0.45)" : "rgba(106,125,160,0.45)",
+        borderwidth: 1,
+        font: { size: 12 }
       }
     };
   }
@@ -531,7 +546,7 @@
     bandBtn.addEventListener("click", () => {
       showBands = !showBands;
       bandBtn.classList.toggle("active", showBands);
-      bandBtn.textContent = showBands ? "오차 밴드 ON" : "오차 밴드 OFF";
+      bandBtn.textContent = showBands ? "오차 범위 표시: 켜짐" : "오차 범위 표시: 꺼짐";
       bandBtn.setAttribute("aria-pressed", showBands ? "true" : "false");
       applyPartyVisibility();
     });
@@ -571,17 +586,18 @@
     if (listEl) {
       listEl.innerHTML = latestPollResults.slice(0, 6).map((row) => {
         const sourceUrl = esc(row.source_url || "");
+        const pColor = esc(getPollsterColor(row.pollster || ""));
         const valueLines = (row.parties || [])
           .map((p) => `${esc(p.display_party || p.party)} ${Number(p.value).toFixed(1)}%`)
           .join(" · ");
         return `
           <article class="latest-poll-card">
             <div class="latest-poll-head">
-              <div class="latest-poll-pollster">${esc(row.pollster || "-")}</div>
+              <div class="latest-poll-pollster"><span class="pollster-chip" style="background:${pColor};"></span>${esc(row.pollster || "-")}</div>
               <div class="latest-poll-date">${esc(row.date_end || "")}</div>
             </div>
             <div class="latest-poll-values">${valueLines}</div>
-            ${sourceUrl ? `<a class="latest-poll-source" href="${sourceUrl}" target="_blank" rel="noopener noreferrer">기사 링크</a>` : `<div class="latest-poll-source">출처 없음</div>`}
+            ${sourceUrl ? `<a class="latest-poll-source ext-link" href="${sourceUrl}" target="_blank" rel="noopener noreferrer">기사 링크</a>` : `<div class="latest-poll-source">출처 없음</div>`}
           </article>
         `;
       }).join("");
