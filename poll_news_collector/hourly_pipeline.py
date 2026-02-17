@@ -401,15 +401,22 @@ def main() -> None:
     print(f"[extract] candidates={len(rows)} retried={retried_candidates} accepted={len(accepted_dates)} appended={appended}")
 
     week_start, week_end = (None, None)
+    update_ok = False
     if accepted_dates:
         week_start, week_end = monday_sunday_window(sorted(accepted_dates)[-1])
         if args.run_update:
-            run_update_week_window(project_dir, observed_jsonl, week_start, week_end)
-            print(f"[update] ran update_week_window for {week_start}~{week_end}")
+            try:
+                run_update_week_window(project_dir, observed_jsonl, week_start, week_end)
+                update_ok = True
+                print(f"[update] ran update_week_window for {week_start}~{week_end}")
+            except subprocess.CalledProcessError as exc:
+                print(f"[update] failed for {week_start}~{week_end}: {exc}; continuing with news refresh commit")
+        else:
+            update_ok = True
 
     if args.git_commit:
         targets = [triage_md, news_json_out]
-        if week_start and week_end:
+        if week_start and week_end and update_ok:
             targets.extend(
                 [
                     observed_jsonl,
