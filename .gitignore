@@ -10,4 +10,6 @@ codex_handoff_pack/data/nesdc_downloads/
 poll_news_collector/
 !poll_news_collector/
 poll_news_collector/*
+!poll_news_collector/collector.py
+!poll_news_collector/hourly_pipeline.py
 !poll_news_collector/hourly_pipeline.py

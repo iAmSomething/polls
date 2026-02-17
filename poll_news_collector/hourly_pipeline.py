@@ -28,7 +28,7 @@ def parse_args() -> argparse.Namespace:
         default="../codex_handoff_pack/docs/news_latest.json",
         help="Path to stage1 recent-news JSON for dashboard",
     )
-    p.add_argument("--news-limit", type=int, default=12, help="Max news items to keep in news JSON")
+    p.add_argument("--news-limit", type=int, default=6, help="Max news items to keep in news JSON")
     p.add_argument("--force-url", action="append", default=[], help="Force-process URL(s) for testing")
     p.add_argument("--git-commit", action="store_true", help="commit changed project files")
     p.add_argument("--git-push", action="store_true", help="push after commit")
