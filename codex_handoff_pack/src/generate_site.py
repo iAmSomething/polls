@@ -193,6 +193,12 @@ APP_JS = """
   const tracesData = payload.traces || [];
   const presidentRaw = payload.president_raw || {};
   const latestPollResults = payload.latest_poll_results || [];
+  const partyColorMap = {};
+  tracesData.forEach((t) => {
+    if (t && t.party && t.color && !partyColorMap[t.party]) {
+      partyColorMap[t.party] = t.color;
+    }
+  });
   const chartDiv = document.getElementById("chart");
   if (!chartDiv) return;
   const BAND_BASE_HALF_WIDTH = 2.2;
@@ -299,6 +305,32 @@ APP_JS = """
         hovertemplate: "<b>%{fullData.legendgroup} 예측</b><br>%{y:.2f}%<br>80% 구간: %{customdata[0]:.2f}% ~ %{customdata[1]:.2f}%<extra></extra>"
       });
     });
+    if (Array.isArray(latestPollResults) && latestPollResults.length) {
+      const top = latestPollResults[0] || {};
+      const pollDate = top.date_end || null;
+      const pollster = top.pollster || "최신 조사";
+      const parties = Array.isArray(top.parties) ? top.parties : [];
+      if (pollDate) {
+        parties.forEach((row) => {
+          const party = row.party;
+          const val = Number(row.value);
+          if (!party || !Number.isFinite(val)) return;
+          const exists = tracesData.some((t) => t.party === party);
+          if (!exists) return;
+          const color = partyColorMap[party] || "#94A3B8";
+          out.push({
+            x: [pollDate],
+            y: [val],
+            type: "scatter",
+            mode: "markers",
+            showlegend: false,
+            legendgroup: party,
+            marker: { symbol: "diamond", size: 10, color, line: { color: "#DDE8FF", width: 1 } },
+            hovertemplate: `<b>최신 여론조사</b><br>${pollster} (${pollDate})<br>${party}: %{y:.1f}%<extra></extra>`
+          });
+        });
+      }
+    }
     if (Array.isArray(presidentRaw.x) && presidentRaw.x.length) {
       const approveBand = buildSmoothedBand(presidentRaw.approve || []);
       out.push({
@@ -643,48 +675,38 @@ APP_JS = """
 
     const chartEl = document.getElementById("latest-poll-chart");
     if (!chartEl) return;
-    const partyOrder = ["더불어민주당", "국민의힘", "지지정당 없음", "조국혁신당", "개혁신당", "진보당"];
-    const rows = latestPollResults.slice(0, 6);
-    const seen = new Set();
-    const parties = [];
-    partyOrder.forEach((p) => {
-      if (rows.some((r) => (r.parties || []).some((x) => x.party === p))) {
-        parties.push(p);
-        seen.add(p);
-      }
-    });
-    rows.forEach((r) => {
-      (r.parties || []).forEach((p) => {
-        if (!seen.has(p.party)) {
-          parties.push(p.party);
-          seen.add(p.party);
-        }
-      });
-    });
-    const traces = rows.map((r) => {
-      const vmap = {};
-      (r.parties || []).forEach((p) => { vmap[p.party] = Number(p.value); });
-      return {
-        type: "bar",
-        name: r.pollster || "-",
-        x: parties,
-        y: parties.map((p) => (Number.isFinite(vmap[p]) ? vmap[p] : null)),
-        hovertemplate: "<b>%{fullData.name}</b><br>%{x}: %{y:.1f}%<extra></extra>",
-      };
-    });
+    const top = latestPollResults[0] || {};
+    const pieRows = (top.parties || []).filter((p) => Number.isFinite(Number(p.value)) && Number(p.value) > 0);
+    const labels = pieRows.map((p) => p.party);
+    const values = pieRows.map((p) => Number(p.value));
+    const colors = labels.map((p) => partyColorMap[p] || "#94A3B8");
     const dark = isDarkMode();
     Plotly.react(
       chartEl,
-      traces,
+      [
+        {
+          type: "pie",
+          labels,
+          values,
+          hole: 0.42,
+          sort: false,
+          textinfo: "label+percent",
+          marker: { colors, line: { color: dark ? "#1B2638" : "#FFFFFF", width: 1 } },
+          hovertemplate: "<b>%{label}</b>: %{value:.1f}%<extra></extra>",
+        }
+      ],
       {
-        barmode: "group",
         paper_bgcolor: "rgba(0,0,0,0)",
         plot_bgcolor: dark ? "#152338" : "#F8FAFD",
-        margin: { l: 45, r: 20, t: 20, b: 70 },
+        margin: { l: 20, r: 20, t: 36, b: 20 },
         font: { color: dark ? "#EAF0FA" : "#1A2332", family: "Inter, Pretendard, sans-serif" },
-        yaxis: { title: "지지율(%)", zeroline: false, gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)" },
-        xaxis: { tickangle: -20 },
-        legend: { orientation: "h", x: 0, y: 1.15 },
+        title: {
+          text: `${top.pollster || "최신 조사"} · ${top.date_end || ""}`,
+          x: 0,
+          xanchor: "left",
+          font: { size: 13 }
+        },
+        legend: { orientation: "h", x: 0, y: -0.08 },
       },
       { displayModeBar: false, responsive: true }
     );
@@ -1678,8 +1700,6 @@ def render_html(
       <aside class=\"panel\"><div class=\"panel-title\" style=\"margin-bottom:8px;\">예측 랭킹</div><div class=\"rank-wrap\">{''.join(ranking_html)}</div></aside>
     </section>
 
-    <section class=\"news\"><div class=\"panel-title\" style=\"margin: 0 0 8px;\">최근 여론조사 기사 링크</div><div id=\"news-status\" class=\"news-status\">대기 중...</div><div id=\"news-grid\" class=\"news-grid\">{''.join(article_cards)}</div></section>
-
     <section id=\"latest-poll-section\" class=\"latest-poll\">
       <div class=\"panel-title\" style=\"margin: 0 0 8px;\">최신 여론조사 결과</div>
       <div class=\"latest-poll-grid\">
@@ -1687,6 +1707,8 @@ def render_html(
         <article class=\"panel\"><div id=\"latest-poll-list\" class=\"latest-poll-list\"></div></article>
       </div>
     </section>
+
+    <section class=\"news\"><div class=\"panel-title\" style=\"margin: 0 0 8px;\">최근 여론조사 기사 링크</div><div id=\"news-status\" class=\"news-status\">대기 중...</div><div id=\"news-grid\" class=\"news-grid\">{''.join(article_cards)}</div></section>
 
     <section class=\"panel\" style=\"margin-top:14px;\">
       <div class=\"panel-title\" style=\"margin-bottom:8px;\">대통령 국정수행 주간 표</div>
