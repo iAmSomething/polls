@@ -80,6 +80,61 @@
 
   initThemeToggle();
   updateFreshnessBadge();
+  const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function initRevealAnimations() {
+    const items = document.querySelectorAll(".reveal");
+    if (!items.length) return;
+    if (reducedMotion || !("IntersectionObserver" in window)) {
+      items.forEach((el) => el.classList.add("in-view"));
+      return;
+    }
+    const observer = new IntersectionObserver((entries, obs) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("in-view");
+        obs.unobserve(entry.target);
+      });
+    }, { root: null, rootMargin: "0px 0px -10% 0px", threshold: 0.15 });
+    items.forEach((el) => observer.observe(el));
+  }
+
+  function animateValue(el, start, end, duration, decimals, suffix, finalText) {
+    let startTime = null;
+    function step(timestamp) {
+      if (startTime === null) startTime = timestamp;
+      const progress = timestamp - startTime;
+      const percent = Math.min(progress / duration, 1);
+      const value = start + percent * (end - start);
+      el.textContent = `${value.toFixed(decimals)}${suffix || ""}`;
+      if (progress < duration) {
+        requestAnimationFrame(step);
+      } else if (finalText) {
+        el.textContent = finalText;
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  function initKpiCountUp() {
+    const nodes = document.querySelectorAll(".insight-value[data-kpi-value]");
+    if (!nodes.length) return;
+    nodes.forEach((el) => {
+      const end = Number(el.dataset.kpiValue);
+      if (!Number.isFinite(end)) return;
+      const decimals = Number(el.dataset.kpiDecimals || "2");
+      const suffix = el.dataset.kpiSuffix || "";
+      const finalText = el.textContent;
+      if (reducedMotion) {
+        if (finalText) el.textContent = finalText;
+        return;
+      }
+      animateValue(el, 0, end, 800, Number.isFinite(decimals) ? decimals : 2, suffix, finalText);
+    });
+  }
+
+  initRevealAnimations();
+  initKpiCountUp();
 
   const dataEl = document.getElementById("poll-data");
   if (!dataEl) return;
@@ -447,12 +502,57 @@
     }
   }
 
+  function bindMainChartHoverEmphasis() {
+    if (!chartDiv || chartDiv.dataset.hoverEmphasisBound === "1" || isTouchDevice()) return;
+    chartDiv.dataset.hoverEmphasisBound = "1";
+
+    function baseLineWidths() {
+      return (chartDiv.data || []).map((t) => {
+        const w = t && t.line ? Number(t.line.width) : NaN;
+        return Number.isFinite(w) ? w : null;
+      });
+    }
+
+    function restore() {
+      const data = chartDiv.data || [];
+      const widths = baseLineWidths();
+      Plotly.restyle(chartDiv, {
+        opacity: data.map(() => 1),
+        "line.width": widths
+      });
+    }
+
+    chartDiv.on("plotly_hover", (ev) => {
+      const point = ev && Array.isArray(ev.points) ? ev.points[0] : null;
+      if (!point || typeof point.curveNumber !== "number") return;
+      const sourceTrace = (chartDiv.data || [])[point.curveNumber];
+      if (!sourceTrace || !sourceTrace.legendgroup) return;
+      const activeGroup = sourceTrace.legendgroup;
+      const data = chartDiv.data || [];
+      const widths = baseLineWidths();
+      const opacities = data.map((t) => (t && t.legendgroup === activeGroup ? 1 : 0.2));
+      const boostedWidths = data.map((t, idx) => {
+        const base = widths[idx];
+        if (base === null) return null;
+        const same = t && t.legendgroup === activeGroup;
+        const isBand = t && t.meta === "band";
+        const isLine = t && String(t.mode || "").includes("lines");
+        if (same && !isBand && isLine) return base + 1;
+        return base;
+      });
+      Plotly.restyle(chartDiv, { opacity: opacities, "line.width": boostedWidths });
+    });
+
+    chartDiv.on("plotly_unhover", restore);
+  }
+
   function renderAndSync() {
     syncChartHeightToRanking();
     const shouldAnimate = !chartDiv.dataset.animated;
     const renderPromise = renderChart();
     if (renderPromise && typeof renderPromise.then === "function") {
       renderPromise.then(() => {
+        bindMainChartHoverEmphasis();
         if (shouldAnimate) {
           animateSeriesRevealOnce();
           chartDiv.dataset.animated = "1";
@@ -465,6 +565,7 @@
       animateSeriesRevealOnce();
       chartDiv.dataset.animated = "1";
     }
+    bindMainChartHoverEmphasis();
     Plotly.Plots.resize(chartDiv);
   }
 
@@ -771,6 +872,32 @@
       },
       { displayModeBar: false, responsive: true }
     );
+
+    if (chartEl.dataset.hoverEmphasisBound === "1" || isTouchDevice()) return;
+    chartEl.dataset.hoverEmphasisBound = "1";
+    const restore = () => {
+      const data = chartEl.data || [];
+      const traceOpacity = data.map(() => 1);
+      const markerOpacity = data.map((t) => (t && t.marker ? 1 : null));
+      Plotly.restyle(chartEl, { opacity: traceOpacity, "marker.opacity": markerOpacity });
+    };
+    chartEl.on("plotly_hover", (ev) => {
+      const point = ev && Array.isArray(ev.points) ? ev.points[0] : null;
+      const selectedLabel = point ? String(point.y || "") : "";
+      if (!selectedLabel) return;
+      const data = chartEl.data || [];
+      const traceOpacity = data.map((t) => {
+        const rowLabel = Array.isArray(t.y) && t.y.length === 2 && t.y[0] === t.y[1] ? String(t.y[0]) : "";
+        if (!rowLabel) return 1;
+        return rowLabel === selectedLabel ? 1 : 0.2;
+      });
+      const markerOpacity = data.map((t) => {
+        if (!t || !t.marker || !Array.isArray(t.y)) return null;
+        return t.y.map((label) => (String(label) === selectedLabel ? 1 : 0.25));
+      });
+      Plotly.restyle(chartEl, { opacity: traceOpacity, "marker.opacity": markerOpacity });
+    });
+    chartEl.on("plotly_unhover", restore);
   }
 
   function parseRss(xmlText) {

@@ -87,6 +87,9 @@ STYLE_CSS = """
   --lh-tight: 1.2;
   --lh-normal: 1.5;
   --focus: 0 0 0 3px rgba(79, 70, 229, 0.24);
+  --motion-fast: 160ms;
+  --motion-base: 220ms;
+  --motion-ease: cubic-bezier(.4,0,.2,1);
   --panel: var(--surface);
   --panel-soft: var(--surface-2);
   --line: var(--border);
@@ -143,6 +146,14 @@ html[data-theme="dark"] {
 }
 html[data-theme="light"] { color-scheme: light; }
 html[data-theme="dark"] { color-scheme: dark; }
+@keyframes fadeIn {
+  0% { opacity: 0; transform: translateY(6px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes slideUp {
+  0% { opacity: 0; transform: translateY(10px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
 
 /* GLOBALS */
 * { box-sizing: border-box; }
@@ -168,6 +179,23 @@ body {
 .wrap { padding-bottom: var(--s-xl); }
 .section { padding: var(--s-xl) 0; }
 .section-tight { padding: var(--s-lg) 0; }
+.animate-fade-in {
+  opacity: 0;
+  transform: translateY(6px);
+  animation: fadeIn 400ms var(--motion-ease) forwards;
+}
+.reveal {
+  opacity: 0;
+  transform: translateY(10px);
+  transition: opacity var(--motion-base) var(--motion-ease), transform var(--motion-base) var(--motion-ease);
+}
+.reveal.in-view {
+  opacity: 1;
+  transform: translateY(0);
+}
+.stagger-1 { transition-delay: 40ms; }
+.stagger-2 { transition-delay: 100ms; }
+.stagger-3 { transition-delay: 160ms; }
 .h1 {
   font-size: var(--fs-h1);
   line-height: var(--lh-tight);
@@ -382,7 +410,9 @@ tbody tr:last-child td { border-bottom: none; }
   border: 1px solid var(--line);
   padding: var(--s-md);
   background: var(--surface);
+  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease), border-color var(--motion-fast) var(--motion-ease);
 }
+.insight-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-1); }
 .insight-card.featured {
   border-color: #c7ccff;
 }
@@ -460,8 +490,9 @@ tbody tr:last-child td { border-bottom: none; }
   font-size: var(--fs-caption);
   font-weight: 600;
   cursor: pointer;
-  transition: background 140ms ease, border-color 140ms ease;
+  transition: background var(--motion-fast) var(--motion-ease), border-color var(--motion-fast) var(--motion-ease), color var(--motion-fast) var(--motion-ease), transform var(--motion-fast) var(--motion-ease);
 }
+.fbtn:hover { transform: translateY(-1px); }
 .fbtn:hover { border-color: var(--line-strong); background: var(--surface-2); }
 .fbtn.active {
   border-color: var(--primary);
@@ -505,7 +536,9 @@ tbody tr:last-child td { border-bottom: none; }
   padding: 12px;
   cursor: pointer;
   min-height: 124px;
+  transition: transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease), border-color var(--motion-fast) var(--motion-ease), opacity var(--motion-fast) var(--motion-ease);
 }
+.rank-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-1); }
 .rank-card.active { border-color: var(--primary); box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.2); }
 .rank-card.muted { opacity: .5; }
 .rank-head { display: flex; align-items: center; gap: 8px; }
@@ -529,8 +562,9 @@ tbody tr:last-child td { border-bottom: none; }
   display: block;
   min-height: 110px;
   background: var(--bg);
+  transition: border-color var(--motion-fast) var(--motion-ease), background var(--motion-fast) var(--motion-ease), transform var(--motion-fast) var(--motion-ease), box-shadow var(--motion-fast) var(--motion-ease);
 }
-.news-card:hover { border-color: var(--line-strong); background: var(--surface); }
+.news-card:hover { border-color: var(--line-strong); background: var(--surface); transform: translateY(-2px); box-shadow: var(--shadow-1); }
 .news-date { color: var(--muted); font-size: var(--fs-caption); margin-bottom: 5px; font-weight: 500; }
 .news-title { font-size: 15px; line-height: 1.42; font-weight: 600; margin-bottom: 8px; padding-bottom: 8px; border-bottom: 1px solid var(--line); }
 .news-source { color: var(--muted); font-size: var(--fs-caption); font-weight: 500; }
@@ -543,7 +577,9 @@ tbody tr:last-child td { border-bottom: none; }
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   padding: 10px;
+  transition: border-color var(--motion-fast) var(--motion-ease), background var(--motion-fast) var(--motion-ease), transform var(--motion-fast) var(--motion-ease);
 }
+.latest-poll-card:hover, .poll-compare-card:hover { border-color: var(--line-strong); background: var(--surface); transform: translateY(-1px); }
 .latest-poll-head, .poll-compare-head {
   display: flex;
   align-items: baseline;
@@ -604,6 +640,20 @@ summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
   overflow: hidden;
   clip: rect(0, 0, 0, 0);
   border: 0;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-fade-in,
+  .reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    animation: none !important;
+  }
 }
 
 @media (max-width: 980px) {
@@ -712,6 +762,61 @@ APP_JS = """
 
   initThemeToggle();
   updateFreshnessBadge();
+  const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function initRevealAnimations() {
+    const items = document.querySelectorAll(".reveal");
+    if (!items.length) return;
+    if (reducedMotion || !("IntersectionObserver" in window)) {
+      items.forEach((el) => el.classList.add("in-view"));
+      return;
+    }
+    const observer = new IntersectionObserver((entries, obs) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("in-view");
+        obs.unobserve(entry.target);
+      });
+    }, { root: null, rootMargin: "0px 0px -10% 0px", threshold: 0.15 });
+    items.forEach((el) => observer.observe(el));
+  }
+
+  function animateValue(el, start, end, duration, decimals, suffix, finalText) {
+    let startTime = null;
+    function step(timestamp) {
+      if (startTime === null) startTime = timestamp;
+      const progress = timestamp - startTime;
+      const percent = Math.min(progress / duration, 1);
+      const value = start + percent * (end - start);
+      el.textContent = `${value.toFixed(decimals)}${suffix || ""}`;
+      if (progress < duration) {
+        requestAnimationFrame(step);
+      } else if (finalText) {
+        el.textContent = finalText;
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  function initKpiCountUp() {
+    const nodes = document.querySelectorAll(".insight-value[data-kpi-value]");
+    if (!nodes.length) return;
+    nodes.forEach((el) => {
+      const end = Number(el.dataset.kpiValue);
+      if (!Number.isFinite(end)) return;
+      const decimals = Number(el.dataset.kpiDecimals || "2");
+      const suffix = el.dataset.kpiSuffix || "";
+      const finalText = el.textContent;
+      if (reducedMotion) {
+        if (finalText) el.textContent = finalText;
+        return;
+      }
+      animateValue(el, 0, end, 800, Number.isFinite(decimals) ? decimals : 2, suffix, finalText);
+    });
+  }
+
+  initRevealAnimations();
+  initKpiCountUp();
 
   const dataEl = document.getElementById("poll-data");
   if (!dataEl) return;
@@ -1079,12 +1184,57 @@ APP_JS = """
     }
   }
 
+  function bindMainChartHoverEmphasis() {
+    if (!chartDiv || chartDiv.dataset.hoverEmphasisBound === "1" || isTouchDevice()) return;
+    chartDiv.dataset.hoverEmphasisBound = "1";
+
+    function baseLineWidths() {
+      return (chartDiv.data || []).map((t) => {
+        const w = t && t.line ? Number(t.line.width) : NaN;
+        return Number.isFinite(w) ? w : null;
+      });
+    }
+
+    function restore() {
+      const data = chartDiv.data || [];
+      const widths = baseLineWidths();
+      Plotly.restyle(chartDiv, {
+        opacity: data.map(() => 1),
+        "line.width": widths
+      });
+    }
+
+    chartDiv.on("plotly_hover", (ev) => {
+      const point = ev && Array.isArray(ev.points) ? ev.points[0] : null;
+      if (!point || typeof point.curveNumber !== "number") return;
+      const sourceTrace = (chartDiv.data || [])[point.curveNumber];
+      if (!sourceTrace || !sourceTrace.legendgroup) return;
+      const activeGroup = sourceTrace.legendgroup;
+      const data = chartDiv.data || [];
+      const widths = baseLineWidths();
+      const opacities = data.map((t) => (t && t.legendgroup === activeGroup ? 1 : 0.2));
+      const boostedWidths = data.map((t, idx) => {
+        const base = widths[idx];
+        if (base === null) return null;
+        const same = t && t.legendgroup === activeGroup;
+        const isBand = t && t.meta === "band";
+        const isLine = t && String(t.mode || "").includes("lines");
+        if (same && !isBand && isLine) return base + 1;
+        return base;
+      });
+      Plotly.restyle(chartDiv, { opacity: opacities, "line.width": boostedWidths });
+    });
+
+    chartDiv.on("plotly_unhover", restore);
+  }
+
   function renderAndSync() {
     syncChartHeightToRanking();
     const shouldAnimate = !chartDiv.dataset.animated;
     const renderPromise = renderChart();
     if (renderPromise && typeof renderPromise.then === "function") {
       renderPromise.then(() => {
+        bindMainChartHoverEmphasis();
         if (shouldAnimate) {
           animateSeriesRevealOnce();
           chartDiv.dataset.animated = "1";
@@ -1097,6 +1247,7 @@ APP_JS = """
       animateSeriesRevealOnce();
       chartDiv.dataset.animated = "1";
     }
+    bindMainChartHoverEmphasis();
     Plotly.Plots.resize(chartDiv);
   }
 
@@ -1403,6 +1554,32 @@ APP_JS = """
       },
       { displayModeBar: false, responsive: true }
     );
+
+    if (chartEl.dataset.hoverEmphasisBound === "1" || isTouchDevice()) return;
+    chartEl.dataset.hoverEmphasisBound = "1";
+    const restore = () => {
+      const data = chartEl.data || [];
+      const traceOpacity = data.map(() => 1);
+      const markerOpacity = data.map((t) => (t && t.marker ? 1 : null));
+      Plotly.restyle(chartEl, { opacity: traceOpacity, "marker.opacity": markerOpacity });
+    };
+    chartEl.on("plotly_hover", (ev) => {
+      const point = ev && Array.isArray(ev.points) ? ev.points[0] : null;
+      const selectedLabel = point ? String(point.y || "") : "";
+      if (!selectedLabel) return;
+      const data = chartEl.data || [];
+      const traceOpacity = data.map((t) => {
+        const rowLabel = Array.isArray(t.y) && t.y.length === 2 && t.y[0] === t.y[1] ? String(t.y[0]) : "";
+        if (!rowLabel) return 1;
+        return rowLabel === selectedLabel ? 1 : 0.2;
+      });
+      const markerOpacity = data.map((t) => {
+        if (!t || !t.marker || !Array.isArray(t.y)) return null;
+        return t.y.map((label) => (String(label) === selectedLabel ? 1 : 0.25));
+      });
+      Plotly.restyle(chartEl, { opacity: traceOpacity, "marker.opacity": markerOpacity });
+    });
+    chartEl.on("plotly_unhover", restore);
   }
 
   function parseRss(xmlText) {
@@ -2441,6 +2618,22 @@ def render_html(
             }
         )
 
+    def _kpi_countup_attrs(raw_value: str) -> str:
+        txt = str(raw_value or "").strip()
+        if not txt or "<" in txt or ">" in txt:
+            return ""
+        m = re.fullmatch(r"([+-]?\d+(?:\.\d+)?)\s*(%p|%|)", txt)
+        if not m:
+            return ""
+        num_txt = m.group(1)
+        suffix = m.group(2) or ""
+        decimals = len(num_txt.split(".", 1)[1]) if "." in num_txt else 0
+        return (
+            f' data-kpi-value="{float(num_txt):.6f}"'
+            f' data-kpi-decimals="{decimals}"'
+            f' data-kpi-suffix="{suffix}"'
+        )
+
     cards_html_rows = []
     for c in cards:
         tooltip_html = ""
@@ -2449,11 +2642,12 @@ def render_html(
             tooltip_html = (
                 f' <span class="metric-tooltip" tabindex="0" aria-label="RMSE 설명" data-tip="{tip}">ⓘ</span>'
             )
+        value_attrs = _kpi_countup_attrs(str(c.get("value", "")))
         cards_html_rows.append(
             f"""
             <article class=\"insight-card {'featured' if c.get('featured') else ''} {'hero' if c.get('hero') else ''}\">
               <div class=\"insight-label\">{c['label']}{tooltip_html}</div>
-              <div class=\"insight-value\">{c['value']}</div>
+              <div class=\"insight-value\"{value_attrs}>{c['value']}</div>
               <div class=\"insight-sub\">{c['sub']}</div>
             </article>
             """
@@ -2594,7 +2788,7 @@ def render_html(
 </head>
 <body>
   <div class=\"app-bg\">
-  <div class=\"wrap container\">
+  <div class=\"wrap container animate-fade-in\">
     <header class=\"top section-tight\">
       <div class=\"brand\">
         <div class=\"logo\" aria-hidden=\"true\"></div>
@@ -2616,9 +2810,9 @@ def render_html(
       </div>
     </header>
 
-    <section class=\"insights section-tight\">{cards_html}</section>
+    <section class=\"insights section-tight reveal stagger-1\">{cards_html}</section>
 
-    <section class=\"main-grid section-tight\">
+    <section class=\"main-grid section-tight reveal stagger-2\">
       <article class=\"panel chart-panel\">
         <div class=\"accent-line\" aria-hidden=\"true\"></div>
         <div class=\"panel-h\">
@@ -2650,7 +2844,7 @@ def render_html(
       <aside class=\"panel\"><div class=\"panel-title card-header\">예측 랭킹 <small>Forecast Ranking</small></div><div class=\"rank-wrap card-body\">{''.join(ranking_html)}</div></aside>
     </section>
 
-    <section id=\"latest-poll-section\" class=\"latest-poll section-tight\">
+    <section id=\"latest-poll-section\" class=\"latest-poll section-tight reveal stagger-3\">
       <div class=\"panel-title card-header\">최신 여론조사 결과 <small>Latest Poll Snapshot</small></div>
       <div class=\"latest-poll-grid\">
         <article class=\"panel\"><div id=\"latest-poll-chart\"></div></article>
@@ -2658,7 +2852,7 @@ def render_html(
       </div>
     </section>
 
-    <section id=\"poll-compare-section\" class=\"poll-compare section-tight\">
+    <section id=\"poll-compare-section\" class=\"poll-compare section-tight reveal stagger-3\">
       <div class=\"panel-title card-header\">예측치 대비 최신 여론조사 차이 <small>Forecast vs Latest Poll</small></div>
       <div class=\"poll-compare-grid\">
         <article class=\"panel\"><div id=\"poll-compare-chart\"></div></article>
@@ -2666,7 +2860,7 @@ def render_html(
       </div>
     </section>
 
-    <section class=\"results-grid section\">
+    <section class=\"results-grid section reveal stagger-2\">
       <article class=\"panel\">
         <div class=\"panel-title card-header\">대통령 국정수행 주간 표 <small>Weekly Presidential Approval Table</small></div>
         <div class=\"table-scroll\">
@@ -2688,7 +2882,7 @@ def render_html(
       </article>
     </section>
 
-    <section class=\"method\">
+    <section class=\"method reveal stagger-3\">
       <details>
         <summary>방법론 (클릭하여 펼치기)</summary>
         <p class=\"method-p\">2023년부터 2025년 6월 선거까지, 여론조사기관의 정당지지율과 실제 선거결과를 비교해 정확도(MAE)를 산출했습니다. 이후 정확도 상위 클러스터(9개 기관)만 사용해 합성 시계열을 만들고, 기관별 가중치는 1/MAE를 정규화해 적용합니다. 주간 업데이트에서는 Huber 손실 기반으로 가중치 안정성을 유지하도록 설계했습니다.</p>
