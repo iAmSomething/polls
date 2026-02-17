@@ -124,11 +124,29 @@
     });
   }
 
-  renderChart();
+  function syncChartHeightToRanking() {
+    const left = document.querySelector(".main-grid > article.panel.chart-panel");
+    const right = document.querySelector(".main-grid > aside.panel");
+    if (!left || !right) return;
+    const nonChartHeight = left.offsetHeight - chartDiv.offsetHeight;
+    const target = right.offsetHeight - nonChartHeight;
+    if (Number.isFinite(target) && target > 420) {
+      chartDiv.style.height = `${Math.round(target)}px`;
+    }
+  }
+
+  function renderAndSync() {
+    syncChartHeightToRanking();
+    renderChart();
+    Plotly.Plots.resize(chartDiv);
+  }
+
+  renderAndSync();
+  window.addEventListener("resize", renderAndSync);
   if (window.matchMedia) {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    if (mq.addEventListener) mq.addEventListener("change", renderChart);
-    else if (mq.addListener) mq.addListener(renderChart);
+    if (mq.addEventListener) mq.addEventListener("change", renderAndSync);
+    else if (mq.addListener) mq.addListener(renderAndSync);
   }
 
   if (isTouchDevice()) {

@@ -90,8 +90,9 @@ body {
 .insight-label { font-size: 12px; color: var(--muted); margin-bottom: 6px; }
 .insight-value { font-size: 28px; font-weight: 800; line-height: 1.1; }
 .insight-sub { margin-top: 4px; color: var(--muted); font-size: 12px; }
-.main-grid { display: grid; gap: 14px; grid-template-columns: minmax(0,1.7fr) minmax(0,1fr); align-items: start; }
+.main-grid { display: grid; gap: 14px; grid-template-columns: minmax(0,1.7fr) minmax(0,1fr); align-items: stretch; }
 .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; }
+.chart-panel { display: flex; flex-direction: column; min-height: 100%; }
 .panel-h { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
 .panel-title { font-size: 15px; font-weight: 700; }
 .filters { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -103,7 +104,7 @@ body {
 @media (prefers-color-scheme: dark) {
   .fbtn.active { color: #DCE9FF; background: #1B3358; }
 }
-#chart { height: 540px; }
+#chart { height: 640px; }
 .chart-caption { margin-top: 8px; color: var(--muted); font-size: 12px; }
 .rank-wrap { display: grid; gap: 9px; }
 .rank-card {
@@ -157,7 +158,7 @@ th { color: var(--muted); text-align: left; font-weight: 600; }
   .panel-h { flex-direction: column; align-items: flex-start; gap: 8px; }
   .filters { width: 100%; flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
   .fbtn { white-space: nowrap; min-height: 34px; }
-  #chart { height: 360px; }
+  #chart { height: 420px; }
   .rank-card { padding: 12px; }
   .rank-pred { font-size: 20px; }
   .chart-caption { font-size: 11px; line-height: 1.4; }
@@ -292,11 +293,29 @@ APP_JS = """
     });
   }
 
-  renderChart();
+  function syncChartHeightToRanking() {
+    const left = document.querySelector(".main-grid > article.panel.chart-panel");
+    const right = document.querySelector(".main-grid > aside.panel");
+    if (!left || !right) return;
+    const nonChartHeight = left.offsetHeight - chartDiv.offsetHeight;
+    const target = right.offsetHeight - nonChartHeight;
+    if (Number.isFinite(target) && target > 420) {
+      chartDiv.style.height = `${Math.round(target)}px`;
+    }
+  }
+
+  function renderAndSync() {
+    syncChartHeightToRanking();
+    renderChart();
+    Plotly.Plots.resize(chartDiv);
+  }
+
+  renderAndSync();
+  window.addEventListener("resize", renderAndSync);
   if (window.matchMedia) {
     const mq = window.matchMedia("(prefers-color-scheme: dark)");
-    if (mq.addEventListener) mq.addEventListener("change", renderChart);
-    else if (mq.addListener) mq.addListener(renderChart);
+    if (mq.addEventListener) mq.addEventListener("change", renderAndSync);
+    else if (mq.addListener) mq.addListener(renderAndSync);
   }
 
   if (isTouchDevice()) {
@@ -1203,7 +1222,7 @@ def render_html(
     <section class=\"insights\">{cards_html}</section>
 
     <section class=\"main-grid\">
-      <article class=\"panel\">
+      <article class=\"panel chart-panel\">
         <div class=\"panel-h\">
           <div class=\"panel-title\">정당 지지율 추세 + 다음주 예측치</div>
           <div class=\"filters\">
