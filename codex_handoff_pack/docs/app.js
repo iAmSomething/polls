@@ -580,36 +580,72 @@
     const chartEl = document.getElementById("poll-compare-chart");
     if (!chartEl) return;
     const dark = isDarkMode();
-    const labels = rows.map((r) => r.party).reverse();
-    const deltas = rows.map((r) => r.delta).reverse();
-    const barColors = rows.map((r) => (r.delta >= 0 ? "#0F9D58" : "#D83A3A")).reverse();
+    const sorted = rows.slice().reverse();
+    const labels = sorted.map((r) => r.party);
+
+    const traces = [];
+    sorted.forEach((r) => {
+      traces.push({
+        type: "scatter",
+        mode: "lines",
+        x: [r.pred, r.latest],
+        y: [r.party, r.party],
+        line: { color: dark ? "rgba(234,240,250,0.35)" : "rgba(26,35,50,0.28)", width: 3 },
+        hoverinfo: "skip",
+        showlegend: false,
+      });
+    });
+    traces.push({
+      type: "scatter",
+      mode: "markers",
+      name: "예측치",
+      x: sorted.map((r) => r.pred),
+      y: labels,
+      marker: {
+        size: 9,
+        color: sorted.map((r) => r.color),
+        symbol: "circle-open",
+        line: { width: 2, color: sorted.map((r) => r.color) },
+      },
+      hovertemplate: "<b>%{y}</b><br>예측: %{x:.1f}%<extra></extra>",
+    });
+    traces.push({
+      type: "scatter",
+      mode: "markers+text",
+      name: "최신 조사",
+      x: sorted.map((r) => r.latest),
+      y: labels,
+      marker: {
+        size: 10,
+        color: sorted.map((r) => r.color),
+        symbol: "diamond",
+        line: { width: 1, color: dark ? "#EAF0FA" : "#FFFFFF" },
+      },
+      text: sorted.map((r) => {
+        const d = r.delta;
+        return `${d > 0 ? "+" : ""}${d.toFixed(1)}%p`;
+      }),
+      textposition: "middle right",
+      textfont: { size: 11, color: dark ? "#EAF0FA" : "#1A2332" },
+      hovertemplate: "<b>%{y}</b><br>최신: %{x:.1f}%<extra></extra>",
+    });
 
     Plotly.react(
       chartEl,
-      [
-        {
-          type: "bar",
-          orientation: "h",
-          y: labels,
-          x: deltas,
-          marker: { color: barColors },
-          text: deltas.map((d) => `${d > 0 ? "+" : ""}${d.toFixed(1)}%p`),
-          textposition: "outside",
-          hovertemplate: "<b>%{y}</b><br>차이: %{x:.1f}%p<extra></extra>",
-        }
-      ],
+      traces,
       {
         paper_bgcolor: "rgba(0,0,0,0)",
         plot_bgcolor: dark ? "#152338" : "#F8FAFD",
         margin: { l: 90, r: 20, t: 20, b: 34 },
         font: { color: dark ? "#EAF0FA" : "#1A2332", family: "Inter, Pretendard, sans-serif" },
         xaxis: {
-          title: "최신 - 예측 (%p)",
+          title: "지지율(%)",
           zeroline: true,
           zerolinecolor: dark ? "rgba(234,240,250,0.5)" : "rgba(26,35,50,0.5)",
           gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)",
         },
-        yaxis: { automargin: true },
+        yaxis: { automargin: true, categoryorder: "array", categoryarray: labels },
+        legend: { orientation: "h", x: 0, y: 1.08, xanchor: "left" },
       },
       { displayModeBar: false, responsive: true }
     );
