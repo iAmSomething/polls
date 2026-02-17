@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--run-update", action="store_true", help="run update_week_window.py")
     p.add_argument(
         "--news-json-out",
-        default="../codex_handoff_pack/docs/news_latest.json",
+        default="docs/news_latest.json",
         help="Path to stage1 recent-news JSON for dashboard",
     )
     p.add_argument("--news-limit", type=int, default=6, help="Max news items to keep in news JSON")
@@ -207,7 +207,7 @@ def run_update_week_window(project_dir: Path, observed_jsonl: Path, week_start: 
     subprocess.run(cmd, cwd=project_dir, check=True)
 
 
-def git_commit(project_dir: Path, paths: list[Path], week_start: str, week_end: str, push: bool) -> None:
+def git_commit(project_dir: Path, paths: list[Path], message: str, push: bool) -> None:
     rel_paths = [str(p.relative_to(project_dir)) for p in paths if p.exists()]
     if not rel_paths:
         print("[git] no target files to add")
@@ -220,9 +220,8 @@ def git_commit(project_dir: Path, paths: list[Path], week_start: str, week_end: 
         print("[git] nothing staged")
         return
 
-    msg = f"chore: hourly poll update ({week_start}~{week_end})"
-    subprocess.run(["git", "commit", "-m", msg], cwd=project_dir, check=True)
-    print(f"[git] committed: {msg}")
+    subprocess.run(["git", "commit", "-m", message], cwd=project_dir, check=True)
+    print(f"[git] committed: {message}")
     if push:
         subprocess.run(["git", "push"], cwd=project_dir, check=True)
         print("[git] pushed")
@@ -240,7 +239,7 @@ def main() -> None:
         triage_md = (project_dir / triage_md).resolve()
     news_json_out = Path(args.news_json_out).expanduser()
     if not news_json_out.is_absolute():
-        news_json_out = (base_dir / news_json_out).resolve()
+        news_json_out = (project_dir / news_json_out).resolve()
 
     collect_once(
         base_dir=base_dir,
@@ -408,18 +407,24 @@ def main() -> None:
             run_update_week_window(project_dir, observed_jsonl, week_start, week_end)
             print(f"[update] ran update_week_window for {week_start}~{week_end}")
 
-    if args.git_commit and week_start and week_end:
-        targets = [
-            observed_jsonl,
-            triage_md,
-            news_json_out,
-            project_dir / "outputs" / "weighted_time_series.xlsx",
-            project_dir / "outputs" / f"weekly_public_points_{week_start}_{week_end}.csv",
-            project_dir / "outputs" / "pollster_watchlist.csv",
-            project_dir / "outputs" / "pollster_watchlist.md",
-            project_dir / "outputs" / f"update_log_{week_start}_{week_end}.md",
-        ]
-        git_commit(project_dir, targets, week_start, week_end, push=args.git_push)
+    if args.git_commit:
+        targets = [triage_md, news_json_out]
+        if week_start and week_end:
+            targets.extend(
+                [
+                    observed_jsonl,
+                    project_dir / "outputs" / "weighted_time_series.xlsx",
+                    project_dir / "outputs" / f"weekly_public_points_{week_start}_{week_end}.csv",
+                    project_dir / "outputs" / "pollster_watchlist.csv",
+                    project_dir / "outputs" / "pollster_watchlist.md",
+                    project_dir / "outputs" / f"update_log_{week_start}_{week_end}.md",
+                ]
+            )
+            msg = f"chore: hourly poll update ({week_start}~{week_end})"
+        else:
+            ts = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
+            msg = f"chore: hourly news refresh ({ts})"
+        git_commit(project_dir, targets, msg, push=args.git_push)
 
 
 if __name__ == "__main__":
