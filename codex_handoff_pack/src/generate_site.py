@@ -142,6 +142,22 @@ body {
 .news-date { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
 .news-title { font-size: 13px; line-height: 1.45; font-weight: 600; margin-bottom: 6px; }
 .news-source { color: var(--muted); font-size: 12px; }
+.latest-poll { margin-top: 14px; }
+.latest-poll-grid { display: grid; gap: 12px; grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); }
+#latest-poll-chart { height: 320px; }
+.latest-poll-list { display: grid; gap: 8px; }
+.latest-poll-card {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+}
+.latest-poll-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.latest-poll-pollster { font-size: 14px; font-weight: 700; }
+.latest-poll-date { color: var(--muted); font-size: 12px; }
+.latest-poll-source { color: var(--muted); font-size: 12px; text-decoration: none; }
+.latest-poll-source:hover { text-decoration: underline; }
+.latest-poll-values { color: var(--text); font-size: 12px; line-height: 1.6; }
 .method { margin-top: 14px; }
 details { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 12px 8px; }
 summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
@@ -164,6 +180,8 @@ th { color: var(--muted); text-align: left; font-weight: 600; }
   .rank-pred { font-size: 20px; }
   .chart-caption { font-size: 11px; line-height: 1.4; }
   .news-grid { grid-template-columns: 1fr; }
+  .latest-poll-grid { grid-template-columns: 1fr; }
+  #latest-poll-chart { height: 280px; }
 }
 """.strip()
 
@@ -174,6 +192,7 @@ APP_JS = """
   const payload = JSON.parse(dataEl.textContent);
   const tracesData = payload.traces || [];
   const presidentRaw = payload.president_raw || {};
+  const latestPollResults = payload.latest_poll_results || [];
   const chartDiv = document.getElementById("chart");
   if (!chartDiv) return;
   const BAND_BASE_HALF_WIDTH = 2.2;
@@ -593,6 +612,84 @@ APP_JS = """
     }[ch]));
   }
 
+  function renderLatestPollSection() {
+    const section = document.getElementById("latest-poll-section");
+    if (!section) return;
+    if (!Array.isArray(latestPollResults) || !latestPollResults.length) {
+      section.style.display = "none";
+      return;
+    }
+    section.style.display = "";
+
+    const listEl = document.getElementById("latest-poll-list");
+    if (listEl) {
+      listEl.innerHTML = latestPollResults.slice(0, 6).map((row) => {
+        const sourceUrl = esc(row.source_url || "");
+        const valueLines = (row.parties || [])
+          .map((p) => `${esc(p.party)} ${Number(p.value).toFixed(1)}%`)
+          .join(" · ");
+        return `
+          <article class="latest-poll-card">
+            <div class="latest-poll-head">
+              <div class="latest-poll-pollster">${esc(row.pollster || "-")}</div>
+              <div class="latest-poll-date">${esc(row.date_end || "")}</div>
+            </div>
+            <div class="latest-poll-values">${valueLines}</div>
+            ${sourceUrl ? `<a class="latest-poll-source" href="${sourceUrl}" target="_blank" rel="noopener noreferrer">기사 링크</a>` : `<div class="latest-poll-source">출처 없음</div>`}
+          </article>
+        `;
+      }).join("");
+    }
+
+    const chartEl = document.getElementById("latest-poll-chart");
+    if (!chartEl) return;
+    const partyOrder = ["더불어민주당", "국민의힘", "지지정당 없음", "조국혁신당", "개혁신당", "진보당"];
+    const rows = latestPollResults.slice(0, 6);
+    const seen = new Set();
+    const parties = [];
+    partyOrder.forEach((p) => {
+      if (rows.some((r) => (r.parties || []).some((x) => x.party === p))) {
+        parties.push(p);
+        seen.add(p);
+      }
+    });
+    rows.forEach((r) => {
+      (r.parties || []).forEach((p) => {
+        if (!seen.has(p.party)) {
+          parties.push(p.party);
+          seen.add(p.party);
+        }
+      });
+    });
+    const traces = rows.map((r) => {
+      const vmap = {};
+      (r.parties || []).forEach((p) => { vmap[p.party] = Number(p.value); });
+      return {
+        type: "bar",
+        name: r.pollster || "-",
+        x: parties,
+        y: parties.map((p) => (Number.isFinite(vmap[p]) ? vmap[p] : null)),
+        hovertemplate: "<b>%{fullData.name}</b><br>%{x}: %{y:.1f}%<extra></extra>",
+      };
+    });
+    const dark = isDarkMode();
+    Plotly.react(
+      chartEl,
+      traces,
+      {
+        barmode: "group",
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: dark ? "#152338" : "#F8FAFD",
+        margin: { l: 45, r: 20, t: 20, b: 70 },
+        font: { color: dark ? "#EAF0FA" : "#1A2332", family: "Inter, Pretendard, sans-serif" },
+        yaxis: { title: "지지율(%)", zeroline: false, gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)" },
+        xaxis: { tickangle: -20 },
+        legend: { orientation: "h", x: 0, y: 1.15 },
+      },
+      { displayModeBar: false, responsive: true }
+    );
+  }
+
   function parseRss(xmlText) {
     const doc = new DOMParser().parseFromString(xmlText, "text/xml");
     const items = [...doc.querySelectorAll("item")];
@@ -727,6 +824,7 @@ APP_JS = """
   }
 
   fetchRecentPollNews();
+  renderLatestPollSection();
 })();
 """.strip()
 
@@ -1320,6 +1418,47 @@ def build_party_payload(blended: pd.DataFrame, forecast: pd.DataFrame) -> tuple[
     return traces, ranking_rows
 
 
+def load_latest_poll_results(outputs: Path, max_rows: int = 6) -> list[dict]:
+    files = sorted(outputs.glob("weekly_public_points_*.csv"))
+    if not files:
+        return []
+    latest = max(files, key=lambda p: p.stat().st_mtime)
+    try:
+        df = pd.read_csv(latest)
+    except Exception:
+        return []
+    required = {"pollster", "date_end", "source_type", "source_url"}
+    if not required.issubset(set(df.columns)):
+        return []
+    df["source_type"] = df["source_type"].astype(str)
+    df = df[df["source_type"] == "observed_web"].copy()
+    if df.empty:
+        return []
+    df["date_end"] = pd.to_datetime(df["date_end"], errors="coerce")
+    df = df.dropna(subset=["date_end"]).sort_values("date_end", ascending=False).head(max_rows)
+    meta_cols = {"pollster", "date_end", "source_type", "source_url"}
+
+    rows: list[dict] = []
+    for _, r in df.iterrows():
+        party_rows = []
+        for c in df.columns:
+            if c in meta_cols:
+                continue
+            v = pd.to_numeric(r.get(c), errors="coerce")
+            if pd.notna(v):
+                party_rows.append({"party": canonical_party_name(str(c)), "value": float(v)})
+        party_rows = sorted(party_rows, key=lambda x: x["value"], reverse=True)
+        rows.append(
+            {
+                "pollster": str(r.get("pollster", "")).strip(),
+                "date_end": pd.to_datetime(r["date_end"]).strftime("%Y-%m-%d"),
+                "source_url": str(r.get("source_url", "")).strip(),
+                "parties": party_rows,
+            }
+        )
+    return rows
+
+
 def render_html(
     docs_dir: Path,
     traces: list[dict],
@@ -1331,6 +1470,7 @@ def render_html(
     president_overall: dict,
     president_raw_series: dict,
     president_table_rows: list[dict],
+    latest_poll_results: list[dict],
 ) -> None:
     now_kst = datetime.now(tz=ZoneInfo("Asia/Seoul")).strftime("%Y-%m-%d %H:%M:%S KST")
     cache_bust = datetime.now(tz=ZoneInfo("Asia/Seoul")).strftime("%Y%m%d%H%M%S")
@@ -1472,7 +1612,10 @@ def render_html(
             """
         )
 
-    payload_json = json.dumps({"traces": traces, "president_raw": president_raw_series}, ensure_ascii=False)
+    payload_json = json.dumps(
+        {"traces": traces, "president_raw": president_raw_series, "latest_poll_results": latest_poll_results},
+        ensure_ascii=False,
+    )
     backtest_note = ""
     if backtest_overall:
         legacy_mae = backtest_overall.get("legacy_mae")
@@ -1536,6 +1679,14 @@ def render_html(
     </section>
 
     <section class=\"news\"><div class=\"panel-title\" style=\"margin: 0 0 8px;\">최근 여론조사 기사 링크</div><div id=\"news-status\" class=\"news-status\">대기 중...</div><div id=\"news-grid\" class=\"news-grid\">{''.join(article_cards)}</div></section>
+
+    <section id=\"latest-poll-section\" class=\"latest-poll\">
+      <div class=\"panel-title\" style=\"margin: 0 0 8px;\">최신 여론조사 결과</div>
+      <div class=\"latest-poll-grid\">
+        <article class=\"panel\"><div id=\"latest-poll-chart\"></div></article>
+        <article class=\"panel\"><div id=\"latest-poll-list\" class=\"latest-poll-list\"></div></article>
+      </div>
+    </section>
 
     <section class=\"panel\" style=\"margin-top:14px;\">
       <div class=\"panel-title\" style=\"margin-bottom:8px;\">대통령 국정수행 주간 표</div>
@@ -1602,6 +1753,7 @@ def main():
     president_overall = load_president_approval_overall(outputs)
     president_raw_series = load_president_approval_raw_series(outputs)
     president_table_rows = load_president_approval_table_rows(outputs)
+    latest_poll_results = load_latest_poll_results(outputs)
     traces, ranking_rows = build_party_payload(blended, forecast)
 
     latest_date = str(pd.to_datetime(blended["date_end"]).max().date())
@@ -1616,6 +1768,7 @@ def main():
         president_overall=president_overall,
         president_raw_series=president_raw_series,
         president_table_rows=president_table_rows,
+        latest_poll_results=latest_poll_results,
     )
     print(f"News source: {news_source}, rows={len(articles)}")
     print("Wrote docs/index.html, docs/style.css, docs/app.js")

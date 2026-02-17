@@ -4,6 +4,7 @@
   const payload = JSON.parse(dataEl.textContent);
   const tracesData = payload.traces || [];
   const presidentRaw = payload.president_raw || {};
+  const latestPollResults = payload.latest_poll_results || [];
   const chartDiv = document.getElementById("chart");
   if (!chartDiv) return;
   const BAND_BASE_HALF_WIDTH = 2.2;
@@ -423,6 +424,84 @@
     }[ch]));
   }
 
+  function renderLatestPollSection() {
+    const section = document.getElementById("latest-poll-section");
+    if (!section) return;
+    if (!Array.isArray(latestPollResults) || !latestPollResults.length) {
+      section.style.display = "none";
+      return;
+    }
+    section.style.display = "";
+
+    const listEl = document.getElementById("latest-poll-list");
+    if (listEl) {
+      listEl.innerHTML = latestPollResults.slice(0, 6).map((row) => {
+        const sourceUrl = esc(row.source_url || "");
+        const valueLines = (row.parties || [])
+          .map((p) => `${esc(p.party)} ${Number(p.value).toFixed(1)}%`)
+          .join(" · ");
+        return `
+          <article class="latest-poll-card">
+            <div class="latest-poll-head">
+              <div class="latest-poll-pollster">${esc(row.pollster || "-")}</div>
+              <div class="latest-poll-date">${esc(row.date_end || "")}</div>
+            </div>
+            <div class="latest-poll-values">${valueLines}</div>
+            ${sourceUrl ? `<a class="latest-poll-source" href="${sourceUrl}" target="_blank" rel="noopener noreferrer">기사 링크</a>` : `<div class="latest-poll-source">출처 없음</div>`}
+          </article>
+        `;
+      }).join("");
+    }
+
+    const chartEl = document.getElementById("latest-poll-chart");
+    if (!chartEl) return;
+    const partyOrder = ["더불어민주당", "국민의힘", "지지정당 없음", "조국혁신당", "개혁신당", "진보당"];
+    const rows = latestPollResults.slice(0, 6);
+    const seen = new Set();
+    const parties = [];
+    partyOrder.forEach((p) => {
+      if (rows.some((r) => (r.parties || []).some((x) => x.party === p))) {
+        parties.push(p);
+        seen.add(p);
+      }
+    });
+    rows.forEach((r) => {
+      (r.parties || []).forEach((p) => {
+        if (!seen.has(p.party)) {
+          parties.push(p.party);
+          seen.add(p.party);
+        }
+      });
+    });
+    const traces = rows.map((r) => {
+      const vmap = {};
+      (r.parties || []).forEach((p) => { vmap[p.party] = Number(p.value); });
+      return {
+        type: "bar",
+        name: r.pollster || "-",
+        x: parties,
+        y: parties.map((p) => (Number.isFinite(vmap[p]) ? vmap[p] : null)),
+        hovertemplate: "<b>%{fullData.name}</b><br>%{x}: %{y:.1f}%<extra></extra>",
+      };
+    });
+    const dark = isDarkMode();
+    Plotly.react(
+      chartEl,
+      traces,
+      {
+        barmode: "group",
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: dark ? "#152338" : "#F8FAFD",
+        margin: { l: 45, r: 20, t: 20, b: 70 },
+        font: { color: dark ? "#EAF0FA" : "#1A2332", family: "Inter, Pretendard, sans-serif" },
+        yaxis: { title: "지지율(%)", zeroline: false, gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)" },
+        xaxis: { tickangle: -20 },
+        legend: { orientation: "h", x: 0, y: 1.15 },
+      },
+      { displayModeBar: false, responsive: true }
+    );
+  }
+
   function parseRss(xmlText) {
     const doc = new DOMParser().parseFromString(xmlText, "text/xml");
     const items = [...doc.querySelectorAll("item")];
@@ -557,4 +636,5 @@
   }
 
   fetchRecentPollNews();
+  renderLatestPollSection();
 })();

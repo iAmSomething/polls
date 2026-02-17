@@ -104,6 +104,22 @@ body {
 .news-date { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
 .news-title { font-size: 13px; line-height: 1.45; font-weight: 600; margin-bottom: 6px; }
 .news-source { color: var(--muted); font-size: 12px; }
+.latest-poll { margin-top: 14px; }
+.latest-poll-grid { display: grid; gap: 12px; grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); }
+#latest-poll-chart { height: 320px; }
+.latest-poll-list { display: grid; gap: 8px; }
+.latest-poll-card {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+}
+.latest-poll-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin-bottom: 6px; }
+.latest-poll-pollster { font-size: 14px; font-weight: 700; }
+.latest-poll-date { color: var(--muted); font-size: 12px; }
+.latest-poll-source { color: var(--muted); font-size: 12px; text-decoration: none; }
+.latest-poll-source:hover { text-decoration: underline; }
+.latest-poll-values { color: var(--text); font-size: 12px; line-height: 1.6; }
 .method { margin-top: 14px; }
 details { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 12px 8px; }
 summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
@@ -126,4 +142,6 @@ th { color: var(--muted); text-align: left; font-weight: 600; }
   .rank-pred { font-size: 20px; }
   .chart-caption { font-size: 11px; line-height: 1.4; }
   .news-grid { grid-template-columns: 1fr; }
+  .latest-poll-grid { grid-template-columns: 1fr; }
+  #latest-poll-chart { height: 280px; }
 }
