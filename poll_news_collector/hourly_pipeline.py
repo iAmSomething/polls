@@ -23,6 +23,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--window-minutes", type=int, default=60)
     p.add_argument("--observed-jsonl", default="outputs/observed_web_points.jsonl")
     p.add_argument("--run-update", action="store_true", help="run update_week_window.py")
+    p.add_argument(
+        "--news-json-out",
+        default="../codex_handoff_pack/docs/news_latest.json",
+        help="Path to stage1 recent-news JSON for dashboard",
+    )
+    p.add_argument("--news-limit", type=int, default=12, help="Max news items to keep in news JSON")
     p.add_argument("--force-url", action="append", default=[], help="Force-process URL(s) for testing")
     p.add_argument("--git-commit", action="store_true", help="commit changed project files")
     p.add_argument("--git-push", action="store_true", help="push after commit")
@@ -232,8 +238,17 @@ def main() -> None:
         observed_jsonl = (project_dir / observed_jsonl).resolve()
     if not triage_md.is_absolute():
         triage_md = (project_dir / triage_md).resolve()
+    news_json_out = Path(args.news_json_out).expanduser()
+    if not news_json_out.is_absolute():
+        news_json_out = (base_dir / news_json_out).resolve()
 
-    collect_once(base_dir=base_dir, window_minutes=args.window_minutes, dry_run=False)
+    collect_once(
+        base_dir=base_dir,
+        window_minutes=args.window_minutes,
+        dry_run=False,
+        recent_json_out=news_json_out,
+        recent_limit=args.news_limit,
+    )
 
     conn = init_db(base_dir / "collector.sqlite3")
     ensure_extract_table(conn)
@@ -397,6 +412,7 @@ def main() -> None:
         targets = [
             observed_jsonl,
             triage_md,
+            news_json_out,
             project_dir / "outputs" / "weighted_time_series.xlsx",
             project_dir / "outputs" / f"weekly_public_points_{week_start}_{week_end}.csv",
             project_dir / "outputs" / "pollster_watchlist.csv",

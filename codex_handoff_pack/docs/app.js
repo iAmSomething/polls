@@ -248,6 +248,26 @@
     return String(s || "").replace(/<[^>]*>/g, " ");
   }
 
+  function parseNewsDate(row) {
+    const raw = row && (row.published_at || row.date);
+    if (!raw) return null;
+    const dt = new Date(raw);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  }
+
+  function formatRelative(dt) {
+    if (!dt) return "";
+    const diffMs = Date.now() - dt.getTime();
+    if (!Number.isFinite(diffMs) || diffMs < 0) return dt.toLocaleDateString("ko-KR");
+    const min = Math.floor(diffMs / 60000);
+    if (min < 1) return "방금 전";
+    if (min < 60) return `${min}분 전`;
+    const hour = Math.floor(min / 60);
+    if (hour < 24) return `${hour}시간 전`;
+    const day = Math.floor(hour / 24);
+    return `${day}일 전`;
+  }
+
   async function fetchViaCandidates(rssUrl) {
     const candidates = [
       `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`,
@@ -286,14 +306,17 @@
       if (local.ok) {
         const rows = await local.json();
         if (Array.isArray(rows) && rows.length) {
-          grid.innerHTML = rows.slice(0, 6).map((r) => `
+          const sorted = rows
+            .map((r) => ({ ...r, _dt: parseNewsDate(r) }))
+            .sort((a, b) => (b._dt ? b._dt.getTime() : 0) - (a._dt ? a._dt.getTime() : 0));
+          grid.innerHTML = sorted.slice(0, 6).map((r) => `
             <a class="news-card" href="${esc(r.url || "")}" target="_blank" rel="noopener noreferrer">
-              <div class="news-date">${esc(r.date || "")}</div>
+              <div class="news-date">${esc(formatRelative(r._dt) || (r.date || ""))}</div>
               <div class="news-title">${esc(r.title || "")}</div>
               <div class="news-source">${esc(r.source || "출처")}</div>
             </a>
           `).join("");
-          if (status) status.textContent = `자동 갱신 완료 (${Math.min(rows.length, 6)}건)`;
+          if (status) status.textContent = `자동 갱신 완료 (${Math.min(sorted.length, 6)}건)`;
           return;
         }
         if (Array.isArray(rows) && rows.length === 0) {
@@ -326,7 +349,7 @@
       return;
     }
     grid.innerHTML = rows.map((r) => {
-      const d = r.date ? r.date.toISOString().slice(0, 10) : "";
+      const d = r.date && !Number.isNaN(r.date.getTime()) ? formatRelative(r.date) : "";
       return `<a class="news-card" href="${esc(r.link)}" target="_blank" rel="noopener noreferrer"><div class="news-date">${esc(d)}</div><div class="news-title">${esc(r.title)}</div><div class="news-source">${esc(r.source)}</div></a>`;
     }).join("");
     if (status) status.textContent = `디버그 프록시 갱신 (${rows.length}건)`;

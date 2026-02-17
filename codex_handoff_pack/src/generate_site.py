@@ -418,6 +418,26 @@ APP_JS = """
     return String(s || "").replace(/<[^>]*>/g, " ");
   }
 
+  function parseNewsDate(row) {
+    const raw = row && (row.published_at || row.date);
+    if (!raw) return null;
+    const dt = new Date(raw);
+    return Number.isNaN(dt.getTime()) ? null : dt;
+  }
+
+  function formatRelative(dt) {
+    if (!dt) return "";
+    const diffMs = Date.now() - dt.getTime();
+    if (!Number.isFinite(diffMs) || diffMs < 0) return dt.toLocaleDateString("ko-KR");
+    const min = Math.floor(diffMs / 60000);
+    if (min < 1) return "방금 전";
+    if (min < 60) return `${min}분 전`;
+    const hour = Math.floor(min / 60);
+    if (hour < 24) return `${hour}시간 전`;
+    const day = Math.floor(hour / 24);
+    return `${day}일 전`;
+  }
+
   async function fetchViaCandidates(rssUrl) {
     const candidates = [
       `https://api.allorigins.win/raw?url=${encodeURIComponent(rssUrl)}`,
@@ -456,14 +476,17 @@ APP_JS = """
       if (local.ok) {
         const rows = await local.json();
         if (Array.isArray(rows) && rows.length) {
-          grid.innerHTML = rows.slice(0, 6).map((r) => `
+          const sorted = rows
+            .map((r) => ({ ...r, _dt: parseNewsDate(r) }))
+            .sort((a, b) => (b._dt ? b._dt.getTime() : 0) - (a._dt ? a._dt.getTime() : 0));
+          grid.innerHTML = sorted.slice(0, 6).map((r) => `
             <a class="news-card" href="${esc(r.url || "")}" target="_blank" rel="noopener noreferrer">
-              <div class="news-date">${esc(r.date || "")}</div>
+              <div class="news-date">${esc(formatRelative(r._dt) || (r.date || ""))}</div>
               <div class="news-title">${esc(r.title || "")}</div>
               <div class="news-source">${esc(r.source || "출처")}</div>
             </a>
           `).join("");
-          if (status) status.textContent = `자동 갱신 완료 (${Math.min(rows.length, 6)}건)`;
+          if (status) status.textContent = `자동 갱신 완료 (${Math.min(sorted.length, 6)}건)`;
           return;
         }
         if (Array.isArray(rows) && rows.length === 0) {
@@ -496,7 +519,7 @@ APP_JS = """
       return;
     }
     grid.innerHTML = rows.map((r) => {
-      const d = r.date ? r.date.toISOString().slice(0, 10) : "";
+      const d = r.date && !Number.isNaN(r.date.getTime()) ? formatRelative(r.date) : "";
       return `<a class="news-card" href="${esc(r.link)}" target="_blank" rel="noopener noreferrer"><div class="news-date">${esc(d)}</div><div class="news-title">${esc(r.title)}</div><div class="news-source">${esc(r.source)}</div></a>`;
     }).join("");
     if (status) status.textContent = `디버그 프록시 갱신 (${rows.length}건)`;
@@ -575,7 +598,7 @@ def load_recent_articles(base: Path) -> pd.DataFrame:
 
 
 def dedupe_same_day_same_source(df: pd.DataFrame, limit: int = 12) -> pd.DataFrame:
-    cols = ["date", "source", "title", "url"]
+    cols = ["date", "source", "title", "url", "published_at"]
     if df is None or df.empty:
         return pd.DataFrame(columns=cols)
     out = df.copy()
@@ -596,12 +619,12 @@ def dedupe_same_day_same_source(df: pd.DataFrame, limit: int = 12) -> pd.DataFra
     out = out.drop_duplicates(subset=["date_only", "source"], keep="first")
     out = out.drop(columns=["date_only"], errors="ignore")
     out = out.sort_values("date", ascending=False, na_position="last")
-    return out[["date", "source", "title", "url"]].head(limit).reset_index(drop=True)
+    return out[["date", "source", "title", "url", "published_at"]].head(limit).reset_index(drop=True)
 
 
 def load_cached_news_json(base: Path) -> pd.DataFrame:
     p = base / "docs" / "news_latest.json"
-    cols = ["date", "source", "title", "url"]
+    cols = ["date", "source", "title", "url", "published_at"]
     if not p.exists():
         return pd.DataFrame(columns=cols)
     try:
@@ -760,6 +783,7 @@ def fetch_google_news_articles(
                 rows.append(
                     {
                         "date": article_dt.date().isoformat(),
+                        "published_at": article_dt.isoformat(),
                         "source": _extract_source(html),
                         "title": title,
                         "url": link,
@@ -827,6 +851,7 @@ def fetch_google_rss_fallback(limit: int = 12) -> pd.DataFrame:
             rows.append(
                 {
                     "date": pd.to_datetime(pub).date().isoformat(),
+                    "published_at": pd.to_datetime(pub).isoformat(),
                     "source": src,
                     "title": title,
                     "url": link,
@@ -1188,14 +1213,15 @@ def render_html(
 
     article_cards = []
     for _, a in articles_df.iterrows():
-        d = pd.to_datetime(a["date"]).strftime("%Y-%m-%d")
+        d = pd.to_datetime(a.get("published_at", a["date"]), errors="coerce")
+        dtxt = d.strftime("%Y-%m-%d %H:%M") if pd.notna(d) else pd.to_datetime(a["date"]).strftime("%Y-%m-%d")
         source = str(a.get("source", "")).strip() or "출처"
         title = str(a.get("title", "")).strip()
         url = str(a.get("url", "")).strip()
         article_cards.append(
             f"""
             <a class=\"news-card\" href=\"{url}\" target=\"_blank\" rel=\"noopener noreferrer\">
-              <div class=\"news-date\">{d}</div>
+              <div class=\"news-date\">{dtxt}</div>
               <div class=\"news-title\">{title}</div>
               <div class=\"news-source\">{source}</div>
             </a>
@@ -1339,12 +1365,19 @@ def render_html(
     (docs_dir / "app.js").write_text(APP_JS + "\n", encoding="utf-8")
     news_payload = []
     for _, a in articles_df.head(12).iterrows():
+        published_at = pd.to_datetime(a.get("published_at"), errors="coerce")
+        if pd.isna(published_at):
+            dt_fallback = pd.to_datetime(a.get("date"), errors="coerce")
+            published_str = dt_fallback.strftime("%Y-%m-%dT00:00:00+09:00") if pd.notna(dt_fallback) else ""
+        else:
+            published_str = published_at.isoformat()
         news_payload.append(
             {
                 "date": pd.to_datetime(a["date"]).strftime("%Y-%m-%d"),
                 "source": str(a.get("source", "")),
                 "title": str(a.get("title", "")),
                 "url": str(a.get("url", "")),
+                "published_at": published_str,
             }
         )
     (docs_dir / "news_latest.json").write_text(
