@@ -158,6 +158,20 @@ body {
 .latest-poll-source { color: var(--muted); font-size: 12px; text-decoration: none; }
 .latest-poll-source:hover { text-decoration: underline; }
 .latest-poll-values { color: var(--text); font-size: 12px; line-height: 1.6; }
+.poll-compare { margin-top: 14px; }
+.poll-compare-grid { display: grid; gap: 12px; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); }
+#poll-compare-chart { height: 320px; }
+.poll-compare-list { display: grid; gap: 8px; }
+.poll-compare-card {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+}
+.poll-compare-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.poll-compare-party { font-size: 14px; font-weight: 700; }
+.poll-compare-delta { font-size: 13px; font-weight: 700; }
+.poll-compare-meta { color: var(--muted); font-size: 12px; }
 .method { margin-top: 14px; }
 details { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 12px 8px; }
 summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
@@ -182,6 +196,8 @@ th { color: var(--muted); text-align: left; font-weight: 600; }
   .news-grid { grid-template-columns: 1fr; }
   .latest-poll-grid { grid-template-columns: 1fr; }
   #latest-poll-chart { height: 280px; }
+  .poll-compare-grid { grid-template-columns: 1fr; }
+  #poll-compare-chart { height: 280px; }
 }
 """.strip()
 
@@ -712,6 +728,97 @@ APP_JS = """
     );
   }
 
+  function renderForecastComparisonSection() {
+    const section = document.getElementById("poll-compare-section");
+    if (!section) return;
+    if (!Array.isArray(latestPollResults) || !latestPollResults.length || !Array.isArray(tracesData) || !tracesData.length) {
+      section.style.display = "none";
+      return;
+    }
+    const top = latestPollResults[0] || {};
+    const forecastMap = {};
+    tracesData.forEach((t) => {
+      if (t && t.party && Number.isFinite(Number(t.pred_y))) {
+        forecastMap[t.party] = Number(t.pred_y);
+      }
+    });
+    const rows = (top.parties || [])
+      .map((p) => {
+        const latest = Number(p.value);
+        const pred = forecastMap[p.party];
+        if (!Number.isFinite(latest) || !Number.isFinite(pred)) return null;
+        return {
+          party: p.party,
+          latest,
+          pred,
+          delta: latest - pred,
+          color: partyColorMap[p.party] || "#94A3B8",
+        };
+      })
+      .filter(Boolean)
+      .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
+
+    if (!rows.length) {
+      section.style.display = "none";
+      return;
+    }
+    section.style.display = "";
+
+    const listEl = document.getElementById("poll-compare-list");
+    if (listEl) {
+      listEl.innerHTML = rows.map((r) => {
+        const sign = r.delta > 0 ? "+" : "";
+        const deltaColor = r.delta >= 0 ? "#0F9D58" : "#D83A3A";
+        return `
+          <article class="poll-compare-card">
+            <div class="poll-compare-head">
+              <div class="poll-compare-party">${esc(r.party)}</div>
+              <div class="poll-compare-delta" style="color:${deltaColor}">${sign}${r.delta.toFixed(1)}%p</div>
+            </div>
+            <div class="poll-compare-meta">최신 ${r.latest.toFixed(1)}% · 예측 ${r.pred.toFixed(1)}%</div>
+          </article>
+        `;
+      }).join("");
+    }
+
+    const chartEl = document.getElementById("poll-compare-chart");
+    if (!chartEl) return;
+    const dark = isDarkMode();
+    const labels = rows.map((r) => r.party).reverse();
+    const deltas = rows.map((r) => r.delta).reverse();
+    const barColors = rows.map((r) => (r.delta >= 0 ? "#0F9D58" : "#D83A3A")).reverse();
+
+    Plotly.react(
+      chartEl,
+      [
+        {
+          type: "bar",
+          orientation: "h",
+          y: labels,
+          x: deltas,
+          marker: { color: barColors },
+          text: deltas.map((d) => `${d > 0 ? "+" : ""}${d.toFixed(1)}%p`),
+          textposition: "outside",
+          hovertemplate: "<b>%{y}</b><br>차이: %{x:.1f}%p<extra></extra>",
+        }
+      ],
+      {
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: dark ? "#152338" : "#F8FAFD",
+        margin: { l: 90, r: 20, t: 20, b: 34 },
+        font: { color: dark ? "#EAF0FA" : "#1A2332", family: "Inter, Pretendard, sans-serif" },
+        xaxis: {
+          title: "최신 - 예측 (%p)",
+          zeroline: true,
+          zerolinecolor: dark ? "rgba(234,240,250,0.5)" : "rgba(26,35,50,0.5)",
+          gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)",
+        },
+        yaxis: { automargin: true },
+      },
+      { displayModeBar: false, responsive: true }
+    );
+  }
+
   function parseRss(xmlText) {
     const doc = new DOMParser().parseFromString(xmlText, "text/xml");
     const items = [...doc.querySelectorAll("item")];
@@ -847,6 +954,7 @@ APP_JS = """
 
   fetchRecentPollNews();
   renderLatestPollSection();
+  renderForecastComparisonSection();
 })();
 """.strip()
 
@@ -1705,6 +1813,14 @@ def render_html(
       <div class=\"latest-poll-grid\">
         <article class=\"panel\"><div id=\"latest-poll-chart\"></div></article>
         <article class=\"panel\"><div id=\"latest-poll-list\" class=\"latest-poll-list\"></div></article>
+      </div>
+    </section>
+
+    <section id=\"poll-compare-section\" class=\"poll-compare\">
+      <div class=\"panel-title\" style=\"margin: 0 0 8px;\">예측치 대비 최신 여론조사 차이</div>
+      <div class=\"poll-compare-grid\">
+        <article class=\"panel\"><div id=\"poll-compare-chart\"></div></article>
+        <article class=\"panel\"><div id=\"poll-compare-list\" class=\"poll-compare-list\"></div></article>
       </div>
     </section>
 

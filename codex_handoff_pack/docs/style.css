@@ -120,6 +120,20 @@ body {
 .latest-poll-source { color: var(--muted); font-size: 12px; text-decoration: none; }
 .latest-poll-source:hover { text-decoration: underline; }
 .latest-poll-values { color: var(--text); font-size: 12px; line-height: 1.6; }
+.poll-compare { margin-top: 14px; }
+.poll-compare-grid { display: grid; gap: 12px; grid-template-columns: minmax(0,1.1fr) minmax(0,1fr); }
+#poll-compare-chart { height: 320px; }
+.poll-compare-list { display: grid; gap: 8px; }
+.poll-compare-card {
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 10px;
+}
+.poll-compare-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+.poll-compare-party { font-size: 14px; font-weight: 700; }
+.poll-compare-delta { font-size: 13px; font-weight: 700; }
+.poll-compare-meta { color: var(--muted); font-size: 12px; }
 .method { margin-top: 14px; }
 details { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 12px 8px; }
 summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
@@ -144,4 +158,6 @@ th { color: var(--muted); text-align: left; font-weight: 600; }
   .news-grid { grid-template-columns: 1fr; }
   .latest-poll-grid { grid-template-columns: 1fr; }
   #latest-poll-chart { height: 280px; }
+  .poll-compare-grid { grid-template-columns: 1fr; }
+  #poll-compare-chart { height: 280px; }
 }
