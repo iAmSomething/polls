@@ -419,6 +419,7 @@ tbody tr:last-child td { border-bottom: none; }
 .metric-tooltip:focus-visible::after { opacity: 1; }
 
 .main-grid { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1.72fr) minmax(0, 1fr); align-items: stretch; }
+.results-grid { display: grid; gap: var(--s-4); grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); align-items: start; }
 .chart-panel { display: flex; flex-direction: column; min-height: 100%; }
 .panel-h { display: grid; gap: var(--s-2); margin-bottom: var(--s-2); }
 .panel-title-wrap { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
@@ -589,7 +590,7 @@ summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
   .top-meta { justify-content: flex-start; }
   .insights { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .insight-card.featured { grid-column: span 1; }
-  .main-grid, .latest-poll-grid, .poll-compare-grid { grid-template-columns: 1fr; }
+  .main-grid, .latest-poll-grid, .poll-compare-grid, .results-grid { grid-template-columns: 1fr; }
   .filters { width: 100%; display: grid; grid-template-columns: 1fr; }
   .range-group { width: 100%; overflow-x: auto; }
   .toggle-group { width: 100%; justify-content: flex-start; flex-wrap: wrap; }
@@ -2512,22 +2513,24 @@ def render_html(
       </div>
     </section>
 
-    <section class=\"panel section-tight\">
-      <div class=\"panel-title card-header\">대통령 국정수행 주간 표 <small>Weekly Presidential Approval Table</small></div>
-      <table class=\"table\">
-        <thead>
-          <tr><th>조사기간(주차)</th><th>긍정(%)</th><th>부정(%)</th><th>조사기관</th><th>출처</th></tr>
-        </thead>
-        <tbody>{''.join(pres_rows_html)}</tbody>
-      </table>
-    </section>
+    <section class=\"results-grid section\">
+      <article class=\"panel\">
+        <div class=\"panel-title card-header\">대통령 국정수행 주간 표 <small>Weekly Presidential Approval Table</small></div>
+        <table class=\"table\">
+          <thead>
+            <tr><th>조사기간(주차)</th><th>긍정(%)</th><th>부정(%)</th><th>조사기관</th><th>출처</th></tr>
+          </thead>
+          <tbody>{''.join(pres_rows_html)}</tbody>
+        </table>
+      </article>
 
-    <section class=\"news section-tight\">
-      <div class=\"section-title-row\">
-        <div class=\"panel-title\" style=\"margin: 0;\">최근 여론조사 기사 링크 <small>Recent Coverage</small></div>
-        <div id=\"news-status\" class=\"status-badge stale\" aria-live=\"polite\">대기 중...</div>
-      </div>
-      <div id=\"news-grid\" class=\"news-grid\">{''.join(article_cards)}</div>
+      <article class=\"panel\">
+        <div class=\"section-title-row card-header\">
+          <div class=\"panel-title\" style=\"margin: 0;\">최근 여론조사 기사 링크 <small>Recent Coverage</small></div>
+          <div id=\"news-status\" class=\"status-badge stale\" aria-live=\"polite\">대기 중...</div>
+        </div>
+        <div id=\"news-grid\" class=\"news-grid card-body\">{''.join(article_cards)}</div>
+      </article>
     </section>
 
     <section class=\"method\">
