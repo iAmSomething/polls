@@ -1187,6 +1187,7 @@ APP_JS = """
   function bindMainChartHoverEmphasis() {
     if (!chartDiv || chartDiv.dataset.hoverEmphasisBound === "1" || isTouchDevice()) return;
     chartDiv.dataset.hoverEmphasisBound = "1";
+    const HOVER_DISTANCE_THRESHOLD = 24;
     const baseLineWidths = (chartDiv.data || []).map((t) => {
       const w = t && t.line ? Number(t.line.width) : NaN;
       return Number.isFinite(w) ? w : null;
@@ -1201,7 +1202,7 @@ APP_JS = """
     }
 
     chartDiv.on("plotly_hover", (ev) => {
-      const point = (ev && Array.isArray(ev.points) ? ev.points : [])
+      const candidates = (ev && Array.isArray(ev.points) ? ev.points : [])
         .filter((p) => {
           const t = (chartDiv.data || [])[p.curveNumber];
           return !!(t && t.legendgroup && t.meta !== "band" && String(t.mode || "").includes("lines"));
@@ -1210,8 +1211,16 @@ APP_JS = """
           const da = Number.isFinite(a.distance) ? a.distance : Number.POSITIVE_INFINITY;
           const db = Number.isFinite(b.distance) ? b.distance : Number.POSITIVE_INFINITY;
           return da - db;
-        })[0] || null;
+        });
+      const point = candidates[0] || null;
       if (!point || typeof point.curveNumber !== "number") return;
+      const bestDistance = Number.isFinite(point.distance) ? point.distance : Number.POSITIVE_INFINITY;
+      // In x-unified hover, Plotly can return many traces without reliable nearest-distance.
+      // Only apply emphasis when cursor proximity is sufficiently clear.
+      if ((candidates.length > 1 && !Number.isFinite(point.distance)) || bestDistance > HOVER_DISTANCE_THRESHOLD) {
+        restore();
+        return;
+      }
       const sourceTrace = (chartDiv.data || [])[point.curveNumber];
       if (!sourceTrace || !sourceTrace.legendgroup) return;
       const activeGroup = sourceTrace.legendgroup;
