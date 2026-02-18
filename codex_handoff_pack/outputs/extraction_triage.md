@@ -1,13 +1,14 @@
 # Extraction Triage
 
-- Rejected URLs: 43
+- Rejected URLs: 44
 - Retry-eligible now: 0
 - Max-retry blocked: 43
 
 ## Reasons
-- insufficient_values: 43
+- insufficient_values: 44
 
 ## Top Rejected URLs
+- https://www.yeongnam.com/web/view.php?key=20260218020426866 | reason=insufficient_values | retry_count=1 | next_retry_at=2026-02-18T22:42:53.806440+00:00 | extracted_at=2026-02-18T21:42:53.806440+00:00
 - https://www.gukjenews.com/news/articleView.html?idxno=3508404 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-18T19:25:15.452520+00:00
 - https://www.kado.net/news/articleView.html?idxno=2034651 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-18T19:25:15.452520+00:00
 - https://www.joongang.co.kr/article/25405617 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-18T19:25:15.452520+00:00
@@ -22,4 +23,3 @@
 - https://view.asiae.co.kr/article/2026021817442524949 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-18T11:29:20.431299+00:00
 - http://www.newstomato.com/ReadNews.aspx?no=1291692&inflow=N | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-18T11:29:20.431299+00:00
 - https://www.pressian.com/pages/articles/2026021718051926236?utm_source=naver&utm_medium=search | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-18T10:25:52.452189+00:00
-- https://www.jnilbo.com/news/articleView.html?idxno=90000023637 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-18T09:13:11.437755+00:00
