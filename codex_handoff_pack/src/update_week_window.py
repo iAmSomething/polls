@@ -9,7 +9,8 @@ from typing import Dict, List, Tuple
 import numpy as np
 import pandas as pd
 
-from pipeline import POLLSTERS, SHEETS, load_sheet
+from pipeline_core.constants import POLLSTERS, SHEETS
+from pipeline_core.sheet_loading import load_sheet
 
 WEEK_START = pd.Timestamp("2026-02-09")
 WEEK_END = pd.Timestamp("2026-02-15")

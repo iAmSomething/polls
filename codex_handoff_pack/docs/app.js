@@ -80,6 +80,61 @@
 
   initThemeToggle();
   updateFreshnessBadge();
+  const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function initRevealAnimations() {
+    const items = document.querySelectorAll(".reveal");
+    if (!items.length) return;
+    if (reducedMotion || !("IntersectionObserver" in window)) {
+      items.forEach((el) => el.classList.add("in-view"));
+      return;
+    }
+    const observer = new IntersectionObserver((entries, obs) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        entry.target.classList.add("in-view");
+        obs.unobserve(entry.target);
+      });
+    }, { root: null, rootMargin: "0px 0px -10% 0px", threshold: 0.15 });
+    items.forEach((el) => observer.observe(el));
+  }
+
+  function animateValue(el, start, end, duration, decimals, suffix, finalText) {
+    let startTime = null;
+    function step(timestamp) {
+      if (startTime === null) startTime = timestamp;
+      const progress = timestamp - startTime;
+      const percent = Math.min(progress / duration, 1);
+      const value = start + percent * (end - start);
+      el.textContent = `${value.toFixed(decimals)}${suffix || ""}`;
+      if (progress < duration) {
+        requestAnimationFrame(step);
+      } else if (finalText) {
+        el.textContent = finalText;
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  function initKpiCountUp() {
+    const nodes = document.querySelectorAll(".insight-value[data-kpi-value]");
+    if (!nodes.length) return;
+    nodes.forEach((el) => {
+      const end = Number(el.dataset.kpiValue);
+      if (!Number.isFinite(end)) return;
+      const decimals = Number(el.dataset.kpiDecimals || "2");
+      const suffix = el.dataset.kpiSuffix || "";
+      const finalText = el.textContent;
+      if (reducedMotion) {
+        if (finalText) el.textContent = finalText;
+        return;
+      }
+      animateValue(el, 0, end, 800, Number.isFinite(decimals) ? decimals : 2, suffix, finalText);
+    });
+  }
+
+  initRevealAnimations();
+  initKpiCountUp();
 
   const dataEl = document.getElementById("poll-data");
   if (!dataEl) return;
@@ -342,31 +397,34 @@
     const compactHover = isTouchDevice() || isMobileViewport();
     return {
       paper_bgcolor: "rgba(0,0,0,0)",
-      plot_bgcolor: dark ? "#152338" : "#F8FAFD",
-      font: { color: dark ? "#EAF0FA" : "#1A2332", family: "Inter, Pretendard, sans-serif" },
-      margin: { l: 55, r: 20, t: 92, b: 44 },
+      plot_bgcolor: dark ? "#16191F" : "#FFFFFF",
+      font: { color: dark ? "#E8EAF0" : "#111827", family: "Inter, Pretendard, sans-serif", size: 14 },
+      margin: { l: 58, r: 24, t: 92, b: 48 },
       hovermode: compactHover ? "closest" : "x unified",
       dragmode: "pan",
       hoverlabel: {
-        bgcolor: dark ? "#111A2B" : "#FFFFFF",
-        bordercolor: "#8FB3FF",
-        font: { color: dark ? "#EAF0FA" : "#1A2332", size: compactHover ? 11 : 13, family: "Inter, Pretendard, sans-serif" },
+        bgcolor: dark ? "#0F1217" : "#FFFFFF",
+        bordercolor: dark ? "#2A2E37" : "#E1E5EB",
+        font: { color: dark ? "#E8EAF0" : "#111827", size: compactHover ? 12 : 14, family: "Inter, Pretendard, sans-serif" },
         align: "left",
         namelength: compactHover ? 32 : -1
       },
       xaxis: {
-        gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)",
-        linecolor: dark ? "rgba(158,176,204,0.24)" : "rgba(100,116,139,0.35)",
+        tickfont: { size: 14 },
+        gridcolor: dark ? "rgba(156,163,175,0.22)" : "rgba(107,114,128,0.20)",
+        linecolor: dark ? "rgba(156,163,175,0.32)" : "rgba(107,114,128,0.35)",
         showspikes: !compactHover,
         spikemode: "across",
-        spikecolor: dark ? "rgba(158,176,204,0.5)" : "rgba(71,85,105,0.5)",
+        spikecolor: dark ? "rgba(156,163,175,0.45)" : "rgba(107,114,128,0.45)",
         spikedash: "dot",
         spikethickness: 1,
         fixedrange: true
       },
       yaxis: {
         title: "지지율(%)",
-        gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)",
+        titlefont: { size: 14 },
+        tickfont: { size: 14 },
+        gridcolor: dark ? "rgba(156,163,175,0.22)" : "rgba(107,114,128,0.20)",
         zeroline: false,
         fixedrange: true
       },
@@ -374,12 +432,12 @@
         orientation: "h",
         x: 0,
         xanchor: "left",
-        y: 1.16,
+        y: 1.14,
         yanchor: "bottom",
-        bgcolor: dark ? "rgba(17,26,41,0.88)" : "rgba(255,255,255,0.92)",
-        bordercolor: dark ? "rgba(110,138,174,0.45)" : "rgba(106,125,160,0.45)",
+        bgcolor: dark ? "rgba(22,25,31,0.96)" : "rgba(247,249,251,0.96)",
+        bordercolor: dark ? "#2A2E37" : "#E1E5EB",
         borderwidth: 1,
-        font: { size: 12 }
+        font: { size: 14 }
       }
     };
   }
@@ -444,12 +502,73 @@
     }
   }
 
+  function bindMainChartHoverEmphasis() {
+    if (!chartDiv || chartDiv.dataset.hoverEmphasisBound === "1" || isTouchDevice()) return;
+    chartDiv.dataset.hoverEmphasisBound = "1";
+    const baseLineWidths = (chartDiv.data || []).map((t) => {
+      const w = t && t.line ? Number(t.line.width) : NaN;
+      return Number.isFinite(w) ? w : null;
+    });
+
+    function restore() {
+      const data = chartDiv.data || [];
+      Plotly.restyle(chartDiv, {
+        opacity: data.map(() => 1),
+        "line.width": baseLineWidths
+      });
+    }
+
+    chartDiv.on("plotly_hover", (ev) => {
+      const hoverY = Number.isFinite(ev && ev.yval) ? Number(ev.yval) : Number.NaN;
+      const candidates = (ev && Array.isArray(ev.points) ? ev.points : [])
+        .filter((p) => {
+          const t = (chartDiv.data || [])[p.curveNumber];
+          return !!(
+            t &&
+            t.legendgroup &&
+            t.meta !== "band" &&
+            String(t.mode || "").includes("lines") &&
+            Number.isFinite(Number(p.y))
+          );
+        })
+        .map((p) => ({
+          p,
+          yGap: Number.isFinite(hoverY) ? Math.abs(Number(p.y) - hoverY) : Number.POSITIVE_INFINITY,
+          distance: Number.isFinite(p.distance) ? Number(p.distance) : Number.POSITIVE_INFINITY
+        }))
+        .sort((a, b) => {
+          if (a.yGap !== b.yGap) return a.yGap - b.yGap;
+          return a.distance - b.distance;
+        });
+      const point = ranked[0] ? ranked[0].p : null;
+      if (!point || typeof point.curveNumber !== "number") return;
+      const sourceTrace = (chartDiv.data || [])[point.curveNumber];
+      if (!sourceTrace || !sourceTrace.legendgroup) return;
+      const activeGroup = sourceTrace.legendgroup;
+      const data = chartDiv.data || [];
+      const opacities = data.map((t) => (t && t.legendgroup === activeGroup ? 1 : 0.2));
+      const boostedWidths = data.map((t, idx) => {
+        const base = baseLineWidths[idx];
+        if (base === null) return null;
+        const same = t && t.legendgroup === activeGroup;
+        const isBand = t && t.meta === "band";
+        const isLine = t && String(t.mode || "").includes("lines");
+        if (same && !isBand && isLine) return base + 1;
+        return base;
+      });
+      Plotly.restyle(chartDiv, { opacity: opacities, "line.width": boostedWidths });
+    });
+
+    chartDiv.on("plotly_unhover", restore);
+  }
+
   function renderAndSync() {
     syncChartHeightToRanking();
     const shouldAnimate = !chartDiv.dataset.animated;
     const renderPromise = renderChart();
     if (renderPromise && typeof renderPromise.then === "function") {
       renderPromise.then(() => {
+        bindMainChartHoverEmphasis();
         if (shouldAnimate) {
           animateSeriesRevealOnce();
           chartDiv.dataset.animated = "1";
@@ -462,6 +581,7 @@
       animateSeriesRevealOnce();
       chartDiv.dataset.animated = "1";
     }
+    bindMainChartHoverEmphasis();
     Plotly.Plots.resize(chartDiv);
   }
 
@@ -768,6 +888,32 @@
       },
       { displayModeBar: false, responsive: true }
     );
+
+    if (chartEl.dataset.hoverEmphasisBound === "1" || isTouchDevice()) return;
+    chartEl.dataset.hoverEmphasisBound = "1";
+    const restore = () => {
+      const data = chartEl.data || [];
+      const traceOpacity = data.map(() => 1);
+      const markerOpacity = data.map((t) => (t && t.marker ? 1 : null));
+      Plotly.restyle(chartEl, { opacity: traceOpacity, "marker.opacity": markerOpacity });
+    };
+    chartEl.on("plotly_hover", (ev) => {
+      const point = ev && Array.isArray(ev.points) ? ev.points[0] : null;
+      const selectedLabel = point ? String(point.y || "") : "";
+      if (!selectedLabel) return;
+      const data = chartEl.data || [];
+      const traceOpacity = data.map((t) => {
+        const rowLabel = Array.isArray(t.y) && t.y.length === 2 && t.y[0] === t.y[1] ? String(t.y[0]) : "";
+        if (!rowLabel) return 1;
+        return rowLabel === selectedLabel ? 1 : 0.2;
+      });
+      const markerOpacity = data.map((t) => {
+        if (!t || !t.marker || !Array.isArray(t.y)) return null;
+        return t.y.map((label) => (String(label) === selectedLabel ? 1 : 0.25));
+      });
+      Plotly.restyle(chartEl, { opacity: traceOpacity, "marker.opacity": markerOpacity });
+    });
+    chartEl.on("plotly_unhover", restore);
   }
 
   function parseRss(xmlText) {
