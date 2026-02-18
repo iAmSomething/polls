@@ -2971,18 +2971,6 @@ def render_html(
     cache_bust = datetime.now(tz=ZoneInfo("Asia/Seoul")).strftime("%Y%m%d%H%M%S")
 
     cards = []
-    if len(ranking_rows) >= 2:
-        lead = ranking_rows[0]
-        second = ranking_rows[1]
-        cards.append(
-            {
-                "label": "1위 정당 / 격차",
-                "value": f"{lead.get('display_party', lead['party'])}",
-                "sub": f"{(lead['pred'] - second['pred']):.2f}%p",
-                "featured": True,
-                "hero": True,
-            }
-        )
     if len(nowcast_rows) >= 2:
         now_lead = nowcast_rows[0]
         now_second = nowcast_rows[1]
@@ -2992,7 +2980,7 @@ def render_html(
                 "value": f"{now_lead.get('display_party', now_lead['party'])}",
                 "sub": f"{(now_lead['nowcast'] - now_second['nowcast']):.2f}%p · {nowcast_meta.get('as_of', '-')}",
                 "featured": True,
-                "hero": False,
+                "hero": True,
             }
         )
     swing = sum(abs(float(r["delta"])) for r in ranking_rows) / len(ranking_rows) if ranking_rows else 0.0
@@ -3036,26 +3024,6 @@ def render_html(
             )
     else:
         cards.append({"label": "대통령 국정수행 긍정", "value": "-", "sub": "집계 데이터 없음", "featured": False, "hero": False})
-    if backtest_overall.get("improvement_pct") is not None:
-        cards.append(
-            {
-                "label": "백테스트 MAE 개선",
-                "value": f"{float(backtest_overall['improvement_pct']):+.1f}%",
-                "sub": "legacy 대비 ssm",
-                "featured": False,
-                "hero": False,
-            }
-        )
-    if backtest_overall.get("improvement_exog_pct") is not None:
-        cards.append(
-            {
-                "label": "외생변수 MAE 개선",
-                "value": f"{float(backtest_overall['improvement_exog_pct']):+.1f}%",
-                "sub": "ssm 대비 ssm_exog",
-                "featured": False,
-                "hero": False,
-            }
-        )
 
     def _kpi_countup_attrs(raw_value: str) -> str:
         txt = str(raw_value or "").strip()
