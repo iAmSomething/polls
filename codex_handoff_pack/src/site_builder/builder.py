@@ -913,10 +913,9 @@ APP_JS = """
 
   function buildTraces() {
     const out = [];
-    const dashStyles = ["solid", "dash", "dot", "longdash", "dashdot"];
     const markerSymbols = ["circle", "square", "triangle-up", "cross", "star"];
+    const PRESIDENT_DISAPPROVE_COLOR = "#B91C3A";
     tracesData.forEach((p, idx) => {
-      const dash = dashStyles[idx % dashStyles.length];
       const symbol = markerSymbols[idx % markerSymbols.length];
       const band = buildSmoothedBand(p.actual_y);
       out.push({
@@ -934,7 +933,7 @@ APP_JS = """
       });
       out.push({
         x: p.actual_x, y: p.actual_y, type: "scatter", mode: "lines", name: (p.display_party || p.party),
-        legendgroup: p.party, line: { color: p.color, width: 2.7, dash },
+        legendgroup: p.party, line: { color: p.color, width: 2.7, dash: "solid" },
         hovertemplate: "<b>%{fullData.name}</b>: %{y:.2f}%<extra></extra>"
       });
       out.push({
@@ -1037,7 +1036,7 @@ APP_JS = """
         hoverinfo: "skip",
         line: { color: "rgba(0,0,0,0)", width: 0, shape: "spline", smoothing: 0.65 },
         fill: "tonexty",
-        fillcolor: hexToRgba("#D83A3A", BAND_OPACITY),
+        fillcolor: hexToRgba(PRESIDENT_DISAPPROVE_COLOR, BAND_OPACITY),
         meta: "band"
       });
       out.push({
@@ -1047,8 +1046,8 @@ APP_JS = """
         mode: "lines+markers",
         name: "대통령 부정평가(raw)",
         legendgroup: "president_raw_disapprove",
-        line: { color: "#D83A3A", width: 2, dash: "dash" },
-        marker: { size: 4, color: "#D83A3A" },
+        line: { color: PRESIDENT_DISAPPROVE_COLOR, width: 2, dash: "dash" },
+        marker: { size: 4, color: PRESIDENT_DISAPPROVE_COLOR },
         hovertemplate: "<b>대통령 부정평가(raw)</b>: %{y:.2f}%<extra></extra>"
       });
     }
@@ -1222,7 +1221,7 @@ APP_JS = """
           if (a.yGap !== b.yGap) return a.yGap - b.yGap;
           return a.distance - b.distance;
         });
-      const point = ranked[0] ? ranked[0].p : null;
+      const point = candidates[0] ? candidates[0].p : null;
       if (!point || typeof point.curveNumber !== "number") return;
       const sourceTrace = (chartDiv.data || [])[point.curveNumber];
       if (!sourceTrace || !sourceTrace.legendgroup) return;
