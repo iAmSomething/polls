@@ -330,14 +330,18 @@ tbody tr:last-child td { border-bottom: none; }
   border-bottom: 1px solid var(--line);
 }
 .floating-toc {
-  display: none;
+  position: fixed;
+  top: 98px;
+  right: 20px;
   z-index: 30;
-  width: 210px;
+  width: 268px;
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   background: var(--panel);
   box-shadow: var(--shadow-1);
-  padding: 10px;
+  padding: 10px 10px 8px;
+  max-height: calc(100vh - 118px);
+  overflow: auto;
 }
 .toc-title {
   font-size: 12px;
@@ -363,6 +367,7 @@ tbody tr:last-child td { border-bottom: none; }
   border-radius: 8px;
   padding: 6px 8px;
   background: transparent;
+  line-height: 1.35;
 }
 .toc-link:hover {
   color: var(--text);
@@ -374,16 +379,20 @@ tbody tr:last-child td { border-bottom: none; }
   background: var(--primary);
   border-color: var(--primary);
 }
+.toc-link.lvl-3 {
+  padding-left: 18px;
+  font-size: 11.5px;
+}
 .toc-fab {
   position: fixed;
   right: 16px;
   bottom: 20px;
   z-index: 40;
-  display: inline-flex;
+  display: none;
 }
 .toc-drawer {
   position: fixed;
-  right: 16px;
+  right: 12px;
   bottom: 72px;
   z-index: 41;
   border: 1px solid var(--line);
@@ -391,12 +400,18 @@ tbody tr:last-child td { border-bottom: none; }
   background: var(--panel);
   box-shadow: var(--shadow-1);
   padding: 10px;
-  width: min(280px, calc(100vw - 32px));
+  width: min(300px, calc(100vw - 24px));
   max-height: 58vh;
   overflow: auto;
   display: none;
 }
 .toc-drawer.open { display: block; }
+#post h2, #post h3 {
+  scroll-margin-top: 92px;
+}
+.section-heading {
+  margin: 0 0 var(--s-sm);
+}
 .brand { display: flex; align-items: center; gap: var(--s-sm); }
 .brand-copy { display: grid; gap: var(--s-xs); }
 .logo {
@@ -534,7 +549,7 @@ tbody tr:last-child td { border-bottom: none; }
 .chart-panel { display: flex; flex-direction: column; min-height: 100%; }
 .panel-h { display: grid; gap: var(--s-sm); margin-bottom: var(--s-sm); }
 .panel-title-wrap { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
-.panel-title { font-size: var(--fs-h3); font-weight: 600; letter-spacing: -0.01em; }
+.panel-title { margin: 0; font-size: var(--fs-h3); font-weight: 600; letter-spacing: -0.01em; }
 .panel-title small { color: var(--muted); font-size: var(--fs-caption); font-weight: 400; margin-left: 6px; }
 .panel-help {
   border: 1px solid var(--line);
@@ -784,6 +799,7 @@ summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
 
 @media (max-width: 980px) {
   .container { padding: 0 var(--s-md); }
+  .wrap { padding-right: 0; }
   .top { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
   .top-meta { justify-content: flex-start; }
   .insights { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -795,8 +811,14 @@ summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
   #chart { height: 440px; }
   .news-grid { grid-template-columns: 1fr; }
   #latest-poll-chart, #poll-compare-chart { height: 280px; }
-  .floating-toc { display: none !important; }
+  .floating-toc { display: none; }
   .toc-fab { display: inline-flex; }
+}
+@media (min-width: 1024px) {
+  .wrap { padding-right: 300px; }
+  .floating-toc { display: block; }
+  .toc-fab { display: none; }
+  .toc-drawer { display: none !important; }
 }
 @media (max-width: 768px) {
   .insights { grid-template-columns: 1fr; }
@@ -805,8 +827,6 @@ summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
   th, td { font-size: 13px; padding: 10px 8px; }
   .news-title { font-size: 13px; }
 }
-.floating-toc { display: none !important; }
-.toc-fab { display: inline-flex; }
 """.strip()
 
 APP_JS = """
@@ -950,16 +970,64 @@ APP_JS = """
   initFloatingToc();
 
   function initFloatingToc() {
-    const links = Array.from(document.querySelectorAll(".toc-link[data-target]"));
-    if (!links.length) return;
+    const root = document.getElementById("post");
+    const desktopNav = document.getElementById("floating-toc");
+    const desktopList = document.getElementById("toc-list-desktop");
     const drawer = document.getElementById("toc-drawer");
+    const mobileList = document.getElementById("toc-list-mobile");
     const fab = document.getElementById("toc-fab");
-    const targets = links
-      .map((link) => ({
-        id: link.dataset.target || "",
-        el: document.getElementById(link.dataset.target || "")
-      }))
-      .filter((it) => it.id && it.el);
+    if (!root || !desktopNav || !desktopList || !drawer || !mobileList || !fab) return;
+
+    const headings = Array.from(root.querySelectorAll("h2, h3"));
+    if (!headings.length) {
+      desktopNav.style.display = "none";
+      fab.style.display = "none";
+      drawer.classList.remove("open");
+      return;
+    }
+
+    const slugCount = Object.create(null);
+    const idSet = new Set(Array.from(document.querySelectorAll("[id]")).map((el) => el.id));
+    function slugify(text) {
+      const base = String(text || "")
+        .normalize("NFKD")
+        .toLowerCase()
+        .replace(/[^\w\s-가-힣]/g, "")
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-") || "section";
+      slugCount[base] = (slugCount[base] || 0) + 1;
+      return slugCount[base] === 1 ? base : `${base}-${slugCount[base]}`;
+    }
+    const tocItems = headings.map((heading) => {
+      let id = (heading.id || "").trim();
+      if (!id) {
+        id = slugify(heading.textContent || "");
+        while (idSet.has(id)) id = slugify(heading.textContent || "");
+        heading.id = id;
+      }
+      idSet.add(id);
+      return {
+        id,
+        level: heading.tagName.toLowerCase() === "h3" ? 3 : 2,
+        label: (heading.textContent || "").trim(),
+        el: heading
+      };
+    });
+
+    function renderTocList(container) {
+      container.innerHTML = tocItems
+        .map((item) => {
+          const cls = item.level === 3 ? "toc-link lvl-3" : "toc-link";
+          return `<li><a class="${cls}" href="#${item.id}" data-target="${item.id}">${item.label}</a></li>`;
+        })
+        .join("");
+      return Array.from(container.querySelectorAll(".toc-link[data-target]"));
+    }
+
+    const desktopLinks = renderTocList(desktopList);
+    const mobileLinks = renderTocList(mobileList);
+    const links = [...desktopLinks, ...mobileLinks];
 
     function setActive(id) {
       links.forEach((link) => {
@@ -974,9 +1042,22 @@ APP_JS = """
     }
 
     function closeDrawer() {
-      if (!drawer) return;
       drawer.classList.remove("open");
-      if (fab) fab.setAttribute("aria-expanded", "false");
+      fab.setAttribute("aria-expanded", "false");
+    }
+
+    function getHeaderOffset() {
+      const header = document.querySelector("header.top");
+      if (!header) return 92;
+      return Math.max(72, Math.ceil(header.getBoundingClientRect().height + 8));
+    }
+
+    function scrollToTarget(el) {
+      const top = window.scrollY + el.getBoundingClientRect().top - getHeaderOffset();
+      window.scrollTo({
+        top: Math.max(0, top),
+        behavior: reducedMotion ? "auto" : "smooth"
+      });
     }
 
     links.forEach((link) => {
@@ -985,29 +1066,27 @@ APP_JS = """
         const target = id ? document.getElementById(id) : null;
         if (!target) return;
         e.preventDefault();
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        scrollToTarget(target);
         setActive(id);
+        history.replaceState(null, "", `#${id}`);
         closeDrawer();
       });
     });
 
-    if (fab && drawer) {
-      fab.addEventListener("click", () => {
-        const next = !drawer.classList.contains("open");
-        drawer.classList.toggle("open", next);
-        fab.setAttribute("aria-expanded", next ? "true" : "false");
-      });
-      document.addEventListener("click", (e) => {
-        if (!drawer.classList.contains("open")) return;
-        const target = e.target;
-        if (!(target instanceof HTMLElement)) return;
-        if (drawer.contains(target) || fab.contains(target)) return;
-        closeDrawer();
-      });
-    }
+    fab.addEventListener("click", () => {
+      const next = !drawer.classList.contains("open");
+      drawer.classList.toggle("open", next);
+      fab.setAttribute("aria-expanded", next ? "true" : "false");
+    });
+    document.addEventListener("click", (e) => {
+      if (!drawer.classList.contains("open")) return;
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
+      if (drawer.contains(target) || fab.contains(target)) return;
+      closeDrawer();
+    });
 
-    if (!targets.length) return;
-    setActive(targets[0].id);
+    setActive(tocItems[0].id);
     if ("IntersectionObserver" in window) {
       const obs = new IntersectionObserver((entries) => {
         const visible = entries
@@ -1016,9 +1095,23 @@ APP_JS = """
         if (!visible) return;
         const id = visible.target.getAttribute("id");
         if (id) setActive(id);
-      }, { root: null, rootMargin: "-20% 0px -70% 0px", threshold: 0.01 });
-      targets.forEach((it) => obs.observe(it.el));
+      }, { root: null, rootMargin: "-20% 0px -62% 0px", threshold: [0.01, 0.15, 0.45] });
+      tocItems.forEach((it) => obs.observe(it.el));
+    } else {
+      window.addEventListener("scroll", () => {
+        let current = tocItems[0];
+        const offset = getHeaderOffset();
+        tocItems.forEach((it) => {
+          const rect = it.el.getBoundingClientRect();
+          if (rect.top - offset <= 1) current = it;
+        });
+        if (current) setActive(current.id);
+      }, { passive: true });
     }
+
+    window.addEventListener("resize", () => {
+      if (window.innerWidth >= 1024) closeDrawer();
+    });
   }
 
   const dataEl = document.getElementById("poll-data");
@@ -3189,39 +3282,25 @@ def render_html(
 
     <nav id=\"floating-toc\" class=\"floating-toc\" aria-label=\"페이지 목차\">
       <p class=\"toc-title\">빠른 이동</p>
-      <ul class=\"toc-list\">
-        <li><a class=\"toc-link\" href=\"#section-insights\" data-target=\"section-insights\">핵심 지표</a></li>
-        <li><a class=\"toc-link\" href=\"#section-trend\" data-target=\"section-trend\">정당 추세/예측</a></li>
-        <li><a class=\"toc-link\" href=\"#section-nowcast\" data-target=\"section-nowcast\">현재 시점 추정</a></li>
-        <li><a class=\"toc-link\" href=\"#section-news\" data-target=\"section-news\">최근 기사</a></li>
-        <li><a class=\"toc-link\" href=\"#latest-poll-section\" data-target=\"latest-poll-section\">최신 조사</a></li>
-        <li><a class=\"toc-link\" href=\"#poll-compare-section\" data-target=\"poll-compare-section\">예측 vs 최신</a></li>
-        <li><a class=\"toc-link\" href=\"#section-president\" data-target=\"section-president\">대통령 주간 표</a></li>
-        <li><a class=\"toc-link\" href=\"#section-method\" data-target=\"section-method\">방법론 공시</a></li>
-      </ul>
+      <ul id=\"toc-list-desktop\" class=\"toc-list\"></ul>
     </nav>
     <button id=\"toc-fab\" class=\"btn btn-sm primary toc-fab\" type=\"button\" aria-controls=\"toc-drawer\" aria-expanded=\"false\">목차</button>
     <div id=\"toc-drawer\" class=\"toc-drawer\" aria-label=\"모바일 목차\">
-      <ul class=\"toc-list\">
-        <li><a class=\"toc-link\" href=\"#section-insights\" data-target=\"section-insights\">핵심 지표</a></li>
-        <li><a class=\"toc-link\" href=\"#section-trend\" data-target=\"section-trend\">정당 추세/예측</a></li>
-        <li><a class=\"toc-link\" href=\"#section-nowcast\" data-target=\"section-nowcast\">현재 시점 추정</a></li>
-        <li><a class=\"toc-link\" href=\"#section-news\" data-target=\"section-news\">최근 기사</a></li>
-        <li><a class=\"toc-link\" href=\"#latest-poll-section\" data-target=\"latest-poll-section\">최신 조사</a></li>
-        <li><a class=\"toc-link\" href=\"#poll-compare-section\" data-target=\"poll-compare-section\">예측 vs 최신</a></li>
-        <li><a class=\"toc-link\" href=\"#section-president\" data-target=\"section-president\">대통령 주간 표</a></li>
-        <li><a class=\"toc-link\" href=\"#section-method\" data-target=\"section-method\">방법론 공시</a></li>
-      </ul>
+      <ul id=\"toc-list-mobile\" class=\"toc-list\"></ul>
     </div>
 
-    <section id=\"section-insights\" class=\"insights section-tight reveal stagger-1\">{cards_html}</section>
+    <main id=\"post\" data-toc-root>
+    <section id=\"section-insights\" class=\"insights section-tight reveal stagger-1\">
+      <h2 class=\"panel-title section-heading\">핵심 지표 <small>Key Metrics</small></h2>
+      {cards_html}
+    </section>
 
     <section id=\"section-trend\" class=\"main-grid section-tight reveal stagger-2\">
       <article class=\"panel chart-panel\">
         <div class=\"accent-line\" aria-hidden=\"true\"></div>
         <div class=\"panel-h\">
           <div class=\"panel-title-wrap\">
-            <div class=\"panel-title\">정당 지지율 추세 + 다음주 예측치 <small>Party Trend & Next-Week Forecast</small></div>
+            <h2 class=\"panel-title\">정당 지지율 추세 + 다음주 예측치 <small>Party Trend & Next-Week Forecast</small></h2>
             <button class=\"panel-help\" type=\"button\" title=\"실선은 최근 추세, 점선은 다음주 예측, 다이아는 최신 실측값입니다.\" aria-label=\"차트 도움말\">i</button>
           </div>
           <div class=\"filters\">
@@ -3246,14 +3325,15 @@ def render_html(
         <div class=\"chart-caption\"><strong>해석 안내:</strong> 각 선에는 스무딩 중심선과 적응형 오차폭 기반 반투명 밴드가 함께 표시됩니다(기준 오차폭 약 ±3%). 대통령 긍정/부정은 보정되지 않은 raw 값입니다.</div>
         <div class=\"disclosure-note\">선거여론조사 관련 세부사항은 중앙선거여론조사심의위원회 홈페이지(nesdc.go.kr) 참조.</div>
       </article>
-      <aside class=\"panel\"><div class=\"panel-title card-header\">예측 랭킹 <small>Forecast Ranking</small></div><div class=\"rank-wrap card-body\">{''.join(ranking_html)}</div></aside>
+      <aside class=\"panel\"><h3 class=\"panel-title card-header\">예측 랭킹 <small>Forecast Ranking</small></h3><div class=\"rank-wrap card-body\">{''.join(ranking_html)}</div></aside>
     </section>
 
     <section id=\"section-nowcast\" class=\"panel section-tight reveal stagger-2\">
+      <h2 class=\"panel-title\">현재 시점 추정 <small>Nowcast</small></h2>
       <details class=\"fold-panel\">
         <summary>
-          <span class=\"panel-title\">현재 시점 추정</span>
-          <small>Nowcast as of {nowcast_meta.get('as_of', '-')}</small>
+          <span>업데이트 시각</span>
+          <small>{nowcast_meta.get('as_of', '-')}</small>
         </summary>
         <div class=\"fold-body\">
           <div class=\"rank-wrap card-body\">{''.join(nowcast_html)}</div>
@@ -3264,15 +3344,16 @@ def render_html(
 
     <section id=\"section-news\" class=\"panel section-tight reveal stagger-2\">
       <div class=\"section-title-row card-header\">
-        <div class=\"panel-title\" style=\"margin: 0;\">최근 여론조사 기사 링크 <small>Recent Coverage</small></div>
+        <h2 class=\"panel-title\" style=\"margin: 0;\">최근 여론조사 기사 링크 <small>Recent Coverage</small></h2>
         <div id=\"news-status\" class=\"status-badge stale\" aria-live=\"polite\">대기 중...</div>
       </div>
       <div id=\"news-grid\" class=\"news-grid card-body\">{''.join(article_cards)}</div>
     </section>
 
     <section id=\"section-method\" class=\"method section-tight\">
+      <h2 class=\"panel-title section-heading\">방법론·공시 <small>Methodology & Disclosure</small></h2>
       <details>
-        <summary>방법론·공시 (클릭하여 펼치기)</summary>
+        <summary>세부 내용 펼치기</summary>
         <p class=\"method-p\"><strong>법정 안내</strong>: 선거여론조사 관련 세부사항은 중앙선거여론조사심의위원회 홈페이지(nesdc.go.kr) 참조.</p>
         <p class=\"method-p\">2023년부터 2025년 6월 선거까지, 여론조사기관의 정당지지율과 실제 선거결과를 비교해 정확도(MAE)를 산출했습니다. 이후 정확도 상위 클러스터(9개 기관)만 사용해 합성 시계열을 만들고, 기관별 가중치는 1/MAE를 정규화해 적용합니다. 주간 업데이트에서는 Huber 손실 기반으로 가중치 안정성을 유지하도록 설계했습니다.</p>
         <p class=\"method-p\"><strong>선정 기관</strong></p>
@@ -3290,7 +3371,7 @@ def render_html(
     </section>
 
     <section id=\"latest-poll-section\" class=\"latest-poll section-tight reveal stagger-3\">
-      <div class=\"panel-title card-header\">최신 여론조사 결과 <small>Latest Poll Snapshot</small></div>
+      <h2 class=\"panel-title card-header\">최신 여론조사 결과 <small>Latest Poll Snapshot</small></h2>
       <div class=\"latest-poll-grid\">
         <article class=\"panel\"><div id=\"latest-poll-chart\"></div></article>
         <article class=\"panel\"><div id=\"latest-poll-list\" class=\"latest-poll-list\"></div></article>
@@ -3298,7 +3379,7 @@ def render_html(
     </section>
 
     <section id=\"poll-compare-section\" class=\"poll-compare section-tight reveal stagger-3\">
-      <div class=\"panel-title card-header\">예측치 대비 최신 여론조사 차이 <small>Forecast vs Latest Poll</small></div>
+      <h2 class=\"panel-title card-header\">예측치 대비 최신 여론조사 차이 <small>Forecast vs Latest Poll</small></h2>
       <div class=\"poll-compare-grid\">
         <article class=\"panel\"><div id=\"poll-compare-chart\"></div></article>
         <article class=\"panel\"><div id=\"poll-compare-list\" class=\"poll-compare-list\"></div></article>
@@ -3307,7 +3388,7 @@ def render_html(
 
     <section id=\"section-president\" class=\"results-grid section reveal stagger-2\">
       <article class=\"panel\">
-        <div class=\"panel-title card-header\">대통령 국정수행 주간 표 <small>Weekly Presidential Approval Table</small></div>
+        <h2 class=\"panel-title card-header\">대통령 국정수행 주간 표 <small>Weekly Presidential Approval Table</small></h2>
         <div class=\"table-scroll\">
           <table class=\"table\">
             <thead>
@@ -3318,6 +3399,7 @@ def render_html(
         </div>
       </article>
     </section>
+    </main>
   </div>
   </div>
 
