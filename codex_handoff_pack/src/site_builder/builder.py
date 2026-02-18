@@ -1187,34 +1187,38 @@ APP_JS = """
   function bindMainChartHoverEmphasis() {
     if (!chartDiv || chartDiv.dataset.hoverEmphasisBound === "1" || isTouchDevice()) return;
     chartDiv.dataset.hoverEmphasisBound = "1";
-
-    function baseLineWidths() {
-      return (chartDiv.data || []).map((t) => {
-        const w = t && t.line ? Number(t.line.width) : NaN;
-        return Number.isFinite(w) ? w : null;
-      });
-    }
+    const baseLineWidths = (chartDiv.data || []).map((t) => {
+      const w = t && t.line ? Number(t.line.width) : NaN;
+      return Number.isFinite(w) ? w : null;
+    });
 
     function restore() {
       const data = chartDiv.data || [];
-      const widths = baseLineWidths();
       Plotly.restyle(chartDiv, {
         opacity: data.map(() => 1),
-        "line.width": widths
+        "line.width": baseLineWidths
       });
     }
 
     chartDiv.on("plotly_hover", (ev) => {
-      const point = ev && Array.isArray(ev.points) ? ev.points[0] : null;
+      const point = (ev && Array.isArray(ev.points) ? ev.points : [])
+        .filter((p) => {
+          const t = (chartDiv.data || [])[p.curveNumber];
+          return !!(t && t.legendgroup && t.meta !== "band" && String(t.mode || "").includes("lines"));
+        })
+        .sort((a, b) => {
+          const da = Number.isFinite(a.distance) ? a.distance : Number.POSITIVE_INFINITY;
+          const db = Number.isFinite(b.distance) ? b.distance : Number.POSITIVE_INFINITY;
+          return da - db;
+        })[0] || null;
       if (!point || typeof point.curveNumber !== "number") return;
       const sourceTrace = (chartDiv.data || [])[point.curveNumber];
       if (!sourceTrace || !sourceTrace.legendgroup) return;
       const activeGroup = sourceTrace.legendgroup;
       const data = chartDiv.data || [];
-      const widths = baseLineWidths();
       const opacities = data.map((t) => (t && t.legendgroup === activeGroup ? 1 : 0.2));
       const boostedWidths = data.map((t, idx) => {
-        const base = widths[idx];
+        const base = baseLineWidths[idx];
         if (base === null) return null;
         const same = t && t.legendgroup === activeGroup;
         const isBand = t && t.meta === "band";
