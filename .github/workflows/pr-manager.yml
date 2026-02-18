@@ -1,0 +1,261 @@
+name: PR Manager (main)
+
+on:
+  pull_request_target:
+    branches:
+      - main
+    types:
+      - opened
+      - synchronize
+      - reopened
+      - ready_for_review
+  pull_request_review:
+    types:
+      - submitted
+  check_suite:
+    types:
+      - completed
+  status:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  issues: write
+  checks: read
+  statuses: read
+
+concurrency:
+  group: pr-manager-main
+  cancel-in-progress: true
+
+jobs:
+  evaluate-and-merge:
+    if: >-
+      github.event_name != 'pull_request_target' || github.event.pull_request.base.ref == 'main'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Evaluate main PRs and merge when safe
+        id: pr_manager
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+
+            async function wait(ms) {
+              return new Promise(resolve => setTimeout(resolve, ms));
+            }
+
+            async function getPRWithMergeability(number) {
+              for (let i = 0; i < 6; i++) {
+                const { data } = await github.rest.pulls.get({ owner, repo, pull_number: number });
+                if (data.mergeable !== null) {
+                  return data;
+                }
+                await wait(2000);
+              }
+              const { data } = await github.rest.pulls.get({ owner, repo, pull_number: number });
+              return data;
+            }
+
+            async function getApprovalCount(pr) {
+              const reviews = await github.paginate(github.rest.pulls.listReviews, {
+                owner,
+                repo,
+                pull_number: pr.number,
+                per_page: 100,
+              });
+
+              const latestStateByUser = new Map();
+              for (const review of reviews) {
+                const login = review.user?.login;
+                if (!login) continue;
+
+                const prev = latestStateByUser.get(login);
+                if (!prev || new Date(review.submitted_at || 0) >= new Date(prev.submitted_at || 0)) {
+                  latestStateByUser.set(login, {
+                    state: review.state,
+                    submitted_at: review.submitted_at,
+                  });
+                }
+              }
+
+              let approvals = 0;
+              for (const [login, info] of latestStateByUser.entries()) {
+                if (login === pr.user.login) continue;
+                if (info.state === 'APPROVED') approvals += 1;
+              }
+              return approvals;
+            }
+
+            async function checksAreGreen(sha) {
+              const combined = await github.rest.repos.getCombinedStatusForRef({
+                owner,
+                repo,
+                ref: sha,
+              });
+
+              if (combined.data.state !== 'success') {
+                return {
+                  ok: false,
+                  reason: `commit status is ${combined.data.state}`,
+                };
+              }
+
+              const checkRuns = await github.paginate(github.rest.checks.listForRef, {
+                owner,
+                repo,
+                ref: sha,
+                per_page: 100,
+              });
+
+              const blocking = checkRuns.find(run => {
+                if (run.status !== 'completed') return true;
+                return !['success', 'neutral', 'skipped'].includes(run.conclusion);
+              });
+
+              if (blocking) {
+                const state = blocking.status === 'completed' ? blocking.conclusion : blocking.status;
+                return {
+                  ok: false,
+                  reason: `check run \"${blocking.name}\" is ${state}`,
+                };
+              }
+
+              return { ok: true };
+            }
+
+            async function evaluateAndMaybeMerge(prNumber) {
+              const pr = await getPRWithMergeability(prNumber);
+
+              if (pr.base.ref !== 'main') {
+                return { pr: pr.number, action: 'skipped', reason: `base is ${pr.base.ref}` };
+              }
+              if (pr.state !== 'open') {
+                return { pr: pr.number, action: 'skipped', reason: `state is ${pr.state}` };
+              }
+              if (pr.draft) {
+                return { pr: pr.number, action: 'skipped', reason: 'draft PR' };
+              }
+              if (!pr.mergeable) {
+                return { pr: pr.number, action: 'skipped', reason: `mergeable=${pr.mergeable}, mergeable_state=${pr.mergeable_state}` };
+              }
+              if (pr.mergeable_state !== 'clean' && pr.mergeable_state !== 'has_hooks') {
+                return { pr: pr.number, action: 'skipped', reason: `mergeable_state=${pr.mergeable_state}` };
+              }
+
+              const approvals = await getApprovalCount(pr);
+              if (approvals < 1) {
+                return { pr: pr.number, action: 'skipped', reason: 'no non-author approval' };
+              }
+
+              const checks = await checksAreGreen(pr.head.sha);
+              if (!checks.ok) {
+                return { pr: pr.number, action: 'skipped', reason: checks.reason };
+              }
+
+              const repoInfo = await github.rest.repos.get({ owner, repo });
+              const merge_method = repoInfo.data.allow_squash_merge
+                ? 'squash'
+                : repoInfo.data.allow_merge_commit
+                  ? 'merge'
+                  : repoInfo.data.allow_rebase_merge
+                    ? 'rebase'
+                    : null;
+
+              if (!merge_method) {
+                return { pr: pr.number, action: 'skipped', reason: 'no merge method is enabled in repository settings' };
+              }
+
+              try {
+                await github.rest.pulls.merge({
+                  owner,
+                  repo,
+                  pull_number: pr.number,
+                  merge_method,
+                });
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: pr.number,
+                  body: [
+                    'PR Manager가 자동 머지했습니다.',
+                    `- Method: \`${merge_method}\``,
+                    `- Workflow: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
+                  ].join('\n'),
+                });
+                return { pr: pr.number, action: 'merged', reason: `merged with ${merge_method}` };
+              } catch (error) {
+                return { pr: pr.number, action: 'skipped', reason: `merge failed: ${error.message}` };
+              }
+            }
+
+            let targetPRNumbers = [];
+
+            if (context.eventName === 'pull_request_target' && context.payload.pull_request?.number) {
+              targetPRNumbers = [context.payload.pull_request.number];
+            } else if (context.eventName === 'pull_request_review' && context.payload.pull_request?.number) {
+              targetPRNumbers = [context.payload.pull_request.number];
+            } else {
+              const prs = await github.paginate(github.rest.pulls.list, {
+                owner,
+                repo,
+                state: 'open',
+                base: 'main',
+                per_page: 100,
+              });
+              targetPRNumbers = prs.map(pr => pr.number);
+            }
+
+            if (targetPRNumbers.length === 0) {
+              core.setOutput('merged_count', '0');
+              core.setOutput('merged_payload', '[]');
+              await core.summary.addHeading('PR Manager Result').addRaw('No open PRs targeting main.').write();
+              return;
+            }
+
+            const results = [];
+            for (const prNumber of targetPRNumbers) {
+              const result = await evaluateAndMaybeMerge(prNumber);
+              results.push(result);
+            }
+
+            core.summary.addHeading('PR Manager Result');
+            for (const r of results) {
+              core.summary.addRaw(`- #${r.pr}: ${r.action} (${r.reason})\n`);
+            }
+            await core.summary.write();
+
+            const merged = results.filter(r => r.action === 'merged');
+            core.setOutput('merged_count', String(merged.length));
+            core.setOutput('merged_payload', JSON.stringify(merged));
+
+      - name: Notify Slack on merged PRs
+        if: steps.pr_manager.outputs.merged_count != '0' && secrets.SLACK_WEBHOOK_URL != ''
+        uses: actions/github-script@v7
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          MERGED_PAYLOAD: ${{ steps.pr_manager.outputs.merged_payload }}
+        with:
+          script: |
+            const merged = JSON.parse(process.env.MERGED_PAYLOAD || '[]');
+            const lines = merged.map(
+              r => `• <${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/pull/${r.pr}|#${r.pr}> ${r.reason}`
+            );
+            const text = [
+              `PR Manager: ${merged.length} PR merged to main`,
+              ...lines,
+              `Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
+            ].join('\n');
+
+            const response = await fetch(process.env.SLACK_WEBHOOK_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ text }),
+            });
+
+            if (!response.ok) {
+              const body = await response.text();
+              core.setFailed(`Slack notify failed: ${response.status} ${body}`);
+            }
