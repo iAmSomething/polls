@@ -686,6 +686,33 @@ tbody tr:last-child td { border-bottom: none; }
 #section-news { margin-top: var(--s-lg); }
 details { border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 12px 8px; background: var(--surface); }
 summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
+.fold-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  padding: 10px 12px;
+}
+.fold-panel summary {
+  margin: 0;
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.fold-panel summary::-webkit-details-marker { display: none; }
+.fold-panel summary::before {
+  content: "▸";
+  color: var(--muted);
+  font-size: 12px;
+  transform: translateY(-1px);
+}
+.fold-panel[open] summary::before { content: "▾"; }
+.fold-panel summary small {
+  color: var(--muted);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+}
+.fold-body { margin-top: 10px; }
 .method-p { color: var(--muted); line-height: 1.6; font-size: var(--fs-caption); margin: 6px 0 12px; }
 .disclosure-note {
   margin-top: 10px;
@@ -3223,9 +3250,16 @@ def render_html(
     </section>
 
     <section id=\"section-nowcast\" class=\"panel section-tight reveal stagger-2\">
-      <div class=\"panel-title card-header\">현재 시점 추정 <small>Nowcast as of {nowcast_meta.get('as_of', '-')}</small></div>
-      <div class=\"rank-wrap card-body\">{''.join(nowcast_html)}</div>
-      <div class=\"chart-caption\">최근 합성 관측치({nowcast_meta.get('latest_observation','-')})와 다음주 예측치를 현재 시점으로 시간 보간한 추정치입니다.</div>
+      <details class=\"fold-panel\">
+        <summary>
+          <span class=\"panel-title\">현재 시점 추정</span>
+          <small>Nowcast as of {nowcast_meta.get('as_of', '-')}</small>
+        </summary>
+        <div class=\"fold-body\">
+          <div class=\"rank-wrap card-body\">{''.join(nowcast_html)}</div>
+          <div class=\"chart-caption\">최근 합성 관측치({nowcast_meta.get('latest_observation','-')})와 다음주 예측치를 현재 시점으로 시간 보간한 추정치입니다.</div>
+        </div>
+      </details>
     </section>
 
     <section id=\"section-news\" class=\"panel section-tight reveal stagger-2\">

@@ -629,6 +629,33 @@ tbody tr:last-child td { border-bottom: none; }
 #section-news { margin-top: var(--s-lg); }
 details { border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 12px 8px; background: var(--surface); }
 summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
+.fold-panel {
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  padding: 10px 12px;
+}
+.fold-panel summary {
+  margin: 0;
+  list-style: none;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.fold-panel summary::-webkit-details-marker { display: none; }
+.fold-panel summary::before {
+  content: "▸";
+  color: var(--muted);
+  font-size: 12px;
+  transform: translateY(-1px);
+}
+.fold-panel[open] summary::before { content: "▾"; }
+.fold-panel summary small {
+  color: var(--muted);
+  font-size: var(--fs-caption);
+  font-weight: 500;
+}
+.fold-body { margin-top: 10px; }
 .method-p { color: var(--muted); line-height: 1.6; font-size: var(--fs-caption); margin: 6px 0 12px; }
 .disclosure-note {
   margin-top: 10px;
