@@ -1186,6 +1186,7 @@ APP_JS = """
   function bindMainChartHoverEmphasis() {
     if (!chartDiv || chartDiv.dataset.hoverEmphasisBound === "1" || isTouchDevice()) return;
     chartDiv.dataset.hoverEmphasisBound = "1";
+    const HOVER_Y_GAP_THRESHOLD = 2.0;
     const baseLineWidths = (chartDiv.data || []).map((t) => {
       const w = t && t.line ? Number(t.line.width) : NaN;
       return Number.isFinite(w) ? w : null;
@@ -1238,7 +1239,14 @@ APP_JS = """
           if (a.yGap !== b.yGap) return a.yGap - b.yGap;
           return a.distance - b.distance;
         });
-      const point = rankedCandidates[0] ? rankedCandidates[0].p : null;
+      const bestCandidate = rankedCandidates[0] || null;
+      if (!bestCandidate) return;
+      // If cursor-to-series y-gap is too large (e.g., sparse/missing points), suppress highlight flicker.
+      if (!Number.isFinite(bestCandidate.yGap) || bestCandidate.yGap > HOVER_Y_GAP_THRESHOLD) {
+        restore();
+        return;
+      }
+      const point = bestCandidate.p;
       if (!point || typeof point.curveNumber !== "number") return;
       const sourceTrace = (chartDiv.data || [])[point.curveNumber];
       if (!sourceTrace || !sourceTrace.legendgroup) return;
