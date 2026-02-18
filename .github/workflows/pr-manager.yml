@@ -232,13 +232,17 @@ jobs:
             core.setOutput('merged_payload', JSON.stringify(merged));
 
       - name: Notify Slack on merged PRs
-        if: steps.pr_manager.outputs.merged_count != '0' && secrets.SLACK_WEBHOOK_URL != ''
+        if: steps.pr_manager.outputs.merged_count != '0'
         uses: actions/github-script@v7
         env:
           SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
           MERGED_PAYLOAD: ${{ steps.pr_manager.outputs.merged_payload }}
         with:
           script: |
+            if (!process.env.SLACK_WEBHOOK_URL) {
+              core.info('SLACK_WEBHOOK_URL not set; skip Slack notification.');
+              return;
+            }
             const merged = JSON.parse(process.env.MERGED_PAYLOAD || '[]');
             const lines = merged.map(
               r => `• <${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/pull/${r.pr}|#${r.pr}> ${r.reason}`
