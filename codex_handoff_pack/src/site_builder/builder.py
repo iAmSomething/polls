@@ -652,7 +652,7 @@ summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
 .wbar { height: 100%; border-radius: 999px; background: var(--primary); }
 .wlabel { color: var(--text); font-size: var(--fs-caption); }
 .table-scroll {
-  max-height: 440px;
+  max-height: 320px;
   overflow: auto;
   border-radius: var(--r-lg);
 }
@@ -2556,6 +2556,33 @@ def build_ranking_html(ranking_rows: list[dict]) -> str:
             if r["pred_lo_80"] is not None and r["pred_hi_80"] is not None
             else "80% 구간 -"
         )
+        ranking_html.append(
+            f"""
+            <article class=\"rank-card\" data-party=\"{r['party']}\">
+              <div class=\"rank-head\">
+                <div class=\"rank-num\">{i}.</div>
+                <div class=\"party-dot\" style=\"background:{r['color']}\"></div>
+                <div class=\"rank-party\">{r.get('display_party', r['party'])}</div>
+              </div>
+              <div class=\"rank-main\">
+                <span class=\"rank-pred\">{r['pred']:.2f}<small>%</small></span>
+                <span class=\"rank-delta\">{delta_txt}</span>
+              </div>
+              <div class=\"rank-sub\">RMSE {rmse_txt} <span class=\"metric-tooltip\" tabindex=\"0\" aria-label=\"RMSE 설명\" data-tip=\"RMSE는 예측값과 실제값 차이의 평균적인 크기를 뜻하며 낮을수록 정확합니다.\">ⓘ</span></div>
+              <div class=\"rank-band\">{band_txt}</div>
+              <div class=\"spark\">{r['spark_svg']}</div>
+            </article>
+            """
+        )
+    if not ranking_html:
+        ranking_html.append(
+            """
+            <article class=\"rank-card muted\">
+              <div class=\"rank-head\"><div class=\"rank-party\">예측 랭킹 데이터 준비 중</div></div>
+              <div class=\"rank-sub\">예측 산출물이 갱신되면 자동으로 표시됩니다.</div>
+            </article>
+            """
+        )
         rows.append(
             f"""
             <article class=\"rank-card\" data-party=\"{r['party']}\">
@@ -3001,6 +3028,33 @@ def render_html(
       <div class=\"chart-caption\">최근 합성 관측치({nowcast_meta.get('latest_observation','-')})와 다음주 예측치를 현재 시점으로 시간 보간한 추정치입니다.</div>
     </section>
 
+    <section class=\"panel section-tight reveal stagger-2\">
+      <div class=\"section-title-row card-header\">
+        <div class=\"panel-title\" style=\"margin: 0;\">최근 여론조사 기사 링크 <small>Recent Coverage</small></div>
+        <div id=\"news-status\" class=\"status-badge stale\" aria-live=\"polite\">대기 중...</div>
+      </div>
+      <div id=\"news-grid\" class=\"news-grid card-body\">{''.join(article_cards)}</div>
+    </section>
+
+    <section class=\"method section-tight\">
+      <details>
+        <summary>방법론·공시 (클릭하여 펼치기)</summary>
+        <p class=\"method-p\"><strong>법정 안내</strong>: 선거여론조사 관련 세부사항은 중앙선거여론조사심의위원회 홈페이지(nesdc.go.kr) 참조.</p>
+        <p class=\"method-p\">2023년부터 2025년 6월 선거까지, 여론조사기관의 정당지지율과 실제 선거결과를 비교해 정확도(MAE)를 산출했습니다. 이후 정확도 상위 클러스터(9개 기관)만 사용해 합성 시계열을 만들고, 기관별 가중치는 1/MAE를 정규화해 적용합니다. 주간 업데이트에서는 Huber 손실 기반으로 가중치 안정성을 유지하도록 설계했습니다.</p>
+        <p class=\"method-p\"><strong>선정 기관</strong></p>
+        <div class=\"method-chips\">{selected_pollsters_html}</div>
+        <p class=\"method-p\"><strong>선정 이유</strong>: {pollster_selection_note}</p>
+        <ul class=\"method-list\">
+          <li>과거 선거 결과 대비 MAE(낮을수록 우수)</li>
+          <li>시계열 결측률 및 연속성</li>
+          <li>주간 공표 주기 안정성</li>
+        </ul>
+        <p class=\"method-p\">{pres_method_note}</p>
+        <p class=\"method-p\">{backtest_note}</p>
+        <table class=\"table\"><thead><tr><th>조사기관</th><th>MAE</th><th>가중치(%)</th></tr></thead><tbody>{''.join(weight_rows)}</tbody></table>
+      </details>
+    </section>
+
     <section id=\"latest-poll-section\" class=\"latest-poll section-tight reveal stagger-3\">
       <div class=\"panel-title card-header\">최신 여론조사 결과 <small>Latest Poll Snapshot</small></div>
       <div class=\"latest-poll-grid\">
@@ -3029,33 +3083,6 @@ def render_html(
           </table>
         </div>
       </article>
-
-      <article class=\"panel\">
-        <div class=\"section-title-row card-header\">
-          <div class=\"panel-title\" style=\"margin: 0;\">최근 여론조사 기사 링크 <small>Recent Coverage</small></div>
-          <div id=\"news-status\" class=\"status-badge stale\" aria-live=\"polite\">대기 중...</div>
-        </div>
-        <div id=\"news-grid\" class=\"news-grid card-body\">{''.join(article_cards)}</div>
-      </article>
-    </section>
-
-    <section class=\"method reveal stagger-3\">
-      <details>
-        <summary>방법론·공시 (클릭하여 펼치기)</summary>
-        <p class=\"method-p\"><strong>법정 안내</strong>: 선거여론조사 관련 세부사항은 중앙선거여론조사심의위원회 홈페이지(nesdc.go.kr) 참조.</p>
-        <p class=\"method-p\">2023년부터 2025년 6월 선거까지, 여론조사기관의 정당지지율과 실제 선거결과를 비교해 정확도(MAE)를 산출했습니다. 이후 정확도 상위 클러스터(9개 기관)만 사용해 합성 시계열을 만들고, 기관별 가중치는 1/MAE를 정규화해 적용합니다. 주간 업데이트에서는 Huber 손실 기반으로 가중치 안정성을 유지하도록 설계했습니다.</p>
-        <p class=\"method-p\"><strong>선정 기관</strong></p>
-        <div class=\"method-chips\">{selected_pollsters_html}</div>
-        <p class=\"method-p\"><strong>선정 이유</strong>: {pollster_selection_note}</p>
-        <ul class=\"method-list\">
-          <li>과거 선거 결과 대비 MAE(낮을수록 우수)</li>
-          <li>시계열 결측률 및 연속성</li>
-          <li>주간 공표 주기 안정성</li>
-        </ul>
-        <p class=\"method-p\">{pres_method_note}</p>
-        <p class=\"method-p\">{backtest_note}</p>
-        <table class=\"table\"><thead><tr><th>조사기관</th><th>MAE</th><th>가중치(%)</th></tr></thead><tbody>{''.join(weight_rows)}</tbody></table>
-      </details>
     </section>
   </div>
   </div>
