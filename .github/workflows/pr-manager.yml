@@ -87,6 +87,7 @@ jobs:
               }
 
               const blocking = checkRuns.find(run => {
+                if (run.name === 'evaluate-and-merge') return false;
                 if (run.status !== 'completed') return true;
                 return !['success', 'neutral', 'skipped'].includes(run.conclusion);
               });
