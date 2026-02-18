@@ -223,8 +223,32 @@ def git_commit(project_dir: Path, paths: list[Path], message: str, push: bool) -
     subprocess.run(["git", "commit", "-m", message], cwd=project_dir, check=True)
     print(f"[git] committed: {message}")
     if push:
-        subprocess.run(["git", "push"], cwd=project_dir, check=True)
-        print("[git] pushed")
+        pushed = False
+        for attempt in range(1, 4):
+            try:
+                subprocess.run(["git", "push"], cwd=project_dir, check=True)
+                print("[git] pushed")
+                pushed = True
+                break
+            except subprocess.CalledProcessError as exc:
+                print(f"[git] push failed (attempt {attempt}/3): {exc}")
+                if attempt >= 3:
+                    raise
+                # Re-sync with remote to recover from non-fast-forward races.
+                subprocess.run(["git", "fetch", "origin"], cwd=project_dir, check=True)
+                branch = (
+                    subprocess.run(
+                        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+                        cwd=project_dir,
+                        text=True,
+                        capture_output=True,
+                        check=True,
+                    ).stdout.strip()
+                    or "main"
+                )
+                subprocess.run(["git", "pull", "--rebase", "--autostash", "origin", branch], cwd=project_dir, check=True)
+        if not pushed:
+            raise RuntimeError("[git] push failed after retries")
 
 
 def main() -> None:
