@@ -2339,7 +2339,7 @@ def sparkline_svg(values: list[float], color: str) -> str:
 
 def build_party_payload(
     blended: pd.DataFrame, forecast: pd.DataFrame, as_of_kst: datetime | None = None
-) -> tuple[list[dict], list[dict]]:
+) -> tuple[list[dict], list[dict], list[dict], dict]:
     df = blended.copy()
     df["date_end"] = pd.to_datetime(df["date_end"])
     df = df.sort_values("date_end")
@@ -2354,9 +2354,19 @@ def build_party_payload(
     fc["pred_sd"] = pd.to_numeric(fc.get("pred_sd"), errors="coerce")
     fc = fc.dropna(subset=["next_week_pred"])
 
+    now_ref = as_of_kst or datetime.now(tz=ZoneInfo("Asia/Seoul"))
+    latest_ts = pd.to_datetime(df["date_end"]).max()
+    if latest_ts.tzinfo is None:
+        latest_ts = latest_ts.tz_localize("Asia/Seoul")
+    else:
+        latest_ts = latest_ts.tz_convert("Asia/Seoul")
+    days_elapsed = max(0.0, (now_ref - latest_ts.to_pydatetime()).total_seconds() / 86400.0)
+    alpha = min(1.0, days_elapsed / 7.0)
+
     pred_date = (pd.to_datetime(df["date_end"]).max() + pd.Timedelta(days=7)).strftime("%Y-%m-%d")
     traces: list[dict] = []
     ranking_rows: list[dict] = []
+    nowcast_rows: list[dict] = []
 
     for party in PARTY_ORDER:
         if party not in df.columns:
@@ -2408,9 +2418,32 @@ def build_party_payload(
                 "spark_svg": sparkline_svg(spark_vals, color),
             }
         )
+        now_pred_lo = pred_lo_80 if pred_lo_80 is not None else pred
+        now_pred_hi = pred_hi_80 if pred_hi_80 is not None else pred
+        nowcast = last_actual + alpha * (pred - last_actual)
+        nowcast_lo = last_actual + alpha * (now_pred_lo - last_actual)
+        nowcast_hi = last_actual + alpha * (now_pred_hi - last_actual)
+        nowcast_rows.append(
+            {
+                "party": party,
+                "display_party": party_display_name(party, as_of_kst),
+                "color": color,
+                "nowcast": nowcast,
+                "nowcast_lo_80": nowcast_lo,
+                "nowcast_hi_80": nowcast_hi,
+                "delta": nowcast - last_actual,
+                "spark_svg": sparkline_svg(spark_vals, color),
+            }
+        )
 
     ranking_rows = sorted(ranking_rows, key=lambda x: x["pred"], reverse=True)
-    return traces, ranking_rows
+    nowcast_rows = sorted(nowcast_rows, key=lambda x: x["nowcast"], reverse=True)
+    nowcast_meta = {
+        "as_of": now_ref.strftime("%Y-%m-%d %H:%M KST"),
+        "latest_observation": latest_ts.strftime("%Y-%m-%d"),
+        "alpha": alpha,
+    }
+    return traces, ranking_rows, nowcast_rows, nowcast_meta
 
 
 def load_latest_poll_results(outputs: Path, max_rows: int = 6) -> list[dict]:
@@ -2587,6 +2620,8 @@ def render_html(
     docs_dir: Path,
     traces: list[dict],
     ranking_rows: list[dict],
+    nowcast_rows: list[dict],
+    nowcast_meta: dict,
     weights_df: pd.DataFrame,
     articles_df: pd.DataFrame,
     latest_date: str,
@@ -2610,6 +2645,18 @@ def render_html(
                 "sub": f"{(lead['pred'] - second['pred']):.2f}%p",
                 "featured": True,
                 "hero": True,
+            }
+        )
+    if len(nowcast_rows) >= 2:
+        now_lead = nowcast_rows[0]
+        now_second = nowcast_rows[1]
+        cards.append(
+            {
+                "label": "현재 추정 1위 / 격차",
+                "value": f"{now_lead.get('display_party', now_lead['party'])}",
+                "sub": f"{(now_lead['nowcast'] - now_second['nowcast']):.2f}%p · {nowcast_meta.get('as_of', '-')}",
+                "featured": True,
+                "hero": False,
             }
         )
     swing = sum(abs(float(r["delta"])) for r in ranking_rows) / len(ranking_rows) if ranking_rows else 0.0
@@ -2720,7 +2767,13 @@ def render_html(
             if r["pred_lo_80"] is not None and r["pred_hi_80"] is not None
             else "80% 구간 -"
         )
-        ranking_html.append(
+
+    nowcast_html = []
+    for i, r in enumerate(nowcast_rows, 1):
+        sign = "▲" if r["delta"] > 0 else ("▼" if r["delta"] < 0 else "■")
+        delta_txt = f"{sign} {abs(r['delta']):.2f}"
+        band_txt = f"80% 구간 {r['nowcast_lo_80']:.2f}% ~ {r['nowcast_hi_80']:.2f}%"
+        nowcast_html.append(
             f"""
             <article class=\"rank-card\" data-party=\"{r['party']}\">
               <div class=\"rank-head\">
@@ -2729,16 +2782,15 @@ def render_html(
                 <div class=\"rank-party\">{r.get('display_party', r['party'])}</div>
               </div>
               <div class=\"rank-main\">
-                <span class=\"rank-pred\">{r['pred']:.2f}<small>%</small></span>
+                <span class=\"rank-pred\">{r['nowcast']:.2f}<small>%</small></span>
                 <span class=\"rank-delta\">{delta_txt}</span>
               </div>
-              <div class=\"rank-sub\">RMSE {rmse_txt} <span class=\"metric-tooltip\" tabindex=\"0\" aria-label=\"RMSE 설명\" data-tip=\"RMSE는 예측값과 실제값 차이의 평균적인 크기를 뜻하며 낮을수록 정확합니다.\">ⓘ</span></div>
+              <div class=\"rank-sub\">현재 추정치 (Nowcast)</div>
               <div class=\"rank-band\">{band_txt}</div>
               <div class=\"spark\">{r['spark_svg']}</div>
             </article>
             """
         )
-
     article_cards = []
     for _, a in articles_df.iterrows():
         d = pd.to_datetime(a.get("published_at", a["date"]), errors="coerce")
@@ -2900,6 +2952,12 @@ def render_html(
       <aside class=\"panel\"><div class=\"panel-title card-header\">예측 랭킹 <small>Forecast Ranking</small></div><div class=\"rank-wrap card-body\">{''.join(ranking_html)}</div></aside>
     </section>
 
+    <section class=\"panel section-tight reveal stagger-2\">
+      <div class=\"panel-title card-header\">현재 시점 추정 <small>Nowcast as of {nowcast_meta.get('as_of', '-')}</small></div>
+      <div class=\"rank-wrap card-body\">{''.join(nowcast_html)}</div>
+      <div class=\"chart-caption\">최근 합성 관측치({nowcast_meta.get('latest_observation','-')})와 다음주 예측치를 현재 시점으로 시간 보간한 추정치입니다.</div>
+    </section>
+
     <section id=\"latest-poll-section\" class=\"latest-poll section-tight reveal stagger-3\">
       <div class=\"panel-title card-header\">최신 여론조사 결과 <small>Latest Poll Snapshot</small></div>
       <div class=\"latest-poll-grid\">
@@ -2995,7 +3053,7 @@ def main():
     president_raw_series = load_president_approval_raw_series(outputs)
     president_table_rows = load_president_approval_table_rows(outputs)
     latest_poll_results = load_latest_poll_results(outputs)
-    traces, ranking_rows = build_party_payload(
+    traces, ranking_rows, nowcast_rows, nowcast_meta = build_party_payload(
         blended, forecast, as_of_kst=datetime.now(tz=ZoneInfo("Asia/Seoul"))
     )
 
@@ -3004,6 +3062,8 @@ def main():
         docs,
         traces,
         ranking_rows,
+        nowcast_rows,
+        nowcast_meta,
         weights,
         articles,
         latest_date=latest_date,
