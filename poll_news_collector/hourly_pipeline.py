@@ -32,6 +32,21 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--force-url", action="append", default=[], help="Force-process URL(s) for testing")
     p.add_argument("--git-commit", action="store_true", help="commit changed project files")
     p.add_argument("--git-push", action="store_true", help="push after commit")
+    p.add_argument(
+        "--git-work-branch",
+        default="main",
+        help="Branch where hourly commits are created (e.g., codex/hourly-news-refresh)",
+    )
+    p.add_argument(
+        "--git-main-branch",
+        default="main",
+        help="Main branch to promote hourly commits into",
+    )
+    p.add_argument(
+        "--git-promote-main",
+        action="store_true",
+        help="When using a non-main work branch, rebase it onto origin/main and push to main",
+    )
     p.add_argument("--max-retries", type=int, default=3, help="max retries for rejected extraction URLs")
     p.add_argument("--retry-delay-minutes", type=int, default=60, help="delay before retrying a rejected extraction URL")
     p.add_argument("--triage-md", default="outputs/extraction_triage.md", help="path to extraction triage markdown")
@@ -207,7 +222,28 @@ def run_update_week_window(project_dir: Path, observed_jsonl: Path, week_start: 
     subprocess.run(cmd, cwd=project_dir, check=True)
 
 
-def git_commit(project_dir: Path, paths: list[Path], message: str, push: bool) -> None:
+def git_commit(
+    project_dir: Path,
+    paths: list[Path],
+    message: str,
+    push: bool,
+    work_branch: str,
+    main_branch: str,
+    promote_main: bool,
+) -> None:
+    current_branch = (
+        subprocess.run(
+            ["git", "rev-parse", "--abbrev-ref", "HEAD"],
+            cwd=project_dir,
+            text=True,
+            capture_output=True,
+            check=True,
+        ).stdout.strip()
+        or "main"
+    )
+    if current_branch != work_branch:
+        raise RuntimeError(f"[git] expected work branch '{work_branch}', but current branch is '{current_branch}'")
+
     rel_paths = [str(p.relative_to(project_dir)) for p in paths if p.exists()]
     if not rel_paths:
         print("[git] no target files to add")
@@ -223,32 +259,41 @@ def git_commit(project_dir: Path, paths: list[Path], message: str, push: bool) -
     subprocess.run(["git", "commit", "-m", message], cwd=project_dir, check=True)
     print(f"[git] committed: {message}")
     if push:
-        pushed = False
+        if not promote_main or work_branch == main_branch:
+            pushed = False
+            for attempt in range(1, 4):
+                try:
+                    subprocess.run(["git", "push"], cwd=project_dir, check=True)
+                    print("[git] pushed")
+                    pushed = True
+                    break
+                except subprocess.CalledProcessError as exc:
+                    print(f"[git] push failed (attempt {attempt}/3): {exc}")
+                    if attempt >= 3:
+                        raise
+                    subprocess.run(["git", "fetch", "origin"], cwd=project_dir, check=True)
+                    subprocess.run(["git", "pull", "--rebase", "--autostash", "origin", main_branch], cwd=project_dir, check=True)
+            if not pushed:
+                raise RuntimeError("[git] push failed after retries")
+            return
+
+        promoted = False
         for attempt in range(1, 4):
             try:
-                subprocess.run(["git", "push"], cwd=project_dir, check=True)
-                print("[git] pushed")
-                pushed = True
+                # Keep work branch rebased on main to avoid repeated non-fast-forward failures.
+                subprocess.run(["git", "fetch", "origin"], cwd=project_dir, check=True)
+                subprocess.run(["git", "pull", "--rebase", "--autostash", "origin", main_branch], cwd=project_dir, check=True)
+                subprocess.run(["git", "push", "--force-with-lease", "origin", work_branch], cwd=project_dir, check=True)
+                subprocess.run(["git", "push", "origin", f"HEAD:{main_branch}"], cwd=project_dir, check=True)
+                print("[git] pushed via work branch and promoted to main")
+                promoted = True
                 break
             except subprocess.CalledProcessError as exc:
-                print(f"[git] push failed (attempt {attempt}/3): {exc}")
+                print(f"[git] promote failed (attempt {attempt}/3): {exc}")
                 if attempt >= 3:
                     raise
-                # Re-sync with remote to recover from non-fast-forward races.
-                subprocess.run(["git", "fetch", "origin"], cwd=project_dir, check=True)
-                branch = (
-                    subprocess.run(
-                        ["git", "rev-parse", "--abbrev-ref", "HEAD"],
-                        cwd=project_dir,
-                        text=True,
-                        capture_output=True,
-                        check=True,
-                    ).stdout.strip()
-                    or "main"
-                )
-                subprocess.run(["git", "pull", "--rebase", "--autostash", "origin", branch], cwd=project_dir, check=True)
-        if not pushed:
-            raise RuntimeError("[git] push failed after retries")
+        if not promoted:
+            raise RuntimeError("[git] main promotion failed after retries")
 
 
 def main() -> None:
@@ -455,7 +500,15 @@ def main() -> None:
         else:
             ts = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%MZ")
             msg = f"chore: hourly news refresh ({ts})"
-        git_commit(project_dir, targets, msg, push=args.git_push)
+        git_commit(
+            project_dir,
+            targets,
+            msg,
+            push=args.git_push,
+            work_branch=args.git_work_branch,
+            main_branch=args.git_main_branch,
+            promote_main=args.git_promote_main,
+        )
 
 
 if __name__ == "__main__":
