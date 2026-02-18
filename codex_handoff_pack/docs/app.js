@@ -518,7 +518,6 @@
         "line.width": baseLineWidths
       });
     }
-
     function applyEmphasis(activeGroup) {
       const data = chartDiv.data || [];
       if (!activeGroup || !data.some((t) => t && t.legendgroup === activeGroup)) {

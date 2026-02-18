@@ -22,6 +22,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  actions: write
   checks: read
   statuses: read
 
@@ -232,3 +233,16 @@ jobs:
               const body = await response.text();
               core.setFailed(`Slack notify failed: ${response.status} ${body}`);
             }
+
+      - name: Trigger dashboard deploy workflow
+        if: steps.pr_manager.outputs.merged_count != '0'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            await github.rest.actions.createWorkflowDispatch({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              workflow_id: 'pages.yml',
+              ref: 'main',
+            });
+            core.info('Triggered Build and Deploy Dashboard via workflow_dispatch.');
