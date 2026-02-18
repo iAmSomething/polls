@@ -148,7 +148,7 @@ html[data-theme="light"] { color-scheme: light; }
 html[data-theme="dark"] { color-scheme: dark; }
 @keyframes fadeIn {
   0% { opacity: 0; transform: translateY(6px); }
-  100% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 1; transform: none; }
 }
 @keyframes slideUp {
   0% { opacity: 0; transform: translateY(10px); }
@@ -967,7 +967,20 @@ APP_JS = """
 
   initRevealAnimations();
   initKpiCountUp();
+  finalizePageEntryAnimation();
   initFloatingToc();
+
+  function finalizePageEntryAnimation() {
+    const wrap = document.querySelector(".wrap.animate-fade-in");
+    if (!wrap) return;
+    const clear = () => {
+      wrap.classList.remove("animate-fade-in");
+      wrap.style.opacity = "1";
+      wrap.style.transform = "none";
+    };
+    wrap.addEventListener("animationend", clear, { once: true });
+    window.setTimeout(clear, 700);
+  }
 
   function initFloatingToc() {
     const root = document.getElementById("post");
