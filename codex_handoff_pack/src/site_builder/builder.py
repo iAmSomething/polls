@@ -330,9 +330,7 @@ tbody tr:last-child td { border-bottom: none; }
   border-bottom: 1px solid var(--line);
 }
 .floating-toc {
-  position: fixed;
-  right: 24px;
-  top: 120px;
+  display: none;
   z-index: 30;
   width: 210px;
   border: 1px solid var(--line);
@@ -381,17 +379,19 @@ tbody tr:last-child td { border-bottom: none; }
   right: 16px;
   bottom: 20px;
   z-index: 40;
-  display: none;
+  display: inline-flex;
 }
 .toc-drawer {
   position: fixed;
-  inset: auto 12px 72px 12px;
+  right: 16px;
+  bottom: 72px;
   z-index: 41;
   border: 1px solid var(--line);
   border-radius: var(--r-md);
   background: var(--panel);
   box-shadow: var(--shadow-1);
   padding: 10px;
+  width: min(280px, calc(100vw - 32px));
   max-height: 58vh;
   overflow: auto;
   display: none;
@@ -682,7 +682,8 @@ tbody tr:last-child td { border-bottom: none; }
   margin-right: 6px;
   vertical-align: middle;
 }
-.method { margin-top: 14px; }
+.method { margin-top: var(--s-lg); }
+#section-news { margin-top: var(--s-md); }
 details { border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 12px 8px; background: var(--surface); }
 summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
 .method-p { color: var(--muted); line-height: 1.6; font-size: var(--fs-caption); margin: 6px 0 12px; }
@@ -767,7 +768,7 @@ summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
   #chart { height: 440px; }
   .news-grid { grid-template-columns: 1fr; }
   #latest-poll-chart, #poll-compare-chart { height: 280px; }
-  .floating-toc { display: none; }
+  .floating-toc { display: none !important; }
   .toc-fab { display: inline-flex; }
 }
 @media (max-width: 768px) {
@@ -777,8 +778,18 @@ summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
   th, td { font-size: 13px; padding: 10px 8px; }
   .news-title { font-size: 13px; }
 }
-@media (max-width: 1280px) {
+@media (min-width: 1700px) {
+  .floating-toc {
+    display: block;
+    position: fixed;
+    top: 120px;
+    right: max(16px, calc((100vw - 1200px) / 2 - 232px));
+  }
+  .toc-fab { display: none; }
+}
+@media (max-width: 1699px) {
   .floating-toc { display: none; }
+  .toc-fab { display: inline-flex; }
 }
 """.strip()
 
@@ -2969,6 +2980,33 @@ def render_html(
             f"80% 구간 {r['pred_lo_80']:.2f}% ~ {r['pred_hi_80']:.2f}%"
             if r["pred_lo_80"] is not None and r["pred_hi_80"] is not None
             else "80% 구간 -"
+        )
+        ranking_html.append(
+            f"""
+            <article class=\"rank-card\" data-party=\"{r['party']}\">
+              <div class=\"rank-head\">
+                <div class=\"rank-num\">{i}.</div>
+                <div class=\"party-dot\" style=\"background:{r['color']}\"></div>
+                <div class=\"rank-party\">{r.get('display_party', r['party'])}</div>
+              </div>
+              <div class=\"rank-main\">
+                <span class=\"rank-pred\">{r['pred']:.2f}<small>%</small></span>
+                <span class=\"rank-delta\">{delta_txt}</span>
+              </div>
+              <div class=\"rank-sub\">RMSE {rmse_txt} <span class=\"metric-tooltip\" tabindex=\"0\" aria-label=\"RMSE 설명\" data-tip=\"RMSE는 예측값과 실제값 차이의 평균적인 크기를 뜻하며 낮을수록 정확합니다.\">ⓘ</span></div>
+              <div class=\"rank-band\">{band_txt}</div>
+              <div class=\"spark\">{r['spark_svg']}</div>
+            </article>
+            """
+        )
+    if not ranking_html:
+        ranking_html.append(
+            """
+            <article class=\"rank-card muted\">
+              <div class=\"rank-head\"><div class=\"rank-party\">예측 랭킹 데이터 준비 중</div></div>
+              <div class=\"rank-sub\">예측 산출물이 갱신되면 자동으로 표시됩니다.</div>
+            </article>
+            """
         )
 
     nowcast_html = []
