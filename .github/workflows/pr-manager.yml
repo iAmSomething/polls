@@ -109,6 +109,16 @@ jobs:
               return { ok: true };
             }
 
+            async function listChangedFiles(prNumber) {
+              const files = await github.paginate(github.rest.pulls.listFiles, {
+                owner,
+                repo,
+                pull_number: prNumber,
+                per_page: 100,
+              });
+              return files.map(f => f.filename);
+            }
+
             async function evaluateAndMaybeMerge(prNumber) {
               const pr = await getPRWithMergeability(prNumber);
 
@@ -163,6 +173,12 @@ jobs:
               if (pr.base.ref !== 'main') {
                 return await skipped(`base is ${pr.base.ref}`);
               }
+              if (!pr.head.ref.startsWith('codex/')) {
+                return await skipped(
+                  `policy violation: branch name must start with codex/ (current: ${pr.head.ref})`,
+                  '브랜치를 codex/<task-name> 형식으로 생성해 PR을 다시 열어주세요.'
+                );
+              }
               if (pr.state !== 'open') {
                 return await skipped(`state is ${pr.state}`);
               }
@@ -171,6 +187,32 @@ jobs:
               }
               if (!pr.mergeable) {
                 return await skipped(`mergeable=${pr.mergeable}, mergeable_state=${pr.mergeable_state}`);
+              }
+
+              const changedFiles = await listChangedFiles(pr.number);
+              const outputFiles = changedFiles.filter(f => f.startsWith('codex_handoff_pack/outputs/'));
+              if (outputFiles.length > 0) {
+                const sample = outputFiles.slice(0, 3).join(', ');
+                const more = outputFiles.length > 3 ? ` 외 ${outputFiles.length - 3}개` : '';
+                return await skipped(
+                  `policy violation: generated outputs are included (${sample}${more})`,
+                  'Generated Artifacts Policy에 따라 outputs/* 파일을 커밋에서 제거한 뒤 다시 푸시하세요.'
+                );
+              }
+
+              const touchedSiteBuilder = changedFiles.some(f => f.startsWith('codex_handoff_pack/src/site_builder/'));
+              const touchedDocsCore = changedFiles.some(f =>
+                f === 'codex_handoff_pack/docs/index.html' ||
+                f === 'codex_handoff_pack/docs/style.css' ||
+                f === 'codex_handoff_pack/docs/app.js' ||
+                f === 'codex_handoff_pack/docs/news_latest.json' ||
+                f.startsWith('codex_handoff_pack/docs/assets/')
+              );
+              if (touchedSiteBuilder && !touchedDocsCore) {
+                return await skipped(
+                  'policy violation: site_builder changed without docs sync',
+                  'PR Checklist/Generated Artifacts Policy에 따라 docs 핵심 산출물(index.html/style.css/app.js 등)을 함께 갱신해 커밋하세요.'
+                );
               }
 
               const checks = await checksAreGreen(pr.head.sha);
