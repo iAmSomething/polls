@@ -135,6 +135,79 @@
 
   initRevealAnimations();
   initKpiCountUp();
+  initFloatingToc();
+
+  function initFloatingToc() {
+    const links = Array.from(document.querySelectorAll(".toc-link[data-target]"));
+    if (!links.length) return;
+    const drawer = document.getElementById("toc-drawer");
+    const fab = document.getElementById("toc-fab");
+    const targets = links
+      .map((link) => ({
+        id: link.dataset.target || "",
+        el: document.getElementById(link.dataset.target || "")
+      }))
+      .filter((it) => it.id && it.el);
+
+    function setActive(id) {
+      links.forEach((link) => {
+        const active = link.dataset.target === id;
+        link.classList.toggle("active", active);
+        if (active) {
+          link.setAttribute("aria-current", "true");
+        } else {
+          link.removeAttribute("aria-current");
+        }
+      });
+    }
+
+    function closeDrawer() {
+      if (!drawer) return;
+      drawer.classList.remove("open");
+      if (fab) fab.setAttribute("aria-expanded", "false");
+    }
+
+    links.forEach((link) => {
+      link.addEventListener("click", (e) => {
+        const id = link.dataset.target || "";
+        const target = id ? document.getElementById(id) : null;
+        if (!target) return;
+        e.preventDefault();
+        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        setActive(id);
+        closeDrawer();
+      });
+    });
+
+    if (fab && drawer) {
+      fab.addEventListener("click", () => {
+        const next = !drawer.classList.contains("open");
+        drawer.classList.toggle("open", next);
+        fab.setAttribute("aria-expanded", next ? "true" : "false");
+      });
+      document.addEventListener("click", (e) => {
+        if (!drawer.classList.contains("open")) return;
+        const target = e.target;
+        if (!(target instanceof HTMLElement)) return;
+        if (drawer.contains(target) || fab.contains(target)) return;
+        closeDrawer();
+      });
+    }
+
+    if (!targets.length) return;
+    setActive(targets[0].id);
+    if ("IntersectionObserver" in window) {
+      const obs = new IntersectionObserver((entries) => {
+        const visible = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+        if (!visible) return;
+        const id = visible.target.getAttribute("id");
+        if (id) setActive(id);
+      }, { root: null, rootMargin: "-20% 0px -70% 0px", threshold: 0.01 });
+      targets.forEach((it) => obs.observe(it.el));
+    }
+  }
 
   const dataEl = document.getElementById("poll-data");
   if (!dataEl) return;
@@ -582,6 +655,7 @@
         if (!applyEmphasis(lastActiveGroup)) lastActiveGroup = null;
         return;
       }
+      // If cursor-to-series y-gap is too large (e.g., sparse/missing points), suppress highlight flicker.
       if (!Number.isFinite(bestCandidate.yGap) || bestCandidate.yGap > HOVER_Y_GAP_THRESHOLD) {
         if (!applyEmphasis(lastActiveGroup)) lastActiveGroup = null;
         return;
