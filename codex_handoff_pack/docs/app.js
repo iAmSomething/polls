@@ -138,16 +138,64 @@
   initFloatingToc();
 
   function initFloatingToc() {
-    const links = Array.from(document.querySelectorAll(".toc-link[data-target]"));
-    if (!links.length) return;
+    const root = document.getElementById("post");
+    const desktopNav = document.getElementById("floating-toc");
+    const desktopList = document.getElementById("toc-list-desktop");
     const drawer = document.getElementById("toc-drawer");
+    const mobileList = document.getElementById("toc-list-mobile");
     const fab = document.getElementById("toc-fab");
-    const targets = links
-      .map((link) => ({
-        id: link.dataset.target || "",
-        el: document.getElementById(link.dataset.target || "")
-      }))
-      .filter((it) => it.id && it.el);
+    if (!root || !desktopNav || !desktopList || !drawer || !mobileList || !fab) return;
+
+    const headings = Array.from(root.querySelectorAll("h2, h3"));
+    if (!headings.length) {
+      desktopNav.style.display = "none";
+      fab.style.display = "none";
+      drawer.classList.remove("open");
+      return;
+    }
+
+    const slugCount = Object.create(null);
+    const idSet = new Set(Array.from(document.querySelectorAll("[id]")).map((el) => el.id));
+    function slugify(text) {
+      const base = String(text || "")
+        .normalize("NFKD")
+        .toLowerCase()
+        .replace(/[^\w\s-가-힣]/g, "")
+        .trim()
+        .replace(/\s+/g, "-")
+        .replace(/-+/g, "-") || "section";
+      slugCount[base] = (slugCount[base] || 0) + 1;
+      return slugCount[base] === 1 ? base : `${base}-${slugCount[base]}`;
+    }
+    const tocItems = headings.map((heading) => {
+      let id = (heading.id || "").trim();
+      if (!id) {
+        id = slugify(heading.textContent || "");
+        while (idSet.has(id)) id = slugify(heading.textContent || "");
+        heading.id = id;
+      }
+      idSet.add(id);
+      return {
+        id,
+        level: heading.tagName.toLowerCase() === "h3" ? 3 : 2,
+        label: (heading.textContent || "").trim(),
+        el: heading
+      };
+    });
+
+    function renderTocList(container) {
+      container.innerHTML = tocItems
+        .map((item) => {
+          const cls = item.level === 3 ? "toc-link lvl-3" : "toc-link";
+          return `<li><a class="${cls}" href="#${item.id}" data-target="${item.id}">${item.label}</a></li>`;
+        })
+        .join("");
+      return Array.from(container.querySelectorAll(".toc-link[data-target]"));
+    }
+
+    const desktopLinks = renderTocList(desktopList);
+    const mobileLinks = renderTocList(mobileList);
+    const links = [...desktopLinks, ...mobileLinks];
 
     function setActive(id) {
       links.forEach((link) => {
@@ -162,9 +210,22 @@
     }
 
     function closeDrawer() {
-      if (!drawer) return;
       drawer.classList.remove("open");
-      if (fab) fab.setAttribute("aria-expanded", "false");
+      fab.setAttribute("aria-expanded", "false");
+    }
+
+    function getHeaderOffset() {
+      const header = document.querySelector("header.top");
+      if (!header) return 92;
+      return Math.max(72, Math.ceil(header.getBoundingClientRect().height + 8));
+    }
+
+    function scrollToTarget(el) {
+      const top = window.scrollY + el.getBoundingClientRect().top - getHeaderOffset();
+      window.scrollTo({
+        top: Math.max(0, top),
+        behavior: reducedMotion ? "auto" : "smooth"
+      });
     }
 
     links.forEach((link) => {
@@ -173,29 +234,27 @@
         const target = id ? document.getElementById(id) : null;
         if (!target) return;
         e.preventDefault();
-        target.scrollIntoView({ behavior: "smooth", block: "start" });
+        scrollToTarget(target);
         setActive(id);
+        history.replaceState(null, "", `#${id}`);
         closeDrawer();
       });
     });
 
-    if (fab && drawer) {
-      fab.addEventListener("click", () => {
-        const next = !drawer.classList.contains("open");
-        drawer.classList.toggle("open", next);
-        fab.setAttribute("aria-expanded", next ? "true" : "false");
-      });
-      document.addEventListener("click", (e) => {
-        if (!drawer.classList.contains("open")) return;
-        const target = e.target;
-        if (!(target instanceof HTMLElement)) return;
-        if (drawer.contains(target) || fab.contains(target)) return;
-        closeDrawer();
-      });
-    }
+    fab.addEventListener("click", () => {
+      const next = !drawer.classList.contains("open");
+      drawer.classList.toggle("open", next);
+      fab.setAttribute("aria-expanded", next ? "true" : "false");
+    });
+    document.addEventListener("click", (e) => {
+      if (!drawer.classList.contains("open")) return;
+      const target = e.target;
+      if (!(target instanceof HTMLElement)) return;
+      if (drawer.contains(target) || fab.contains(target)) return;
+      closeDrawer();
+    });
 
-    if (!targets.length) return;
-    setActive(targets[0].id);
+    setActive(tocItems[0].id);
     if ("IntersectionObserver" in window) {
       const obs = new IntersectionObserver((entries) => {
         const visible = entries
@@ -204,9 +263,23 @@
         if (!visible) return;
         const id = visible.target.getAttribute("id");
         if (id) setActive(id);
-      }, { root: null, rootMargin: "-20% 0px -70% 0px", threshold: 0.01 });
-      targets.forEach((it) => obs.observe(it.el));
+      }, { root: null, rootMargin: "-20% 0px -62% 0px", threshold: [0.01, 0.15, 0.45] });
+      tocItems.forEach((it) => obs.observe(it.el));
+    } else {
+      window.addEventListener("scroll", () => {
+        let current = tocItems[0];
+        const offset = getHeaderOffset();
+        tocItems.forEach((it) => {
+          const rect = it.el.getBoundingClientRect();
+          if (rect.top - offset <= 1) current = it;
+        });
+        if (current) setActive(current.id);
+      }, { passive: true });
     }
+
+    window.addEventListener("resize", () => {
+      if (window.innerWidth >= 1024) closeDrawer();
+    });
   }
 
   const dataEl = document.getElementById("poll-data");
