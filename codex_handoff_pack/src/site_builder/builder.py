@@ -486,6 +486,10 @@ tbody tr:last-child td { border-bottom: none; }
 .insights {
   display: grid;
   gap: var(--s-md);
+}
+.insights-cards {
+  display: grid;
+  gap: var(--s-md);
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 .insight-card {
@@ -802,7 +806,7 @@ summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
   .wrap { padding-right: 0; }
   .top { grid-template-columns: 1fr; grid-template-rows: auto auto auto; }
   .top-meta { justify-content: flex-start; }
-  .insights { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .insights-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .insight-card.featured { grid-column: span 1; }
   .main-grid, .latest-poll-grid, .poll-compare-grid, .results-grid { grid-template-columns: 1fr; }
   .filters { width: 100%; display: grid; grid-template-columns: 1fr; }
@@ -821,7 +825,7 @@ summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
   .toc-drawer { display: none !important; }
 }
 @media (max-width: 768px) {
-  .insights { grid-template-columns: 1fr; }
+  .insights-cards { grid-template-columns: 1fr; }
   .title { font-size: 30px; }
   .time-banner { width: 100%; font-size: 13px; padding: 9px 11px; }
   th, td { font-size: 13px; padding: 10px 8px; }
@@ -3273,7 +3277,7 @@ def render_html(
     <main id=\"post\" data-toc-root>
     <section id=\"section-insights\" class=\"insights section-tight reveal stagger-1\">
       <h2 class=\"panel-title section-heading\">핵심 지표 <small>Key Metrics</small></h2>
-      {cards_html}
+      <div class=\"insights-cards\">{cards_html}</div>
     </section>
 
     <section id=\"section-trend\" class=\"main-grid section-tight reveal stagger-2\">
