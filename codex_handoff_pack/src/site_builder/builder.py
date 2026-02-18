@@ -1186,6 +1186,8 @@ APP_JS = """
   function bindMainChartHoverEmphasis() {
     if (!chartDiv || chartDiv.dataset.hoverEmphasisBound === "1" || isTouchDevice()) return;
     chartDiv.dataset.hoverEmphasisBound = "1";
+    const HOVER_Y_GAP_THRESHOLD = 2.0;
+    let lastActiveGroup = null;
     const baseLineWidths = (chartDiv.data || []).map((t) => {
       const w = t && t.line ? Number(t.line.width) : NaN;
       return Number.isFinite(w) ? w : null;
@@ -1197,6 +1199,25 @@ APP_JS = """
         opacity: data.map(() => 1),
         "line.width": baseLineWidths
       });
+    }
+    function applyEmphasis(activeGroup) {
+      const data = chartDiv.data || [];
+      if (!activeGroup || !data.some((t) => t && t.legendgroup === activeGroup)) {
+        restore();
+        return false;
+      }
+      const opacities = data.map((t) => (t && t.legendgroup === activeGroup ? 1 : 0.2));
+      const boostedWidths = data.map((t, idx) => {
+        const base = baseLineWidths[idx];
+        if (base === null) return null;
+        const same = t && t.legendgroup === activeGroup;
+        const isBand = t && t.meta === "band";
+        const isLine = t && String(t.mode || "").includes("lines");
+        if (same && !isBand && isLine) return base + 1;
+        return base;
+      });
+      Plotly.restyle(chartDiv, { opacity: opacities, "line.width": boostedWidths });
+      return true;
     }
 
     function getCursorYValue(ev) {
@@ -1238,26 +1259,29 @@ APP_JS = """
           if (a.yGap !== b.yGap) return a.yGap - b.yGap;
           return a.distance - b.distance;
         });
-      const point = rankedCandidates[0] ? rankedCandidates[0].p : null;
+      const bestCandidate = rankedCandidates[0] || null;
+      if (!bestCandidate) {
+        if (!applyEmphasis(lastActiveGroup)) lastActiveGroup = null;
+        return;
+      }
+      // If cursor-to-series y-gap is too large (e.g., sparse/missing points), suppress highlight flicker.
+      if (!Number.isFinite(bestCandidate.yGap) || bestCandidate.yGap > HOVER_Y_GAP_THRESHOLD) {
+        if (!applyEmphasis(lastActiveGroup)) lastActiveGroup = null;
+        return;
+      }
+      const point = bestCandidate.p;
       if (!point || typeof point.curveNumber !== "number") return;
       const sourceTrace = (chartDiv.data || [])[point.curveNumber];
       if (!sourceTrace || !sourceTrace.legendgroup) return;
       const activeGroup = sourceTrace.legendgroup;
-      const data = chartDiv.data || [];
-      const opacities = data.map((t) => (t && t.legendgroup === activeGroup ? 1 : 0.2));
-      const boostedWidths = data.map((t, idx) => {
-        const base = baseLineWidths[idx];
-        if (base === null) return null;
-        const same = t && t.legendgroup === activeGroup;
-        const isBand = t && t.meta === "band";
-        const isLine = t && String(t.mode || "").includes("lines");
-        if (same && !isBand && isLine) return base + 1;
-        return base;
-      });
-      Plotly.restyle(chartDiv, { opacity: opacities, "line.width": boostedWidths });
+      lastActiveGroup = activeGroup;
+      applyEmphasis(activeGroup);
     });
 
-    chartDiv.on("plotly_unhover", restore);
+    chartDiv.on("plotly_unhover", () => {
+      lastActiveGroup = null;
+      restore();
+    });
   }
 
   function renderAndSync() {
