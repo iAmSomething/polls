@@ -1188,7 +1188,8 @@ APP_JS = """
     if (!chartDiv || chartDiv.dataset.hoverEmphasisBound === "1" || isTouchDevice()) return;
     chartDiv.dataset.hoverEmphasisBound = "1";
     const HOVER_DISTANCE_THRESHOLD = 24;
-    const HOVER_DISTANCE_AMBIGUITY_PX = 3;
+    const HOVER_DISTANCE_AMBIGUITY_PX = 1.5;
+    const HOVER_Y_GAP_THRESHOLD = 1.8;
     const baseLineWidths = (chartDiv.data || []).map((t) => {
       const w = t && t.line ? Number(t.line.width) : NaN;
       return Number.isFinite(w) ? w : null;
@@ -1203,30 +1204,41 @@ APP_JS = """
     }
 
     chartDiv.on("plotly_hover", (ev) => {
+      const hoverY = Number.isFinite(ev && ev.yval) ? Number(ev.yval) : null;
       const candidates = (ev && Array.isArray(ev.points) ? ev.points : [])
         .filter((p) => {
           const t = (chartDiv.data || [])[p.curveNumber];
           return !!(t && t.legendgroup && t.meta !== "band" && String(t.mode || "").includes("lines"));
+        });
+      const ranked = candidates
+        .map((p) => {
+          const distance = Number.isFinite(p.distance) ? Number(p.distance) : Number.POSITIVE_INFINITY;
+          const yGap = hoverY !== null && Number.isFinite(p.y)
+            ? Math.abs(Number(p.y) - hoverY)
+            : Number.POSITIVE_INFINITY;
+          return { p, distance, yGap };
         })
         .sort((a, b) => {
-          const da = Number.isFinite(a.distance) ? a.distance : Number.POSITIVE_INFINITY;
-          const db = Number.isFinite(b.distance) ? b.distance : Number.POSITIVE_INFINITY;
-          return da - db;
+          if (a.distance !== b.distance) return a.distance - b.distance;
+          return a.yGap - b.yGap;
         });
-      const point = candidates[0] || null;
+      const best = ranked[0] || null;
+      const second = ranked[1] || null;
+      const point = best ? best.p : null;
       if (!point || typeof point.curveNumber !== "number") return;
-      const bestDistance = Number.isFinite(point.distance) ? point.distance : Number.POSITIVE_INFINITY;
-      const secondDistance = candidates.length > 1 && Number.isFinite(candidates[1].distance)
-        ? candidates[1].distance
-        : Number.POSITIVE_INFINITY;
+      const bestDistance = best ? best.distance : Number.POSITIVE_INFINITY;
+      const secondDistance = second ? second.distance : Number.POSITIVE_INFINITY;
+      const bestYGap = best ? best.yGap : Number.POSITIVE_INFINITY;
       // In x-unified hover, Plotly can return many traces without reliable nearest-distance.
-      // Only apply emphasis when cursor proximity is sufficiently clear.
+      // If distance is unavailable, fallback to y-gap; suppress only truly ambiguous/far cases.
       const ambiguousByDistance = Number.isFinite(secondDistance)
         && Math.abs(secondDistance - bestDistance) < HOVER_DISTANCE_AMBIGUITY_PX;
+      const farByYGap = !Number.isFinite(bestDistance) && Number.isFinite(bestYGap) && bestYGap > HOVER_Y_GAP_THRESHOLD;
       if (
-        (candidates.length > 1 && !Number.isFinite(point.distance))
+        (candidates.length > 1 && !Number.isFinite(bestDistance) && !Number.isFinite(bestYGap))
         || bestDistance > HOVER_DISTANCE_THRESHOLD
         || ambiguousByDistance
+        || farByYGap
       ) {
         restore();
         return;
