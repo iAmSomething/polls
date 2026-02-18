@@ -33,17 +33,17 @@ POLLSTERS_HINT = [
 ]
 
 RE_APPROVE = [
-    re.compile(r"(?:잘(?:하고|한다)|긍정(?:적)?\s*평가)[^0-9]{0,20}(\d{1,2}(?:\.\d+)?)\s*%"),
-    re.compile(r"(?:국정\s*수행|직무\s*수행)[^0-9]{0,40}(?:잘(?:하고|한다)|긍정)[^0-9]{0,20}(\d{1,2}(?:\.\d+)?)\s*%"),
-    re.compile(r"긍정[^0-9]{0,8}(\d{1,2}(?:\.\d+)?)\s*%"),
-    re.compile(r"국정(?:수행)?지지율[^0-9]{0,8}(\d{1,2}(?:\.\d+)?)\s*%"),
-    re.compile(r"지지율[^0-9]{0,8}(\d{1,2}(?:\.\d+)?)\s*%"),
+    re.compile(r"(?:잘(?:하고|한다)|긍정(?:적)?\s*평가)[^0-9]{0,20}(\d{1,2}(?:\.\d+)?)\s*%(?!\s*(?:[pP]|포인트))"),
+    re.compile(r"(?:국정\s*수행|직무\s*수행)[^0-9]{0,40}(?:잘(?:하고|한다)|긍정)[^0-9]{0,20}(\d{1,2}(?:\.\d+)?)\s*%(?!\s*(?:[pP]|포인트))"),
+    re.compile(r"긍정[^0-9]{0,8}(\d{1,2}(?:\.\d+)?)\s*%(?!\s*(?:[pP]|포인트))"),
+    re.compile(r"국정(?:수행)?지지율[^0-9]{0,8}(\d{1,2}(?:\.\d+)?)\s*%(?!\s*(?:[pP]|포인트))"),
+    re.compile(r"지지율[^0-9]{0,8}(\d{1,2}(?:\.\d+)?)\s*%(?!\s*(?:[pP]|포인트))"),
 ]
 RE_DISAPPROVE = [
-    re.compile(r"(?:잘못(?:하고|한다)|부정(?:적)?\s*평가)[^0-9]{0,20}(\d{1,2}(?:\.\d+)?)\s*%"),
-    re.compile(r"(?:국정\s*수행|직무\s*수행)[^0-9]{0,40}(?:잘못|부정)[^0-9]{0,20}(\d{1,2}(?:\.\d+)?)\s*%"),
-    re.compile(r"부정[^0-9]{0,8}(\d{1,2}(?:\.\d+)?)\s*%"),
-    re.compile(r"잘못(?:하고|한다|할것)[^0-9]{0,8}(\d{1,2}(?:\.\d+)?)\s*%"),
+    re.compile(r"(?:잘못(?:하고|한다)|부정(?:적)?\s*평가)[^0-9]{0,20}(\d{1,2}(?:\.\d+)?)\s*%(?!\s*(?:[pP]|포인트))"),
+    re.compile(r"(?:국정\s*수행|직무\s*수행)[^0-9]{0,40}(?:잘못|부정)[^0-9]{0,20}(\d{1,2}(?:\.\d+)?)\s*%(?!\s*(?:[pP]|포인트))"),
+    re.compile(r"부정[^0-9]{0,8}(\d{1,2}(?:\.\d+)?)\s*%(?!\s*(?:[pP]|포인트))"),
+    re.compile(r"잘못(?:하고|한다|할것)[^0-9]{0,8}(\d{1,2}(?:\.\d+)?)\s*%(?!\s*(?:[pP]|포인트))"),
 ]
 
 RE_DATE = re.compile(r"(\d{4})[.\-/년]\s*(\d{1,2})[.\-/월]\s*(\d{1,2})")
@@ -121,6 +121,15 @@ def extract_numbers(text: str) -> Tuple[Optional[float], Optional[float]]:
     return approve, dis
 
 
+def is_plausible_pair(approve: Optional[float], disapprove: Optional[float]) -> bool:
+    if approve is None or disapprove is None:
+        return False
+    if not (5.0 <= approve <= 90.0 and 5.0 <= disapprove <= 90.0):
+        return False
+    total = approve + disapprove
+    return 70.0 <= total <= 100.0
+
+
 def clean_snippet(text: str) -> str:
     s = html.unescape(str(text or ""))
     s = re.sub(r"(?is)<[^>]+>", " ", s)
@@ -186,7 +195,7 @@ def collect_week(from_d: date, to_d: date, max_items: int = 15, sleep_sec: float
     for c in uniq[:40]:
         snippet = clean_snippet(f"{c.get('title','')} {c.get('summary','')}")
         approve, dis = extract_numbers(snippet)
-        if approve is not None and dis is not None:
+        if is_plausible_pair(approve, dis):
             pol = infer_pollster(snippet)
             best.update(
                 {
@@ -202,6 +211,25 @@ def collect_week(from_d: date, to_d: date, max_items: int = 15, sleep_sec: float
                 }
             )
             return best
+        article_text, final_url = fetch_article_text(str(c.get("url", "")))
+        if article_text:
+            approve, dis = extract_numbers(article_text)
+            if is_plausible_pair(approve, dis):
+                pol = infer_pollster(article_text) or infer_pollster(snippet)
+                best.update(
+                    {
+                        "approve": approve,
+                        "disapprove": dis,
+                        "dk": max(0.0, round(100.0 - approve - dis, 1)),
+                        "pollster": pol,
+                        "publisher": pol or str(c.get("source", "")).strip() or None,
+                        "poll_end_date": to_d.isoformat(),
+                        "source_url": final_url or str(c.get("url", "")),
+                        "source_title": str(c.get("title", "")),
+                        "notes": "auto_from_article_text",
+                    }
+                )
+                return best
 
     best["notes"] = "auto-extract failed; review candidates"
     return best
