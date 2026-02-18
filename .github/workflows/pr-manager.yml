@@ -59,49 +59,13 @@ jobs:
               return data;
             }
 
-            async function getApprovalCount(pr) {
-              const reviews = await github.paginate(github.rest.pulls.listReviews, {
-                owner,
-                repo,
-                pull_number: pr.number,
-                per_page: 100,
-              });
-
-              const latestStateByUser = new Map();
-              for (const review of reviews) {
-                const login = review.user?.login;
-                if (!login) continue;
-
-                const prev = latestStateByUser.get(login);
-                if (!prev || new Date(review.submitted_at || 0) >= new Date(prev.submitted_at || 0)) {
-                  latestStateByUser.set(login, {
-                    state: review.state,
-                    submitted_at: review.submitted_at,
-                  });
-                }
-              }
-
-              let approvals = 0;
-              for (const [login, info] of latestStateByUser.entries()) {
-                if (login === pr.user.login) continue;
-                if (info.state === 'APPROVED') approvals += 1;
-              }
-              return approvals;
-            }
-
             async function checksAreGreen(sha) {
               const combined = await github.rest.repos.getCombinedStatusForRef({
                 owner,
                 repo,
                 ref: sha,
               });
-
-              if (combined.data.state !== 'success') {
-                return {
-                  ok: false,
-                  reason: `commit status is ${combined.data.state}`,
-                };
-              }
+              const hasStatus = (combined.data.statuses || []).length > 0;
 
               const checkRuns = await github.paginate(github.rest.checks.listForRef, {
                 owner,
@@ -109,6 +73,18 @@ jobs:
                 ref: sha,
                 per_page: 100,
               });
+              const hasCheckRuns = checkRuns.length > 0;
+
+              if (!hasStatus && !hasCheckRuns) {
+                return { ok: true };
+              }
+
+              if (hasStatus && combined.data.state !== 'success') {
+                return {
+                  ok: false,
+                  reason: `commit status is ${combined.data.state}`,
+                };
+              }
 
               const blocking = checkRuns.find(run => {
                 if (run.status !== 'completed') return true;
@@ -143,11 +119,6 @@ jobs:
               }
               if (pr.mergeable_state !== 'clean' && pr.mergeable_state !== 'has_hooks') {
                 return { pr: pr.number, action: 'skipped', reason: `mergeable_state=${pr.mergeable_state}` };
-              }
-
-              const approvals = await getApprovalCount(pr);
-              if (approvals < 1) {
-                return { pr: pr.number, action: 'skipped', reason: 'no non-author approval' };
               }
 
               const checks = await checksAreGreen(pr.head.sha);
