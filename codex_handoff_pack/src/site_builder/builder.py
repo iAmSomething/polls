@@ -618,6 +618,36 @@ tbody tr:last-child td { border-bottom: none; }
 details { border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 12px 8px; background: var(--surface); }
 summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
 .method-p { color: var(--muted); line-height: 1.6; font-size: var(--fs-caption); margin: 6px 0 12px; }
+.disclosure-note {
+  margin-top: 10px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.55;
+}
+.method-list {
+  margin: 6px 0 12px 18px;
+  padding: 0;
+  color: var(--muted);
+  font-size: var(--fs-caption);
+  line-height: 1.6;
+}
+.method-list li { margin: 4px 0; }
+.method-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 8px 0 12px;
+}
+.method-chip {
+  display: inline-flex;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--text);
+  background: var(--surface);
+}
 .wbar-wrap { display: inline-block; width: 180px; height: 8px; border-radius: 999px; background: var(--surface-2); margin-right: 8px; vertical-align: middle; }
 .wbar { height: 100%; border-radius: 999px; background: var(--primary); }
 .wlabel { color: var(--text); font-size: var(--fs-caption); }
@@ -2882,6 +2912,18 @@ def render_html(
         "대통령 국정수행 평가는 NESDC 공개 XLSX에서 문항(대통령/국정/직무/수행/평가)을 자동 탐지해 "
         "긍정·부정·유보를 추출하고, 표본수 가중 주간 집계로 반영합니다. 데이터가 없는 주차는 보간하지 않습니다."
     )
+    selected_pollsters = (
+        weights_df.get("조사기관", pd.Series(dtype=str)).dropna().astype(str).str.strip().tolist()
+        if not weights_df.empty
+        else []
+    )
+    if not selected_pollsters:
+        selected_pollsters = POLLSTERS[:]
+    selected_pollsters = [x for x in selected_pollsters if x]
+    selected_pollsters_html = "".join(f'<span class="method-chip">{p}</span>' for p in selected_pollsters)
+    pollster_selection_note = (
+        "기관 선정은 과거 선거 결과 대비 오차(MAE)와 시계열 연속성, 주간 공표 안정성을 함께 고려합니다."
+    )
     html = f"""<!doctype html>
 <html lang=\"ko\">
 <head>
@@ -2948,6 +2990,7 @@ def render_html(
         </div>
         <div id=\"chart\"></div>
         <div class=\"chart-caption\"><strong>해석 안내:</strong> 각 선에는 스무딩 중심선과 적응형 오차폭 기반 반투명 밴드가 함께 표시됩니다(기준 오차폭 약 ±3%). 대통령 긍정/부정은 보정되지 않은 raw 값입니다.</div>
+        <div class=\"disclosure-note\">선거여론조사 관련 세부사항은 중앙선거여론조사심의위원회 홈페이지(nesdc.go.kr) 참조.</div>
       </article>
       <aside class=\"panel\"><div class=\"panel-title card-header\">예측 랭킹 <small>Forecast Ranking</small></div><div class=\"rank-wrap card-body\">{''.join(ranking_html)}</div></aside>
     </section>
@@ -2998,8 +3041,17 @@ def render_html(
 
     <section class=\"method reveal stagger-3\">
       <details>
-        <summary>방법론 (클릭하여 펼치기)</summary>
+        <summary>방법론·공시 (클릭하여 펼치기)</summary>
+        <p class=\"method-p\"><strong>법정 안내</strong>: 선거여론조사 관련 세부사항은 중앙선거여론조사심의위원회 홈페이지(nesdc.go.kr) 참조.</p>
         <p class=\"method-p\">2023년부터 2025년 6월 선거까지, 여론조사기관의 정당지지율과 실제 선거결과를 비교해 정확도(MAE)를 산출했습니다. 이후 정확도 상위 클러스터(9개 기관)만 사용해 합성 시계열을 만들고, 기관별 가중치는 1/MAE를 정규화해 적용합니다. 주간 업데이트에서는 Huber 손실 기반으로 가중치 안정성을 유지하도록 설계했습니다.</p>
+        <p class=\"method-p\"><strong>선정 기관</strong></p>
+        <div class=\"method-chips\">{selected_pollsters_html}</div>
+        <p class=\"method-p\"><strong>선정 이유</strong>: {pollster_selection_note}</p>
+        <ul class=\"method-list\">
+          <li>과거 선거 결과 대비 MAE(낮을수록 우수)</li>
+          <li>시계열 결측률 및 연속성</li>
+          <li>주간 공표 주기 안정성</li>
+        </ul>
         <p class=\"method-p\">{pres_method_note}</p>
         <p class=\"method-p\">{backtest_note}</p>
         <table class=\"table\"><thead><tr><th>조사기관</th><th>MAE</th><th>가중치(%)</th></tr></thead><tbody>{''.join(weight_rows)}</tbody></table>
