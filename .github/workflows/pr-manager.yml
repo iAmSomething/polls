@@ -43,6 +43,7 @@ jobs:
           script: |
             const owner = context.repo.owner;
             const repo = context.repo.repo;
+            const shouldCommentOnSkip = ['pull_request_target', 'pull_request_review'].includes(context.eventName);
 
             async function wait(ms) {
               return new Promise(resolve => setTimeout(resolve, ms));
@@ -107,22 +108,51 @@ jobs:
             async function evaluateAndMaybeMerge(prNumber) {
               const pr = await getPRWithMergeability(prNumber);
 
+              async function leaveSkipComment(reason) {
+                if (!shouldCommentOnSkip) return;
+                const marker = `<!-- pr-manager-skip:${pr.head.sha} -->`;
+                const comments = await github.paginate(github.rest.issues.listComments, {
+                  owner,
+                  repo,
+                  issue_number: pr.number,
+                  per_page: 100,
+                });
+                if (comments.some(c => (c.body || '').includes(marker))) return;
+
+                await github.rest.issues.createComment({
+                  owner,
+                  repo,
+                  issue_number: pr.number,
+                  body: [
+                    'PR Manager가 자동 머지를 보류했습니다.',
+                    `- Reason: ${reason}`,
+                    `- Workflow: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
+                    marker,
+                  ].join('\n'),
+                });
+              }
+
+              async function skipped(reason) {
+                await leaveSkipComment(reason);
+                return { pr: pr.number, action: 'skipped', reason };
+              }
+
               if (pr.base.ref !== 'main') {
-                return { pr: pr.number, action: 'skipped', reason: `base is ${pr.base.ref}` };
+                return await skipped(`base is ${pr.base.ref}`);
               }
               if (pr.state !== 'open') {
-                return { pr: pr.number, action: 'skipped', reason: `state is ${pr.state}` };
+                return await skipped(`state is ${pr.state}`);
               }
               if (pr.draft) {
-                return { pr: pr.number, action: 'skipped', reason: 'draft PR' };
+                return await skipped('draft PR');
               }
               if (!pr.mergeable) {
-                return { pr: pr.number, action: 'skipped', reason: `mergeable=${pr.mergeable}, mergeable_state=${pr.mergeable_state}` };
+                return await skipped(`mergeable=${pr.mergeable}, mergeable_state=${pr.mergeable_state}`);
               }
 
               const checks = await checksAreGreen(pr.head.sha);
               if (!checks.ok) {
-                return { pr: pr.number, action: 'skipped', reason: checks.reason };
+                return await skipped(checks.reason);
               }
 
               const repoInfo = await github.rest.repos.get({ owner, repo });
@@ -135,7 +165,7 @@ jobs:
                     : null;
 
               if (!merge_method) {
-                return { pr: pr.number, action: 'skipped', reason: 'no merge method is enabled in repository settings' };
+                return await skipped('no merge method is enabled in repository settings');
               }
 
               try {
@@ -157,7 +187,7 @@ jobs:
                 });
                 return { pr: pr.number, action: 'merged', reason: `merged with ${merge_method}` };
               } catch (error) {
-                return { pr: pr.number, action: 'skipped', reason: `merge failed: ${error.message}` };
+                return await skipped(`merge failed: ${error.message}`);
               }
             }
 
