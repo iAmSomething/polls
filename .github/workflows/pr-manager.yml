@@ -84,7 +84,9 @@ jobs:
               if (hasStatus && combined.data.state !== 'success') {
                 return {
                   ok: false,
+                  code: 'status_not_success',
                   reason: `commit status is ${combined.data.state}`,
+                  advice: '필수 status가 완료될 때까지 기다리거나 실패 체크를 수정한 뒤 다시 푸시하세요.',
                 };
               }
 
@@ -98,7 +100,9 @@ jobs:
                 const state = blocking.status === 'completed' ? blocking.conclusion : blocking.status;
                 return {
                   ok: false,
+                  code: 'check_blocking',
                   reason: `check run \"${blocking.name}\" is ${state}`,
+                  advice: `체크 "${blocking.name}" 상태(${state})를 해결한 뒤 다시 푸시하거나 재실행하세요.`,
                 };
               }
 
@@ -108,7 +112,7 @@ jobs:
             async function evaluateAndMaybeMerge(prNumber) {
               const pr = await getPRWithMergeability(prNumber);
 
-              async function leaveSkipComment(reason) {
+              async function leaveSkipComment(reason, advice) {
                 if (!shouldCommentOnSkip) return;
                 const marker = `<!-- pr-manager-skip:${pr.head.sha} -->`;
                 const comments = await github.paginate(github.rest.issues.listComments, {
@@ -126,14 +130,33 @@ jobs:
                   body: [
                     'PR Manager가 자동 머지를 보류했습니다.',
                     `- Reason: ${reason}`,
+                    ...(advice ? [`- Action: ${advice}`] : []),
                     `- Workflow: ${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`,
                     marker,
                   ].join('\n'),
                 });
               }
 
-              async function skipped(reason) {
-                await leaveSkipComment(reason);
+              function adviceFor(reason) {
+                if (reason.startsWith('base is ')) return 'main 대상으로 PR을 다시 생성하세요.';
+                if (reason === 'draft PR') return 'PR을 Ready for review로 전환하면 재평가됩니다.';
+                if (reason.startsWith('state is ')) return '열린(open) PR에서만 자동 머지됩니다.';
+                if (reason.startsWith('mergeable=')) {
+                  if (reason.includes('mergeable_state=dirty')) return 'main을 rebase/merge 해서 충돌을 해결한 뒤 다시 푸시하세요.';
+                  if (reason.includes('mergeable_state=blocked')) return '브랜치 보호 규칙(필수 체크/규칙)을 충족하세요.';
+                  if (reason.includes('mergeable_state=behind')) return '브랜치를 main 최신으로 업데이트한 뒤 다시 푸시하세요.';
+                  if (reason.includes('mergeable=null')) return 'GitHub가 머지 가능성 계산을 마칠 때까지 잠시 기다린 뒤 다시 푸시하세요.';
+                  return 'PR의 충돌/보호 규칙/브랜치 최신화 상태를 확인 후 다시 푸시하세요.';
+                }
+                if (reason.startsWith('merge failed:')) return '권한/브랜치 보호 규칙/동시 업데이트 여부를 확인 후 다시 시도하세요.';
+                if (reason.startsWith('no merge method')) return 'Repository Settings에서 squash/merge/rebase 중 하나를 활성화하세요.';
+                if (reason.startsWith('commit status is ')) return '실패 또는 진행중 status를 해결한 뒤 다시 푸시하세요.';
+                if (reason.startsWith('check run \"')) return '실패/진행중 체크를 해결한 뒤 다시 푸시하거나 체크를 재실행하세요.';
+                return '보류 사유를 해결한 뒤 다시 푸시하면 자동으로 재평가됩니다.';
+              }
+
+              async function skipped(reason, advice = null) {
+                await leaveSkipComment(reason, advice || adviceFor(reason));
                 return { pr: pr.number, action: 'skipped', reason };
               }
 
@@ -152,7 +175,7 @@ jobs:
 
               const checks = await checksAreGreen(pr.head.sha);
               if (!checks.ok) {
-                return await skipped(checks.reason);
+                return await skipped(checks.reason, checks.advice);
               }
 
               const repoInfo = await github.rest.repos.get({ owner, repo });
