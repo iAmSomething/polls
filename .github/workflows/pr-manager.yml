@@ -117,9 +117,6 @@ jobs:
               if (!pr.mergeable) {
                 return { pr: pr.number, action: 'skipped', reason: `mergeable=${pr.mergeable}, mergeable_state=${pr.mergeable_state}` };
               }
-              if (pr.mergeable_state !== 'clean' && pr.mergeable_state !== 'has_hooks') {
-                return { pr: pr.number, action: 'skipped', reason: `mergeable_state=${pr.mergeable_state}` };
-              }
 
               const checks = await checksAreGreen(pr.head.sha);
               if (!checks.ok) {
