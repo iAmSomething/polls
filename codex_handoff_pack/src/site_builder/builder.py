@@ -1188,6 +1188,7 @@ APP_JS = """
     if (!chartDiv || chartDiv.dataset.hoverEmphasisBound === "1" || isTouchDevice()) return;
     chartDiv.dataset.hoverEmphasisBound = "1";
     const HOVER_DISTANCE_THRESHOLD = 24;
+    const HOVER_DISTANCE_AMBIGUITY_PX = 3;
     const baseLineWidths = (chartDiv.data || []).map((t) => {
       const w = t && t.line ? Number(t.line.width) : NaN;
       return Number.isFinite(w) ? w : null;
@@ -1215,9 +1216,18 @@ APP_JS = """
       const point = candidates[0] || null;
       if (!point || typeof point.curveNumber !== "number") return;
       const bestDistance = Number.isFinite(point.distance) ? point.distance : Number.POSITIVE_INFINITY;
+      const secondDistance = candidates.length > 1 && Number.isFinite(candidates[1].distance)
+        ? candidates[1].distance
+        : Number.POSITIVE_INFINITY;
       // In x-unified hover, Plotly can return many traces without reliable nearest-distance.
       // Only apply emphasis when cursor proximity is sufficiently clear.
-      if ((candidates.length > 1 && !Number.isFinite(point.distance)) || bestDistance > HOVER_DISTANCE_THRESHOLD) {
+      const ambiguousByDistance = Number.isFinite(secondDistance)
+        && Math.abs(secondDistance - bestDistance) < HOVER_DISTANCE_AMBIGUITY_PX;
+      if (
+        (candidates.length > 1 && !Number.isFinite(point.distance))
+        || bestDistance > HOVER_DISTANCE_THRESHOLD
+        || ambiguousByDistance
+      ) {
         restore();
         return;
       }
