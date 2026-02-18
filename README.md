@@ -2,7 +2,7 @@
 
 정당 지지율 여론조사를 주간 단위로 통합(블렌딩)하고, 다음 주 예측과 백테스트 성능을 함께 공개하는 프로젝트입니다.  
 배포는 GitHub Pages + GitHub Actions로 자동화되어 있으며, 데이터 업데이트부터 대시보드 생성까지 주기적으로 실행됩니다.
-
+https://iamsomething.github.io/polls/#methodology-disclosure
 ## 1) 프로젝트 개요
 
 이 프로젝트는 다음 문제를 해결하기 위해 만들어졌습니다.
