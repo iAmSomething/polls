@@ -683,7 +683,7 @@ tbody tr:last-child td { border-bottom: none; }
   vertical-align: middle;
 }
 .method { margin-top: var(--s-lg); }
-#section-news { margin-top: var(--s-md); }
+#section-news { margin-top: var(--s-lg); }
 details { border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 12px 8px; background: var(--surface); }
 summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
 .method-p { color: var(--muted); line-height: 1.6; font-size: var(--fs-caption); margin: 6px 0 12px; }
@@ -778,19 +778,8 @@ summary { cursor: pointer; font-weight: 700; margin-bottom: 8px; }
   th, td { font-size: 13px; padding: 10px 8px; }
   .news-title { font-size: 13px; }
 }
-@media (min-width: 1700px) {
-  .floating-toc {
-    display: block;
-    position: fixed;
-    top: 120px;
-    right: max(16px, calc((100vw - 1200px) / 2 - 232px));
-  }
-  .toc-fab { display: none; }
-}
-@media (max-width: 1699px) {
-  .floating-toc { display: none; }
-  .toc-fab { display: inline-flex; }
-}
+.floating-toc { display: none !important; }
+.toc-fab { display: inline-flex; }
 """.strip()
 
 APP_JS = """
