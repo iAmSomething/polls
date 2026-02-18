@@ -505,9 +505,6 @@
   function bindMainChartHoverEmphasis() {
     if (!chartDiv || chartDiv.dataset.hoverEmphasisBound === "1" || isTouchDevice()) return;
     chartDiv.dataset.hoverEmphasisBound = "1";
-    const HOVER_DISTANCE_THRESHOLD = 24;
-    const HOVER_DISTANCE_AMBIGUITY_PX = 1.5;
-    const HOVER_Y_GAP_THRESHOLD = 1.8;
     const baseLineWidths = (chartDiv.data || []).map((t) => {
       const w = t && t.line ? Number(t.line.width) : NaN;
       return Number.isFinite(w) ? w : null;
@@ -522,43 +519,29 @@
     }
 
     chartDiv.on("plotly_hover", (ev) => {
-      const hoverY = Number.isFinite(ev && ev.yval) ? Number(ev.yval) : null;
+      const hoverY = Number.isFinite(ev && ev.yval) ? Number(ev.yval) : Number.NaN;
       const candidates = (ev && Array.isArray(ev.points) ? ev.points : [])
         .filter((p) => {
           const t = (chartDiv.data || [])[p.curveNumber];
-          return !!(t && t.legendgroup && t.meta !== "band" && String(t.mode || "").includes("lines"));
-        });
-      const ranked = candidates
-        .map((p) => {
-          const distance = Number.isFinite(p.distance) ? Number(p.distance) : Number.POSITIVE_INFINITY;
-          const yGap = hoverY !== null && Number.isFinite(p.y)
-            ? Math.abs(Number(p.y) - hoverY)
-            : Number.POSITIVE_INFINITY;
-          return { p, distance, yGap };
+          return !!(
+            t &&
+            t.legendgroup &&
+            t.meta !== "band" &&
+            String(t.mode || "").includes("lines") &&
+            Number.isFinite(Number(p.y))
+          );
         })
+        .map((p) => ({
+          p,
+          yGap: Number.isFinite(hoverY) ? Math.abs(Number(p.y) - hoverY) : Number.POSITIVE_INFINITY,
+          distance: Number.isFinite(p.distance) ? Number(p.distance) : Number.POSITIVE_INFINITY
+        }))
         .sort((a, b) => {
-          if (a.distance !== b.distance) return a.distance - b.distance;
-          return a.yGap - b.yGap;
+          if (a.yGap !== b.yGap) return a.yGap - b.yGap;
+          return a.distance - b.distance;
         });
-      const best = ranked[0] || null;
-      const second = ranked[1] || null;
-      const point = best ? best.p : null;
+      const point = ranked[0] ? ranked[0].p : null;
       if (!point || typeof point.curveNumber !== "number") return;
-      const bestDistance = best ? best.distance : Number.POSITIVE_INFINITY;
-      const secondDistance = second ? second.distance : Number.POSITIVE_INFINITY;
-      const bestYGap = best ? best.yGap : Number.POSITIVE_INFINITY;
-      const ambiguousByDistance = Number.isFinite(secondDistance)
-        && Math.abs(secondDistance - bestDistance) < HOVER_DISTANCE_AMBIGUITY_PX;
-      const farByYGap = !Number.isFinite(bestDistance) && Number.isFinite(bestYGap) && bestYGap > HOVER_Y_GAP_THRESHOLD;
-      if (
-        (candidates.length > 1 && !Number.isFinite(bestDistance) && !Number.isFinite(bestYGap))
-        || bestDistance > HOVER_DISTANCE_THRESHOLD
-        || ambiguousByDistance
-        || farByYGap
-      ) {
-        restore();
-        return;
-      }
       const sourceTrace = (chartDiv.data || [])[point.curveNumber];
       if (!sourceTrace || !sourceTrace.legendgroup) return;
       const activeGroup = sourceTrace.legendgroup;
