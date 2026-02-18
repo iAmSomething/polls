@@ -1199,9 +1199,26 @@ APP_JS = """
       });
     }
 
+    function getCursorYValue(ev) {
+      const layout = chartDiv && chartDiv._fullLayout;
+      const axis = layout && layout.yaxis;
+      const rawClientY = ev && ev.event && Number.isFinite(ev.event.clientY) ? Number(ev.event.clientY) : Number.NaN;
+      if (axis && Number.isFinite(rawClientY)) {
+        const rect = chartDiv.getBoundingClientRect();
+        const yInDiv = rawClientY - rect.top;
+        const axisOffset = Number.isFinite(axis._offset) ? Number(axis._offset) : 0;
+        const yInAxis = yInDiv - axisOffset;
+        if (Number.isFinite(yInAxis)) {
+          const converted = axis.p2l(yInAxis);
+          if (Number.isFinite(converted)) return Number(converted);
+        }
+      }
+      return Number.isFinite(ev && ev.yval) ? Number(ev.yval) : Number.NaN;
+    }
+
     chartDiv.on("plotly_hover", (ev) => {
-      const hoverY = Number.isFinite(ev && ev.yval) ? Number(ev.yval) : Number.NaN;
-      const candidates = (ev && Array.isArray(ev.points) ? ev.points : [])
+      const hoverY = getCursorYValue(ev);
+      const rankedCandidates = (ev && Array.isArray(ev.points) ? ev.points : [])
         .filter((p) => {
           const t = (chartDiv.data || [])[p.curveNumber];
           return !!(
@@ -1221,7 +1238,7 @@ APP_JS = """
           if (a.yGap !== b.yGap) return a.yGap - b.yGap;
           return a.distance - b.distance;
         });
-      const point = candidates[0] ? candidates[0].p : null;
+      const point = rankedCandidates[0] ? rankedCandidates[0].p : null;
       if (!point || typeof point.curveNumber !== "number") return;
       const sourceTrace = (chartDiv.data || [])[point.curveNumber];
       if (!sourceTrace || !sourceTrace.legendgroup) return;
