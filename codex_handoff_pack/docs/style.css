@@ -91,7 +91,7 @@ html[data-theme="light"] { color-scheme: light; }
 html[data-theme="dark"] { color-scheme: dark; }
 @keyframes fadeIn {
   0% { opacity: 0; transform: translateY(6px); }
-  100% { opacity: 1; transform: translateY(0); }
+  100% { opacity: 1; transform: none; }
 }
 @keyframes slideUp {
   0% { opacity: 0; transform: translateY(10px); }

@@ -135,7 +135,20 @@
 
   initRevealAnimations();
   initKpiCountUp();
+  finalizePageEntryAnimation();
   initFloatingToc();
+
+  function finalizePageEntryAnimation() {
+    const wrap = document.querySelector(".wrap.animate-fade-in");
+    if (!wrap) return;
+    const clear = () => {
+      wrap.classList.remove("animate-fade-in");
+      wrap.style.opacity = "1";
+      wrap.style.transform = "none";
+    };
+    wrap.addEventListener("animationend", clear, { once: true });
+    window.setTimeout(clear, 700);
+  }
 
   function initFloatingToc() {
     const root = document.getElementById("post");
