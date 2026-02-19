@@ -2,15 +2,15 @@
 
 - Rejected URLs: 64
 - Retry-eligible now: 0
-- Max-retry blocked: 62
+- Max-retry blocked: 64
 
 ## Reasons
 - insufficient_values: 64
 
 ## Top Rejected URLs
+- https://www.ccdailynews.com/news/articleView.html?idxno=2398519 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-19T16:47:31.942318+00:00
+- https://news.google.com/rss/articles/CBMiUEFVX3lxTE1uenNGeDkzRTItYlBJX3dhMkM3MmNfLTZfMW9XNVBzblZRamNsZWpVRHBSV29rZkhxV0NCdHZqR20yX3hpQkkxVGtJSGpsUXFD?oc=5&hl=en-US&gl=US&ceid=US:en | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-19T16:47:31.942318+00:00
 - https://www.polinews.co.kr/news/articleView.html?idxno=723315 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-19T15:35:31.934128+00:00
-- https://www.ccdailynews.com/news/articleView.html?idxno=2398519 | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-19T16:35:31.934128+00:00 | extracted_at=2026-02-19T15:35:31.934128+00:00
-- https://news.google.com/rss/articles/CBMiUEFVX3lxTE1uenNGeDkzRTItYlBJX3dhMkM3MmNfLTZfMW9XNVBzblZRamNsZWpVRHBSV29rZkhxV0NCdHZqR20yX3hpQkkxVGtJSGpsUXFD?oc=5&hl=en-US&gl=US&ceid=US:en | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-19T16:35:31.934128+00:00 | extracted_at=2026-02-19T15:35:31.934128+00:00
 - https://www.mpmbc.co.kr/NewsArticle/1505793 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-19T14:27:30.740037+00:00
 - https://www.polinews.co.kr/news/articleView.html?idxno=723267 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-19T13:24:37.008157+00:00
 - https://www.m-economynews.com/news/article.html?no=64780 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-19T12:24:03.121995+00:00
