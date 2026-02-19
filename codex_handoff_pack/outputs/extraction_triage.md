@@ -1,17 +1,19 @@
 # Extraction Triage
 
-- Rejected URLs: 53
+- Rejected URLs: 55
 - Retry-eligible now: 0
-- Max-retry blocked: 51
+- Max-retry blocked: 52
 
 ## Reasons
-- insufficient_values: 53
+- insufficient_values: 55
 
 ## Top Rejected URLs
+- https://www.munhwa.com/article/11569084?ref=naver | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-19T05:53:18.229326+00:00
+- https://www.ntoday.co.kr/news/articleView.html?idxno=125320 | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-19T06:53:18.229326+00:00 | extracted_at=2026-02-19T05:53:18.229326+00:00
+- https://www.ajunews.com/view/20260219124416478 | reason=insufficient_values | retry_count=1 | next_retry_at=2026-02-19T06:53:18.229326+00:00 | extracted_at=2026-02-19T05:53:18.229326+00:00
+- https://www.newspim.com/news/view/20260219000219 | reason=insufficient_values | retry_count=1 | next_retry_at=2026-02-19T06:53:18.229326+00:00 | extracted_at=2026-02-19T05:53:18.229326+00:00
 - https://www.sidae.com/article/2026021910440144191 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-19T04:52:45.282181+00:00
 - https://view.asiae.co.kr/article/2026021910045047376 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-19T04:52:45.282181+00:00
-- https://www.munhwa.com/article/11569084?ref=naver | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-19T05:52:45.282181+00:00 | extracted_at=2026-02-19T04:52:45.282181+00:00
-- https://www.ntoday.co.kr/news/articleView.html?idxno=125320 | reason=insufficient_values | retry_count=1 | next_retry_at=2026-02-19T05:52:45.282181+00:00 | extracted_at=2026-02-19T04:52:45.282181+00:00
 - http://weekly.chosun.com/news/articleView.html?idxno=48858 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-19T03:50:56.299194+00:00
 - https://www.eroun.net/news/articleView.html?idxno=73606 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-19T03:50:56.299194+00:00
 - http://www.weeklytoday.com/news/articleView.html?idxno=759857 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-19T03:50:56.299194+00:00
@@ -21,5 +23,3 @@
 - https://www.gukjenews.com/news/articleView.html?idxno=3508404 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-18T19:25:15.452520+00:00
 - https://www.kado.net/news/articleView.html?idxno=2034651 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-18T19:25:15.452520+00:00
 - https://www.joongang.co.kr/article/25405617 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-18T19:25:15.452520+00:00
-- https://www.joongang.co.kr/article/25405622 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-18T19:25:15.452520+00:00
-- https://www.joongang.co.kr/article/25405631 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-18T19:25:15.452520+00:00
