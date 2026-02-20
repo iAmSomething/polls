@@ -1,15 +1,16 @@
 # Extraction Triage
 
-- Rejected URLs: 72
+- Rejected URLs: 73
 - Retry-eligible now: 0
-- Max-retry blocked: 70
+- Max-retry blocked: 71
 
 ## Reasons
-- insufficient_values: 72
+- insufficient_values: 73
 
 ## Top Rejected URLs
-- https://www.sisajournal.com/news/articleView.html?idxno=363411 | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-20T11:00:22.976382+00:00 | extracted_at=2026-02-20T10:00:22.976382+00:00
-- https://weekly.hankooki.com/news/articleView.html?idxno=7150752 | reason=insufficient_values | retry_count=1 | next_retry_at=2026-02-20T11:00:22.976382+00:00 | extracted_at=2026-02-20T10:00:22.976382+00:00
+- https://www.sisajournal.com/news/articleView.html?idxno=363411 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T11:05:54.214970+00:00
+- https://weekly.hankooki.com/news/articleView.html?idxno=7150752 | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-20T12:05:54.214970+00:00 | extracted_at=2026-02-20T11:05:54.214970+00:00
+- https://www.incheonilbo.com/news/articleView.html?idxno=1317466 | reason=insufficient_values | retry_count=1 | next_retry_at=2026-02-20T12:05:54.214970+00:00 | extracted_at=2026-02-20T11:05:54.214970+00:00
 - https://biz.heraldcorp.com/article/10679065?ref=naver | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T04:45:22.613147+00:00
 - https://www.jejusori.net/news/articleView.html?idxno=443952 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T04:45:22.613147+00:00
 - https://www.viva100.com/article/20260220500124 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T03:44:51.935225+00:00
@@ -22,4 +23,3 @@
 - https://www.mpmbc.co.kr/NewsArticle/1505793 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-19T14:27:30.740037+00:00
 - https://www.polinews.co.kr/news/articleView.html?idxno=723267 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-19T13:24:37.008157+00:00
 - https://www.m-economynews.com/news/article.html?no=64780 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-19T12:24:03.121995+00:00
-- https://www.newspim.com/news/view/20260219001100 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-19T11:17:23.100681+00:00
