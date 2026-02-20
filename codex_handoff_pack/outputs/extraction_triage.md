@@ -2,15 +2,15 @@
 
 - Rejected URLs: 70
 - Retry-eligible now: 0
-- Max-retry blocked: 68
+- Max-retry blocked: 70
 
 ## Reasons
 - insufficient_values: 70
 
 ## Top Rejected URLs
+- https://biz.heraldcorp.com/article/10679065?ref=naver | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T04:45:22.613147+00:00
+- https://www.jejusori.net/news/articleView.html?idxno=443952 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T04:45:22.613147+00:00
 - https://www.viva100.com/article/20260220500124 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T03:44:51.935225+00:00
-- https://biz.heraldcorp.com/article/10679065?ref=naver | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-20T04:44:51.935225+00:00 | extracted_at=2026-02-20T03:44:51.935225+00:00
-- https://www.jejusori.net/news/articleView.html?idxno=443952 | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-20T04:44:51.935225+00:00 | extracted_at=2026-02-20T03:44:51.935225+00:00
 - https://www.etoday.co.kr/news/view/2557698 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T02:44:20.517093+00:00
 - http://www.sisunnews.co.kr/news/articleView.html?idxno=234693 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T02:44:20.517093+00:00
 - https://www.hani.co.kr/arti/politics/politics_general/1245660.html | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T02:44:20.517093+00:00
