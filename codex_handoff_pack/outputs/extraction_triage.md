@@ -2,14 +2,14 @@
 
 - Rejected URLs: 75
 - Retry-eligible now: 0
-- Max-retry blocked: 73
+- Max-retry blocked: 74
 
 ## Reasons
 - insufficient_values: 75
 
 ## Top Rejected URLs
-- https://news.tf.co.kr/read/ptoday/2294674.htm | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-20T17:35:08.865953+00:00 | extracted_at=2026-02-20T16:35:08.865953+00:00
-- https://www.kmib.co.kr/article/view.asp?arcid=1771492855&code=11171419&cp=nv | reason=insufficient_values | retry_count=1 | next_retry_at=2026-02-20T17:35:08.865953+00:00 | extracted_at=2026-02-20T16:35:08.865953+00:00
+- https://news.tf.co.kr/read/ptoday/2294674.htm | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T17:35:35.691494+00:00
+- https://www.kmib.co.kr/article/view.asp?arcid=1771492855&code=11171419&cp=nv | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-20T18:35:35.691494+00:00 | extracted_at=2026-02-20T17:35:35.691494+00:00
 - https://www.incheonilbo.com/news/articleView.html?idxno=1317466 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T13:08:48.038911+00:00
 - https://weekly.hankooki.com/news/articleView.html?idxno=7150752 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T12:08:16.118238+00:00
 - https://www.sisajournal.com/news/articleView.html?idxno=363411 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T11:05:54.214970+00:00
