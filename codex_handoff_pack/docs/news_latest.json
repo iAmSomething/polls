@@ -1,44 +1,44 @@
 [
   {
     "date": "2026-02-20",
+    "source": "네이버뉴스",
+    "title": "[ë´ì¤ê³µê°] ì´ê·ì° \"ì´ì¬ëªì í¸ë¼íí? ì§ì  ìíµì´ ì¸ê³ì  ì¶ì¸\"",
+    "url": "https://news.cpbc.co.kr/article/1170815?division=NAVER",
+    "published_at": "2026-02-20T20:56:06+09:00"
+  },
+  {
+    "date": "2026-02-20",
+    "source": "Google News",
+    "title": "'전두환 사면 운동'은 어떻게 성공했나... 윤석열도 따라할 수 있다",
+    "url": "https://www.ohmynews.com/NWS_Web/View/at_pg.aspx?CNTN_CD=A0003208529&CMPT_CD=P0010&utm_source=naver&utm_medium=newsearch&utm_campaign=naver_news",
+    "published_at": "2026-02-20T20:36:06+09:00"
+  },
+  {
+    "date": "2026-02-20",
+    "source": "폴리뉴스 Polinews",
+    "title": "[6·3 지방선거] 이재명 정부 지원 폭탄, 보수 아성 깨지는 부산 - 폴리뉴스 Polinews",
+    "url": "https://news.google.com/rss/articles/CBMibkFVX3lxTE0wdV93cE5UeUFqWDd5bkhNZTFVbXdVYlJDM3NEVDg3cWpsTTREWXZXb2NmQm9TQUNKTU0zSGs2MWJubkxSV3R0Y2gteHdFLVowNUd4S1dlYldUX2s0anVHbHZ5ckhCa2dfalhlT1ZB0gFyQVVfeXFMTnhqVS1rS0JycHQ3U2tXZ1FJMkhRTzJWZ3BZMlJqaWNvNHhXNHRuazRpWm9yY2pkck54Qnpac3I1RmU1RU14VDJ2T3R1aElMMHkwZ0R3M1NMZ2dQYmhyQVNibm81VVBobU1acXRWNURNNjRB?oc=5",
+    "published_at": "2026-02-20T20:31:12+09:00"
+  },
+  {
+    "date": "2026-02-20",
+    "source": "네이버뉴스",
+    "title": "[6·3 지방선거] 이재명 정부 지원 폭탄, 보수 아성 깨지는 부산",
+    "url": "https://www.polinews.co.kr/news/articleView.html?idxno=723388",
+    "published_at": "2026-02-20T20:31:06+09:00"
+  },
+  {
+    "date": "2026-02-20",
+    "source": "Google News",
+    "title": "장동혁의 노림수는? \"TK 기반으로 고성국·전한길 당 만들 것\"",
+    "url": "https://imnews.imbc.com/replay/2026/nwdesk/article/6802121_37004.html",
+    "published_at": "2026-02-20T20:08:06+09:00"
+  },
+  {
+    "date": "2026-02-20",
     "source": "Google News",
     "title": "2공항비상도민회의 “도민결정권 보장…2공항 백지화해야”",
     "url": "https://news.kbs.co.kr/news/pc/view/view.do?ncd=8489670&ref=A",
-    "published_at": "2026-02-20T19:51:43+09:00"
-  },
-  {
-    "date": "2026-02-20",
-    "source": "네이버뉴스",
-    "title": "[영상] 6·3 지방선거 여론조사 - 우리 동네는 뒤집혔나?",
-    "url": "https://www.incheonilbo.com/news/articleView.html?idxno=1317466",
-    "published_at": "2026-02-20T19:38:43+09:00"
-  },
-  {
-    "date": "2026-02-20",
-    "source": "인천일보",
-    "title": "[영상] 6·3 지방선거 여론조사 - 우리 동네는 뒤집혔나? - 인천일보",
-    "url": "https://news.google.com/rss/articles/CBMicEFVX3lxTE5MWHZSV0VZdUZjZ0UwUUY1dEZwR0l2cGFmTHc0SUVySmljWWs1M1o2RW9nRU1RcDItVVY2VkF3ZmNpM3hoTVVuYzlXdkdjX1ZPT1BXYm5iaF9yQjhNb3VIc0tIZzM0M2t1blFQUE5LU24?oc=5",
-    "published_at": "2026-02-20T19:37:14+09:00"
-  },
-  {
-    "date": "2026-02-20",
-    "source": "네이버뉴스",
-    "title": "[김능구·장성철의 직언직썰 2월①][전문] &quot;국힘 의원들, 가만히 있으면 윤석열 공범... 지금 나서라&quot;",
-    "url": "https://www.polinews.co.kr/news/articleView.html?idxno=723403",
-    "published_at": "2026-02-20T19:12:43+09:00"
-  },
-  {
-    "date": "2026-02-20",
-    "source": "Google News",
-    "title": "å°¹, ê¹ì©íê³¼ ì´í ì  âë¹ìê³ìâ ì í¬ ê²°ì â12.3 22:00 ê¸°í´ ì í¬â",
-    "url": "https://www.seoul.co.kr/news/society/2026/02/20/20260220500277?wlog_tag3=naver",
-    "published_at": "2026-02-20T19:05:43+09:00"
-  },
-  {
-    "date": "2026-02-20",
-    "source": "Google News",
-    "title": "국민의힘 새 당명 '미래연대' '미래를여는공화당' 2개로 압축",
-    "url": "https://www.newsis.com/view/NISX20260220_0003520700",
-    "published_at": "2026-02-20T19:05:43+09:00"
+    "published_at": "2026-02-20T20:08:06+09:00"
   }
 ]
