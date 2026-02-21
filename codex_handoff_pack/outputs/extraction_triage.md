@@ -1,13 +1,14 @@
 # Extraction Triage
 
-- Rejected URLs: 77
+- Rejected URLs: 78
 - Retry-eligible now: 0
 - Max-retry blocked: 77
 
 ## Reasons
-- insufficient_values: 77
+- insufficient_values: 78
 
 ## Top Rejected URLs
+- https://www.mediatoday.co.kr/news/articleView.html?idxno=332508 | reason=insufficient_values | retry_count=1 | next_retry_at=2026-02-21T07:22:09.132444+00:00 | extracted_at=2026-02-21T06:22:09.132444+00:00
 - https://www.newsis.com/view/NISX20260219_0003519239 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-21T02:52:38.672965+00:00
 - https://www.newsis.com/view/NISX20260218_0003517680 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-21T02:52:38.672965+00:00
 - https://www.kmib.co.kr/article/view.asp?arcid=1771492855&code=11171419&cp=nv | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T18:36:03.978162+00:00
@@ -22,4 +23,3 @@
 - http://www.sisunnews.co.kr/news/articleView.html?idxno=234693 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T02:44:20.517093+00:00
 - https://www.hani.co.kr/arti/politics/politics_general/1245660.html | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T02:44:20.517093+00:00
 - https://www.ccdailynews.com/news/articleView.html?idxno=2398519 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-19T16:47:31.942318+00:00
-- https://news.google.com/rss/articles/CBMiUEFVX3lxTE1uenNGeDkzRTItYlBJX3dhMkM3MmNfLTZfMW9XNVBzblZRamNsZWpVRHBSV29rZkhxV0NCdHZqR20yX3hpQkkxVGtJSGpsUXFD?oc=5&hl=en-US&gl=US&ceid=US:en | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-19T16:47:31.942318+00:00
