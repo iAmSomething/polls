@@ -2,13 +2,13 @@
 
 - Rejected URLs: 78
 - Retry-eligible now: 0
-- Max-retry blocked: 77
+- Max-retry blocked: 78
 
 ## Reasons
 - insufficient_values: 78
 
 ## Top Rejected URLs
-- https://www.mediatoday.co.kr/news/articleView.html?idxno=332508 | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-21T08:28:12.234913+00:00 | extracted_at=2026-02-21T07:28:12.234913+00:00
+- https://www.mediatoday.co.kr/news/articleView.html?idxno=332508 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-21T08:28:44.121979+00:00
 - https://www.newsis.com/view/NISX20260219_0003519239 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-21T02:52:38.672965+00:00
 - https://www.newsis.com/view/NISX20260218_0003517680 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-21T02:52:38.672965+00:00
 - https://www.kmib.co.kr/article/view.asp?arcid=1771492855&code=11171419&cp=nv | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T18:36:03.978162+00:00
