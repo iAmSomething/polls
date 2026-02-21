@@ -2,14 +2,14 @@
 
 - Rejected URLs: 77
 - Retry-eligible now: 0
-- Max-retry blocked: 75
+- Max-retry blocked: 77
 
 ## Reasons
 - insufficient_values: 77
 
 ## Top Rejected URLs
-- https://www.newsis.com/view/NISX20260219_0003519239 | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-21T02:52:04.946916+00:00 | extracted_at=2026-02-21T01:52:04.946916+00:00
-- https://www.newsis.com/view/NISX20260218_0003517680 | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-21T02:52:04.946916+00:00 | extracted_at=2026-02-21T01:52:04.946916+00:00
+- https://www.newsis.com/view/NISX20260219_0003519239 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-21T02:52:38.672965+00:00
+- https://www.newsis.com/view/NISX20260218_0003517680 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-21T02:52:38.672965+00:00
 - https://www.kmib.co.kr/article/view.asp?arcid=1771492855&code=11171419&cp=nv | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T18:36:03.978162+00:00
 - https://news.tf.co.kr/read/ptoday/2294674.htm | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T17:35:35.691494+00:00
 - https://www.incheonilbo.com/news/articleView.html?idxno=1317466 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T13:08:48.038911+00:00
