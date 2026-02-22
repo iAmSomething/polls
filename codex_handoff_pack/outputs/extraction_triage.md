@@ -1,14 +1,15 @@
 # Extraction Triage
 
-- Rejected URLs: 86
+- Rejected URLs: 87
 - Retry-eligible now: 0
-- Max-retry blocked: 85
+- Max-retry blocked: 86
 
 ## Reasons
-- insufficient_values: 86
+- insufficient_values: 87
 
 ## Top Rejected URLs
-- https://www.kbmaeil.com/article/20260222500347 | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-22T05:47:08.233807+00:00 | extracted_at=2026-02-22T04:47:08.233807+00:00
+- https://www.kbmaeil.com/article/20260222500347 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-22T05:47:44.531012+00:00
+- https://www.kihoilbo.co.kr/news/articleView.html?idxno=3014037 | reason=insufficient_values | retry_count=1 | next_retry_at=2026-02-22T06:47:44.531012+00:00 | extracted_at=2026-02-22T05:47:44.531012+00:00
 - https://www.newsis.com/view/NISX20260218_0003517403 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-22T03:46:38.739288+00:00
 - https://www.newsis.com/view/NISX20260219_0003518025 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-22T03:46:38.739288+00:00
 - https://www.newsworks.co.kr/news/articleView.html?idxno=831684 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-22T03:46:38.739288+00:00
@@ -22,4 +23,3 @@
 - https://www.kmib.co.kr/article/view.asp?arcid=1771492855&code=11171419&cp=nv | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T18:36:03.978162+00:00
 - https://news.tf.co.kr/read/ptoday/2294674.htm | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T17:35:35.691494+00:00
 - https://www.incheonilbo.com/news/articleView.html?idxno=1317466 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T13:08:48.038911+00:00
-- https://weekly.hankooki.com/news/articleView.html?idxno=7150752 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-20T12:08:16.118238+00:00
