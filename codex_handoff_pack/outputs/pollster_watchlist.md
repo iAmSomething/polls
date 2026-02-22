@@ -4,7 +4,7 @@
 - Alerts: 4
 
 ## Alerted Pollsters
-- 코리아리서치인터내셔널: delta_major_abs=7.94, max_abs_delta=12.08, z=2.26, source_type=observed_web
-- 리얼미터: delta_major_abs=5.65, max_abs_delta=15.22, z=1.25, source_type=observed_web
-- 리서치앤리서치: delta_major_abs=3.02, max_abs_delta=10.02, z=0.09, source_type=estimated_bias_adjusted
-- 엠브레인퍼블릭: delta_major_abs=2.02, max_abs_delta=6.51, z=-0.34, source_type=estimated_bias_adjusted
+- 한국리서치: delta_major_abs=8.55, max_abs_delta=11.07, z=1.91, source_type=observed_web
+- 코리아리서치인터내셔널: delta_major_abs=7.05, max_abs_delta=11.23, z=1.29, source_type=observed_web
+- 리얼미터: delta_major_abs=5.68, max_abs_delta=14.21, z=0.72, source_type=observed_web
+- 리서치앤리서치: delta_major_abs=3.97, max_abs_delta=11.05, z=0.02, source_type=estimated_bias_adjusted
