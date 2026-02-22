@@ -2,14 +2,14 @@
 
 - Rejected URLs: 101
 - Retry-eligible now: 0
-- Max-retry blocked: 99
+- Max-retry blocked: 100
 
 ## Reasons
 - insufficient_values: 101
 
 ## Top Rejected URLs
-- https://www.munhwa.com/article/11569667?ref=naver | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-22T17:02:22.491046+00:00 | extracted_at=2026-02-22T16:02:22.491046+00:00
-- https://www.kwnews.co.kr/page/view/2026022216020922237 | reason=insufficient_values | retry_count=1 | next_retry_at=2026-02-22T17:02:22.491046+00:00 | extracted_at=2026-02-22T16:02:22.491046+00:00
+- https://www.munhwa.com/article/11569667?ref=naver | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-22T17:03:32.335487+00:00
+- https://www.kwnews.co.kr/page/view/2026022216020922237 | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-22T18:03:32.335487+00:00 | extracted_at=2026-02-22T17:03:32.335487+00:00
 - https://www.kyeongin.com/article/1759330 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-22T13:51:05.376429+00:00
 - https://www.kyeongin.com/article/1759326 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-22T13:51:05.376429+00:00
 - https://www.kyeongin.com/article/1759329 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-22T13:51:05.376429+00:00
