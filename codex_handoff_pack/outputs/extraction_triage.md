@@ -2,16 +2,16 @@
 
 - Rejected URLs: 82
 - Retry-eligible now: 0
-- Max-retry blocked: 78
+- Max-retry blocked: 79
 
 ## Reasons
 - insufficient_values: 82
 
 ## Top Rejected URLs
-- https://www.newspim.com/news/view/20260213001011 | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-22T00:01:05.726086+00:00 | extracted_at=2026-02-21T23:01:05.726086+00:00
-- https://www.yna.co.kr/view/AKR20260220109300062?input=1195m | reason=insufficient_values | retry_count=1 | next_retry_at=2026-02-22T00:01:05.726086+00:00 | extracted_at=2026-02-21T23:01:05.726086+00:00
-- https://www.yna.co.kr/view/AKR20260221015300062?input=1195m | reason=insufficient_values | retry_count=1 | next_retry_at=2026-02-22T00:01:05.726086+00:00 | extracted_at=2026-02-21T23:01:05.726086+00:00
-- https://www.yna.co.kr/view/AKR20260220102800053?input=1195m | reason=insufficient_values | retry_count=1 | next_retry_at=2026-02-22T00:01:05.726086+00:00 | extracted_at=2026-02-21T23:01:05.726086+00:00
+- https://www.newspim.com/news/view/20260213001011 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-22T00:01:37.492446+00:00
+- https://www.yna.co.kr/view/AKR20260220109300062?input=1195m | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-22T01:01:37.492446+00:00 | extracted_at=2026-02-22T00:01:37.492446+00:00
+- https://www.yna.co.kr/view/AKR20260221015300062?input=1195m | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-22T01:01:37.492446+00:00 | extracted_at=2026-02-22T00:01:37.492446+00:00
+- https://www.yna.co.kr/view/AKR20260220102800053?input=1195m | reason=insufficient_values | retry_count=2 | next_retry_at=2026-02-22T01:01:37.492446+00:00 | extracted_at=2026-02-22T00:01:37.492446+00:00
 - https://www.mediatoday.co.kr/news/articleView.html?idxno=332508 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-21T08:28:44.121979+00:00
 - https://www.newsis.com/view/NISX20260219_0003519239 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-21T02:52:38.672965+00:00
 - https://www.newsis.com/view/NISX20260218_0003517680 | reason=insufficient_values | retry_count=3 | next_retry_at=now | extracted_at=2026-02-21T02:52:38.672965+00:00
