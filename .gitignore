@@ -12,4 +12,4 @@ poll_news_collector/
 poll_news_collector/*
 !poll_news_collector/collector.py
 !poll_news_collector/hourly_pipeline.py
-!poll_news_collector/hourly_pipeline.py
+!poll_news_collector/extract_observed_point.py
