@@ -1,11 +1,11 @@
 # Extraction Triage
 
-- Rejected URLs: 168
+- Rejected URLs: 167
 - Retry-eligible now: 0
 - Max-retry blocked: 158
 
 ## Reasons
-- insufficient_values: 167
+- insufficient_values: 166
 - missing_major_parties: 1
 
 ## Top Rejected URLs
