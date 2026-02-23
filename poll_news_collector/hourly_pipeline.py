@@ -161,10 +161,17 @@ def is_valid_point(point: dict) -> tuple[bool, str]:
         return False, "pollster_not_target"
     if not date_end:
         return False, "missing_date"
-    if not isinstance(values, dict) or len(values) < 4:
+    if not isinstance(values, dict) or len(values) < 2:
         return False, "insufficient_values"
     if not REQUIRED_PARTIES.issubset(set(values.keys())):
         return False, "missing_major_parties"
+    try:
+        for v in values.values():
+            fv = float(v)
+            if fv < 0 or fv > 100:
+                return False, "invalid_value_range"
+    except Exception:
+        return False, "invalid_value_type"
     return True, "ok"
 
 
