@@ -4,7 +4,7 @@
 - Alerts: 4
 
 ## Alerted Pollsters
-- 한국리서치: delta_major_abs=27.66, max_abs_delta=33.58, z=2.80, source_type=observed_web
-- 리서치앤리서치: delta_major_abs=5.09, max_abs_delta=6.79, z=-0.13, source_type=estimated_bias_adjusted
-- 리얼미터: delta_major_abs=4.89, max_abs_delta=8.77, z=-0.15, source_type=observed_web
-- 엠브레인퍼블릭: delta_major_abs=1.11, max_abs_delta=9.74, z=-0.64, source_type=estimated_bias_adjusted
+- 한국리서치: delta_major_abs=31.93, max_abs_delta=35.59, z=2.61, source_type=observed_web
+- 리얼미터: delta_major_abs=14.07, max_abs_delta=17.73, z=0.71, source_type=observed_web
+- 리서치앤리서치: delta_major_abs=4.83, max_abs_delta=10.05, z=-0.28, source_type=estimated_bias_adjusted
+- 엠브레인퍼블릭: delta_major_abs=0.85, max_abs_delta=6.49, z=-0.70, source_type=estimated_bias_adjusted
