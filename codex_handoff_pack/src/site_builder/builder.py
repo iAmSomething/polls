@@ -2117,10 +2117,8 @@ def party_display_name(party: str, as_of_kst: datetime | None = None) -> str:
     p = canonical_party_name(party)
     if p != "국민의힘":
         return p
-    ts = as_of_kst or datetime.now(tz=ZoneInfo("Asia/Seoul"))
-    if ts < RENAME_EFFECTIVE_KST:
-        return f"국민의힘 / {NEW_PPP_NAME_PLACEHOLDER}"
-    return NEW_PPP_NAME_PLACEHOLDER
+    # User policy: keep official label as "국민의힘" until local election period ends.
+    return "국민의힘"
 
 
 def pollster_color(name: str) -> str:
