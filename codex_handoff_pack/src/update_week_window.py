@@ -8,12 +8,48 @@ from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
+import requests
+from bs4 import BeautifulSoup
 
-from pipeline_core.constants import POLLSTERS, SHEETS
-from pipeline_core.sheet_loading import load_sheet
+try:
+    from pipeline_core.constants import POLLSTERS, SHEETS
+    from pipeline_core.sheet_loading import load_sheet
+except Exception:
+    # Backward compatibility for repos that still use monolithic pipeline module.
+    from pipeline import POLLSTERS, SHEETS, load_sheet
 
 WEEK_START = pd.Timestamp("2026-02-09")
 WEEK_END = pd.Timestamp("2026-02-15")
+USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_0) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36"
+)
+NATIONAL_PARTY_POLL_KEYWORDS = [
+    "정당 지지율",
+    "정당지지율",
+    "정당 지지도",
+    "정당지지도",
+    "정당별 지지율",
+]
+LOCAL_ELECTION_KEYWORDS = [
+    "지방선거",
+    "광역단체장",
+    "기초단체장",
+    "교육감",
+    "후보 적합도",
+    "당선 가능성",
+    "가상 대결",
+    "서울시장",
+    "부산시장",
+    "인천시장",
+    "대전시장",
+    "울산시장",
+    "광주시장",
+    "세종시장",
+    "도지사",
+    "구청장",
+    "군수",
+]
 
 # Verified text-available public point within 2026-02-09~15.
 # Source checked: Newsis article with full party breakdown text.
@@ -40,6 +76,32 @@ def load_observed_points_jsonl(path: Path, week_start: pd.Timestamp, week_end: p
         return []
 
     out: List[dict] = []
+    context_cache: dict[str, dict] = {}
+
+    def infer_context_from_url(url: str) -> dict:
+        key = str(url or "").strip()
+        if not key:
+            return {"is_national_party_poll": False, "has_local_election_context": False}
+        if key in context_cache:
+            return context_cache[key]
+        try:
+            resp = requests.get(key, timeout=8, headers={"User-Agent": USER_AGENT}, allow_redirects=True)
+            resp.raise_for_status()
+            soup = BeautifulSoup(resp.text, "html.parser")
+            for tag in soup(["script", "style", "noscript"]):
+                tag.decompose()
+            text = " ".join(soup.stripped_strings)
+        except Exception:
+            context_cache[key] = {"is_national_party_poll": False, "has_local_election_context": False}
+            return context_cache[key]
+        text = " ".join(text.split())
+        has_national = any(k in text for k in NATIONAL_PARTY_POLL_KEYWORDS)
+        has_local = any(k in text for k in LOCAL_ELECTION_KEYWORDS)
+        context_cache[key] = {
+            "is_national_party_poll": has_national,
+            "has_local_election_context": has_local,
+        }
+        return context_cache[key]
     for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line:
@@ -53,6 +115,17 @@ def load_observed_points_jsonl(path: Path, week_start: pd.Timestamp, week_end: p
         date_end = pd.to_datetime(rec.get("date_end"), errors="coerce")
         values = rec.get("values", {}) or {}
         source_url = str(rec.get("source_url", "")).strip()
+        context = rec.get("context") or {}
+        if not isinstance(context, dict):
+            context = {}
+        if "is_national_party_poll" not in context or "has_local_election_context" not in context:
+            inferred = infer_context_from_url(source_url)
+            context = {
+                "is_national_party_poll": bool(context.get("is_national_party_poll", inferred["is_national_party_poll"])),
+                "has_local_election_context": bool(
+                    context.get("has_local_election_context", inferred["has_local_election_context"])
+                ),
+            }
 
         if pollster not in POLLSTERS or pd.isna(date_end):
             continue
@@ -71,12 +144,20 @@ def load_observed_points_jsonl(path: Path, week_start: pd.Timestamp, week_end: p
         if not norm_vals:
             continue
 
+        dm = norm_vals.get("더불어민주당")
+        ppp = norm_vals.get("국민의힘")
+        if dm is not None and ppp is not None:
+            if dm < 5.0 or ppp < 5.0:
+                context["is_national_party_poll"] = False
+
         out.append(
             {
                 "pollster": pollster,
                 "date_end": pd.Timestamp(date_end),
                 "source_url": source_url,
                 "values": norm_vals,
+                "is_national_party_poll": bool(context.get("is_national_party_poll", True)),
+                "has_local_election_context": bool(context.get("has_local_election_context", False)),
             }
         )
     return out
@@ -211,28 +292,31 @@ def build_week_points(
     for pollster in POLLSTERS:
         if pollster in observed_map:
             src = observed_map[pollster]
-            values = pd.Series({p: src["values"].get(p, np.nan) for p in party_cols})
-            # Fill missing parties by baseline share to keep coherent total.
-            if values.isna().any():
-                miss = values.isna()
-                known_sum = float(values[~miss].sum())
-                remain = max(0.0, 100.0 - known_sum)
-                base_sub = baseline[miss]
-                if float(base_sub.sum()) > 0:
-                    values.loc[miss] = (base_sub / float(base_sub.sum()) * remain).to_numpy()
-                else:
-                    values.loc[miss] = 0.0
-            values = normalize_row(values)
-            row = {
-                "pollster": pollster,
-                "date_end": src["date_end"],
-                "source_type": "observed_web",
-                "source_url": src["source_url"],
-            }
-            for p in party_cols:
-                row[p] = float(values[p])
-            rows.append(row)
-            continue
+            if not bool(src.get("has_local_election_context", False)):
+                values = pd.Series({p: src["values"].get(p, np.nan) for p in party_cols})
+                # Fill missing parties by baseline share to keep coherent total.
+                if values.isna().any():
+                    miss = values.isna()
+                    known_sum = float(values[~miss].sum())
+                    remain = max(0.0, 100.0 - known_sum)
+                    base_sub = baseline[miss]
+                    if float(base_sub.sum()) > 0:
+                        values.loc[miss] = (base_sub / float(base_sub.sum()) * remain).to_numpy()
+                    else:
+                        values.loc[miss] = 0.0
+                values = normalize_row(values)
+                row = {
+                    "pollster": pollster,
+                    "date_end": src["date_end"],
+                    "source_type": "observed_web",
+                    "source_url": src["source_url"],
+                    "is_national_party_poll": bool(src.get("is_national_party_poll", True)),
+                    "has_local_election_context": bool(src.get("has_local_election_context", False)),
+                }
+                for p in party_cols:
+                    row[p] = float(values[p])
+                rows.append(row)
+                continue
 
         b = bias_df[bias_df["pollster"] == pollster]
         bias = pd.Series(0.0, index=party_cols)
@@ -247,6 +331,8 @@ def build_week_points(
             "date_end": WEEK_END,
             "source_type": "estimated_bias_adjusted",
             "source_url": "",
+            "is_national_party_poll": False,
+            "has_local_election_context": False,
         }
         for p in party_cols:
             row[p] = float(est[p])

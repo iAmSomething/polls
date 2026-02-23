@@ -79,11 +79,13 @@ jobs:
       - name: Validate generated news payload
         run: |
           test -f docs/news_latest.json
+          test -f docs/index.html
           test -f outputs/president_approval_weekly.csv
           test -f outputs/president_approval_quality_report.csv
           test -f outputs/president_approval_outlier_report.csv
           python - <<'PY'
           import json
+          import re
           import pandas as pd
           from pathlib import Path
           p = Path("docs/news_latest.json")
@@ -96,7 +98,23 @@ jobs:
           wk = pd.read_csv("outputs/president_approval_weekly.csv")
           required = {"week_monday", "approve", "disapprove", "dk", "n_obs", "total_sample_n"}
           assert required.issubset(set(wk.columns)), "president_approval_weekly.csv schema mismatch"
+          html = Path("docs/index.html").read_text(encoding="utf-8")
+          m = re.search(r'<script id="poll-data" type="application/json">(.*?)</script>', html, re.S)
+          assert m, "poll-data payload missing in docs/index.html"
+          payload = json.loads(m.group(1))
+          latest = payload.get("latest_poll_results", [])
+          assert isinstance(latest, list), "latest_poll_results must be a list"
+          if latest:
+              for i, row in enumerate(latest):
+                  assert isinstance(row, dict), f"latest_poll_results[{i}] must be object"
+                  parties = row.get("parties", [])
+                  assert isinstance(parties, list), f"latest_poll_results[{i}].parties must be list"
+                  names = {str(p.get("party", "")) for p in parties if isinstance(p, dict)}
+                  assert "더불어민주당" in names and "국민의힘" in names, f"latest_poll_results[{i}] missing major parties"
+          else:
+              print("warning: latest_poll_results is empty")
           print("news_latest.json validation ok, rows=", len(data))
+          print("latest_poll_results rows=", len(latest))
           PY
 
       - name: Configure Pages

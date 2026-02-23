@@ -7,20 +7,14 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Pretendard:wght@400;500;600;700&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20260223165723" />
+  <link rel="stylesheet" href="style.css?v=20260223191835" />
   <script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
 </head>
 <body>
   <div class="app-bg">
-  <div class="wrap container animate-fade-in">
+  <div class="wrap container">
     <header class="top section-tight">
-      <div class="brand">
-        <div class="logo" aria-hidden="true"></div>
-        <div class="brand-copy">
-          <div class="title">Weekly Korean Poll Tracker</div>
-          <div class="subtitle">여론조사 데이터 대시보드</div>
-        </div>
-      </div>
+      <div class="brand"><div class="logo" aria-hidden="true"></div><div class="title">Weekly Korean Poll Tracker</div></div>
       <div class="top-meta">
         <div id="freshness-badge" class="freshness-badge stale" aria-live="polite">최신성 계산 중...</div>
         <div class="theme-toggle" role="group" aria-label="테마 선택">
@@ -30,38 +24,26 @@
         </div>
       </div>
       <div class="time-banner-row">
-        <div id="stamp" class="time-banner" data-latest-date="2026-03-01" data-updated-at="2026-02-23T16:57:23.078476+09:00">최신 조사 반영일 2026-03-01 · 페이지 갱신 2026-02-23 16:57:23 KST</div>
+        <div id="stamp" class="time-banner" data-latest-date="2026-03-01" data-updated-at="2026-02-23T19:18:35.477543+09:00">최신 조사 반영일 2026-03-01 · 페이지 갱신 2026-02-23 19:18:35 KST</div>
       </div>
     </header>
 
-    <nav id="floating-toc" class="floating-toc" aria-label="페이지 목차">
-      <p class="toc-title">빠른 이동</p>
-      <ul id="toc-list-desktop" class="toc-list"></ul>
-    </nav>
-    <button id="toc-fab" class="btn btn-sm primary toc-fab" type="button" aria-controls="toc-drawer" aria-expanded="false">목차</button>
-    <div id="toc-drawer" class="toc-drawer" aria-label="모바일 목차">
-      <ul id="toc-list-mobile" class="toc-list"></ul>
-    </div>
-
-    <main id="post" data-toc-root>
-    <section id="section-insights" class="insights section-tight reveal stagger-1">
-      <h2 class="panel-title section-heading">핵심 지표 <small>Key Metrics</small></h2>
-      <div class="insights-cards">
+    <section class="insights section-tight">
             <article class="insight-card featured hero">
-              <div class="insight-label">현재 추정 1위 / 격차</div>
+              <div class="insight-label">1위 정당 / 격차</div>
               <div class="insight-value">더불어민주당</div>
-              <div class="insight-sub">15.83%p · 2026-02-23 16:57 KST</div>
+              <div class="insight-sub">8.37%p</div>
             </article>
             
             <article class="insight-card featured ">
               <div class="insight-label">이번주 평균 변동폭</div>
-              <div class="insight-value" data-kpi-value="3.260000" data-kpi-decimals="2" data-kpi-suffix="%p">3.26%p</div>
+              <div class="insight-value">3.26%p</div>
               <div class="insight-sub">예측치-직전실측</div>
             </article>
             
             <article class="insight-card featured ">
               <div class="insight-label">평균 예측 오차 (RMSE) <span class="metric-tooltip" tabindex="0" aria-label="RMSE 설명" data-tip="RMSE는 예측값과 실제값 차이의 평균적인 크기를 뜻하며 낮을수록 정확합니다.">ⓘ</span></div>
-              <div class="insight-value" data-kpi-value="1.500000" data-kpi-decimals="2" data-kpi-suffix="">1.50</div>
+              <div class="insight-value">1.50</div>
               <div class="insight-sub">정당 평균</div>
             </article>
             
@@ -70,15 +52,14 @@
               <div class="insight-value">63.00% <small>(부정 26.00%)</small></div>
               <div class="insight-sub">전주 대비 +7.20%p (주차 2026-02-16)</div>
             </article>
-            </div>
-    </section>
+            </section>
 
-    <section id="section-trend" class="main-grid section-tight reveal stagger-2">
+    <section class="main-grid section-tight">
       <article class="panel chart-panel">
         <div class="accent-line" aria-hidden="true"></div>
         <div class="panel-h">
           <div class="panel-title-wrap">
-            <h2 class="panel-title">정당 지지율 추세 + 다음주 예측치 <small>Party Trend & Next-Week Forecast</small></h2>
+            <div class="panel-title">정당 지지율 추세 + 다음주 예측치 <small>Party Trend & Next-Week Forecast</small></div>
             <button class="panel-help" type="button" title="실선은 최근 추세, 점선은 다음주 예측, 다이아는 최신 실측값입니다." aria-label="차트 도움말">i</button>
           </div>
           <div class="filters">
@@ -101,9 +82,8 @@
         </div>
         <div id="chart"></div>
         <div class="chart-caption"><strong>해석 안내:</strong> 각 선에는 스무딩 중심선과 적응형 오차폭 기반 반투명 밴드가 함께 표시됩니다(기준 오차폭 약 ±3%). 대통령 긍정/부정은 보정되지 않은 raw 값입니다.</div>
-        <div class="disclosure-note">선거여론조사 관련 세부사항은 중앙선거여론조사심의위원회 홈페이지(nesdc.go.kr) 참조.</div>
       </article>
-      <aside class="panel"><h3 class="panel-title card-header">예측 랭킹 <small>Forecast Ranking</small></h3><div class="rank-wrap card-body">
+      <aside class="panel"><div class="panel-title card-header">예측 랭킹 <small>Forecast Ranking</small></div><div class="rank-wrap card-body">
             <article class="rank-card" data-party="더불어민주당">
               <div class="rank-head">
                 <div class="rank-num">1.</div>
@@ -116,7 +96,7 @@
               </div>
               <div class="rank-sub">RMSE 1.78 <span class="metric-tooltip" tabindex="0" aria-label="RMSE 설명" data-tip="RMSE는 예측값과 실제값 차이의 평균적인 크기를 뜻하며 낮을수록 정확합니다.">ⓘ</span></div>
               <div class="rank-band">80% 구간 42.44% ~ 46.23%</div>
-              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#002A6C' stroke-width='2.9' stroke-linecap='round' points='0.00,16.98 8.67,7.00 17.33,15.07 26.00,5.60 34.67,6.39 43.33,28.00 52.00,0.00 60.67,8.22 69.33,16.13 78.00,15.52 86.67,7.61 95.33,11.87 104.00,16.13 112.67,0.61 121.33,20.87 130.00,7.74' /></svg></div>
+              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#002A6C' stroke-width='2.9' stroke-linecap='round' points='0.00,16.98 8.67,7.00 17.33,15.07 26.00,5.60 34.67,6.39 43.33,28.00 52.00,0.00 60.67,8.22 69.33,16.13 78.00,15.52 86.67,7.61 95.33,11.87 104.00,16.13 112.67,0.61 121.33,10.28 130.00,7.74' /></svg></div>
             </article>
             
             <article class="rank-card" data-party="국민의힘">
@@ -131,7 +111,7 @@
               </div>
               <div class="rank-sub">RMSE 2.85 <span class="metric-tooltip" tabindex="0" aria-label="RMSE 설명" data-tip="RMSE는 예측값과 실제값 차이의 평균적인 크기를 뜻하며 낮을수록 정확합니다.">ⓘ</span></div>
               <div class="rank-band">80% 구간 32.59% ~ 39.35%</div>
-              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#A5151E' stroke-width='2.9' stroke-linecap='round' points='0.00,28.00 8.67,9.01 17.33,25.70 26.00,14.47 34.67,10.34 43.33,0.00 52.00,13.68 60.67,8.01 69.33,7.84 78.00,3.67 86.67,8.17 95.33,7.84 104.00,15.18 112.67,11.34 121.33,16.86 130.00,20.46' /></svg></div>
+              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#A5151E' stroke-width='2.9' stroke-linecap='round' points='0.00,28.00 8.67,9.01 17.33,25.70 26.00,14.47 34.67,10.34 43.33,0.00 52.00,13.68 60.67,8.01 69.33,7.84 78.00,3.67 86.67,8.17 95.33,7.84 104.00,15.18 112.67,11.34 121.33,12.91 130.00,20.46' /></svg></div>
             </article>
             
             <article class="rank-card" data-party="지지정당 없음">
@@ -146,7 +126,7 @@
               </div>
               <div class="rank-sub">RMSE 1.55 <span class="metric-tooltip" tabindex="0" aria-label="RMSE 설명" data-tip="RMSE는 예측값과 실제값 차이의 평균적인 크기를 뜻하며 낮을수록 정확합니다.">ⓘ</span></div>
               <div class="rank-band">80% 구간 7.28% ~ 11.07%</div>
-              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#575757' stroke-width='2.9' stroke-linecap='round' points='0.00,0.00 8.67,21.73 17.33,5.60 26.00,27.59 34.67,25.06 43.33,21.92 52.00,27.21 60.67,22.71 69.33,21.33 78.00,26.82 86.67,24.08 95.33,26.82 104.00,22.90 112.67,25.25 121.33,28.00 130.00,27.73' /></svg></div>
+              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#575757' stroke-width='2.9' stroke-linecap='round' points='0.00,0.00 8.67,21.94 17.33,5.66 26.00,27.87 34.67,25.30 43.33,22.14 52.00,27.48 60.67,22.93 69.33,21.55 78.00,27.09 86.67,24.32 95.33,27.09 104.00,23.13 112.67,25.50 121.33,23.21 130.00,28.00' /></svg></div>
             </article>
             
             <article class="rank-card" data-party="개혁신당">
@@ -161,7 +141,7 @@
               </div>
               <div class="rank-sub">RMSE 0.62 <span class="metric-tooltip" tabindex="0" aria-label="RMSE 설명" data-tip="RMSE는 예측값과 실제값 차이의 평균적인 크기를 뜻하며 낮을수록 정확합니다.">ⓘ</span></div>
               <div class="rank-band">80% 구간 2.30% ~ 3.97%</div>
-              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#B7520B' stroke-width='2.9' stroke-linecap='round' points='0.00,26.67 8.67,27.21 17.33,23.12 26.00,20.66 34.67,22.09 43.33,23.27 52.00,19.73 60.67,26.42 69.33,23.67 78.00,24.46 86.67,28.00 95.33,24.06 104.00,22.09 112.67,23.67 121.33,15.30 130.00,0.00' /></svg></div>
+              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#B7520B' stroke-width='2.9' stroke-linecap='round' points='0.00,26.67 8.67,27.21 17.33,23.12 26.00,20.66 34.67,22.09 43.33,23.27 52.00,19.73 60.67,26.42 69.33,23.67 78.00,24.46 86.67,28.00 95.33,24.06 104.00,22.09 112.67,23.67 121.33,20.47 130.00,0.00' /></svg></div>
             </article>
             
             <article class="rank-card" data-party="조국혁신당">
@@ -176,20 +156,14 @@
               </div>
               <div class="rank-sub">RMSE 0.69 <span class="metric-tooltip" tabindex="0" aria-label="RMSE 설명" data-tip="RMSE는 예측값과 실제값 차이의 평균적인 크기를 뜻하며 낮을수록 정확합니다.">ⓘ</span></div>
               <div class="rank-band">80% 구간 1.91% ~ 3.53%</div>
-              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#002964' stroke-width='2.9' stroke-linecap='round' points='0.00,21.92 8.67,28.00 17.33,12.64 26.00,20.34 34.67,21.17 43.33,26.29 52.00,24.59 60.67,27.15 69.33,25.44 78.00,19.47 86.67,24.59 95.33,20.32 104.00,21.17 112.67,24.59 121.33,0.00 130.00,19.72' /></svg></div>
+              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#002964' stroke-width='2.9' stroke-linecap='round' points='0.00,16.91 8.67,28.00 17.33,0.00 26.00,14.03 34.67,15.56 43.33,24.89 52.00,21.78 60.67,26.44 69.33,23.33 78.00,12.44 86.67,21.78 95.33,14.00 104.00,15.56 112.67,21.78 121.33,17.09 130.00,12.91' /></svg></div>
             </article>
             </div></aside>
     </section>
 
-    <section id="section-nowcast" class="panel section-tight reveal stagger-2">
-      <h2 class="panel-title">현재 시점 추정 <small>Nowcast</small></h2>
-      <details class="fold-panel">
-        <summary>
-          <span>업데이트 시각</span>
-          <small>2026-02-23 16:57 KST</small>
-        </summary>
-        <div class="fold-body">
-          <div class="rank-wrap card-body">
+    <section class="panel section-tight">
+      <div class="panel-title card-header">현재 시점 추정 <small>Nowcast as of 2026-02-23 19:18 KST</small></div>
+      <div class="rank-wrap card-body">
             <article class="rank-card" data-party="더불어민주당">
               <div class="rank-head">
                 <div class="rank-num">1.</div>
@@ -202,7 +176,7 @@
               </div>
               <div class="rank-sub">현재 추정치 (Nowcast)</div>
               <div class="rank-band">80% 구간 45.26% ~ 45.26%</div>
-              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#002A6C' stroke-width='2.9' stroke-linecap='round' points='0.00,16.98 8.67,7.00 17.33,15.07 26.00,5.60 34.67,6.39 43.33,28.00 52.00,0.00 60.67,8.22 69.33,16.13 78.00,15.52 86.67,7.61 95.33,11.87 104.00,16.13 112.67,0.61 121.33,20.87 130.00,7.74' /></svg></div>
+              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#002A6C' stroke-width='2.9' stroke-linecap='round' points='0.00,16.98 8.67,7.00 17.33,15.07 26.00,5.60 34.67,6.39 43.33,28.00 52.00,0.00 60.67,8.22 69.33,16.13 78.00,15.52 86.67,7.61 95.33,11.87 104.00,16.13 112.67,0.61 121.33,10.28 130.00,7.74' /></svg></div>
             </article>
             
             <article class="rank-card" data-party="국민의힘">
@@ -217,7 +191,7 @@
               </div>
               <div class="rank-sub">현재 추정치 (Nowcast)</div>
               <div class="rank-band">80% 구간 29.43% ~ 29.43%</div>
-              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#A5151E' stroke-width='2.9' stroke-linecap='round' points='0.00,28.00 8.67,9.01 17.33,25.70 26.00,14.47 34.67,10.34 43.33,0.00 52.00,13.68 60.67,8.01 69.33,7.84 78.00,3.67 86.67,8.17 95.33,7.84 104.00,15.18 112.67,11.34 121.33,16.86 130.00,20.46' /></svg></div>
+              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#A5151E' stroke-width='2.9' stroke-linecap='round' points='0.00,28.00 8.67,9.01 17.33,25.70 26.00,14.47 34.67,10.34 43.33,0.00 52.00,13.68 60.67,8.01 69.33,7.84 78.00,3.67 86.67,8.17 95.33,7.84 104.00,15.18 112.67,11.34 121.33,12.91 130.00,20.46' /></svg></div>
             </article>
             
             <article class="rank-card" data-party="개혁신당">
@@ -232,7 +206,7 @@
               </div>
               <div class="rank-sub">현재 추정치 (Nowcast)</div>
               <div class="rank-band">80% 구간 9.31% ~ 9.31%</div>
-              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#B7520B' stroke-width='2.9' stroke-linecap='round' points='0.00,26.67 8.67,27.21 17.33,23.12 26.00,20.66 34.67,22.09 43.33,23.27 52.00,19.73 60.67,26.42 69.33,23.67 78.00,24.46 86.67,28.00 95.33,24.06 104.00,22.09 112.67,23.67 121.33,15.30 130.00,0.00' /></svg></div>
+              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#B7520B' stroke-width='2.9' stroke-linecap='round' points='0.00,26.67 8.67,27.21 17.33,23.12 26.00,20.66 34.67,22.09 43.33,23.27 52.00,19.73 60.67,26.42 69.33,23.67 78.00,24.46 86.67,28.00 95.33,24.06 104.00,22.09 112.67,23.67 121.33,20.47 130.00,0.00' /></svg></div>
             </article>
             
             <article class="rank-card" data-party="지지정당 없음">
@@ -247,7 +221,7 @@
               </div>
               <div class="rank-sub">현재 추정치 (Nowcast)</div>
               <div class="rank-band">80% 구간 6.94% ~ 6.94%</div>
-              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#575757' stroke-width='2.9' stroke-linecap='round' points='0.00,0.00 8.67,21.73 17.33,5.60 26.00,27.59 34.67,25.06 43.33,21.92 52.00,27.21 60.67,22.71 69.33,21.33 78.00,26.82 86.67,24.08 95.33,26.82 104.00,22.90 112.67,25.25 121.33,28.00 130.00,27.73' /></svg></div>
+              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#575757' stroke-width='2.9' stroke-linecap='round' points='0.00,0.00 8.67,21.94 17.33,5.66 26.00,27.87 34.67,25.30 43.33,22.14 52.00,27.48 60.67,22.93 69.33,21.55 78.00,27.09 86.67,24.32 95.33,27.09 104.00,23.13 112.67,25.50 121.33,23.21 130.00,28.00' /></svg></div>
             </article>
             
             <article class="rank-card" data-party="조국혁신당">
@@ -262,184 +236,36 @@
               </div>
               <div class="rank-sub">현재 추정치 (Nowcast)</div>
               <div class="rank-band">80% 구간 3.17% ~ 3.17%</div>
-              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#002964' stroke-width='2.9' stroke-linecap='round' points='0.00,21.92 8.67,28.00 17.33,12.64 26.00,20.34 34.67,21.17 43.33,26.29 52.00,24.59 60.67,27.15 69.33,25.44 78.00,19.47 86.67,24.59 95.33,20.32 104.00,21.17 112.67,24.59 121.33,0.00 130.00,19.72' /></svg></div>
+              <div class="spark"><svg viewBox='0 0 130 28' width='130' height='28' aria-hidden='true'><polyline fill='none' stroke='#002964' stroke-width='2.9' stroke-linecap='round' points='0.00,16.91 8.67,28.00 17.33,0.00 26.00,14.03 34.67,15.56 43.33,24.89 52.00,21.78 60.67,26.44 69.33,23.33 78.00,12.44 86.67,21.78 95.33,14.00 104.00,15.56 112.67,21.78 121.33,17.09 130.00,12.91' /></svg></div>
             </article>
             </div>
-          <div class="chart-caption">최근 합성 관측치(2026-03-01)와 다음주 예측치를 현재 시점으로 시간 보간한 추정치입니다.</div>
-        </div>
-      </details>
+      <div class="chart-caption">최근 합성 관측치(2026-03-01)와 다음주 예측치를 현재 시점으로 시간 보간한 추정치입니다.</div>
     </section>
 
-    <section id="section-news" class="panel section-tight reveal stagger-2">
-      <div class="section-title-row card-header">
-        <h2 class="panel-title" style="margin: 0;">최근 여론조사 기사 링크 <small>Recent Coverage</small></h2>
-        <div id="news-status" class="status-badge stale" aria-live="polite">대기 중...</div>
-      </div>
-      <div id="news-grid" class="news-grid card-body">
-            <a class="news-card link-out" href="https://www.ekn.kr/web/view.php?key=20260223028471818" target="_blank" rel="noopener noreferrer">
-              <div class="news-date">2026-02-23 07:20</div>
-              <div class="news-title">국힘 의총, 변죽만 3시간…“그래서 ‘절윤’한단건가? 만단건가?”</div>
-              <div class="news-source">네이버뉴스</div>
-            </a>
-            
-            <a class="news-card link-out" href="https://www.mk.co.kr/article/11969267" target="_blank" rel="noopener noreferrer">
-              <div class="news-date">2026-02-23 07:15</div>
-              <div class="news-title">국힘, 의총서 ‘절윤 거부’ 충돌…“장 대표, 자신 없으면 내려와야” “전쟁 중 장수 못 바꿔” - 매일경제</div>
-              <div class="news-source">매일경제</div>
-            </a>
-            
-            <a class="news-card link-out" href="https://news.google.com/rss/articles/CBMibkFVX3lxTFBsSERvQVBNOTkzNVZEUU90ZF9yLXJ3OHZubHRBQ1FRbDRDMUh5YVBrdzJnYTR5Vk90OUxHNmZGLXoydHJNZXgyVk8zTS1kaDZHNzZINUU5UldIUU0wV21yZmJvQlNYeFRBVVpkanh3?oc=5" target="_blank" rel="noopener noreferrer">
-              <div class="news-date">2026-02-23 07:15</div>
-              <div class="news-title">대전시민, 행정통합 반대 41.5% 찬성 33.7% - ilyoseoul.co.kr</div>
-              <div class="news-source">ilyoseoul.co.kr</div>
-            </a>
-            
-            <a class="news-card link-out" href="https://www.newsis.com/view/NISX20260223_0003522671" target="_blank" rel="noopener noreferrer">
-              <div class="news-date">2026-02-23 07:12</div>
-              <div class="news-title">대전충남 행정통합법 국회 통과 앞두고 대전 정가 '시끌'</div>
-              <div class="news-source">Google News</div>
-            </a>
-            
-            <a class="news-card link-out" href="https://news.google.com/rss/articles/CBMiZkFVX3lxTE1ERkg2aUdMM1VlQm9Zb3c1UVZKaEwyTHJ3MUdJQzJUMzhyNUVsenh3Mm5TbFdISEFOZUo3MFZndUtieVFIWkw0b1QxenJXS3VfMFc3TzZmejdRNDIyVlhEODQ1TnIzZw?oc=5" target="_blank" rel="noopener noreferrer">
-              <div class="news-date">2026-02-23 07:12</div>
-              <div class="news-title">[윤장렬의 베를린에서 온 편지 - 27] 여론을 묻는 언론, 무엇을 묻고 있는가 - 부안독립신문</div>
-              <div class="news-source">부안독립신문</div>
-            </a>
-            
-            <a class="news-card link-out" href="https://news.google.com/rss/articles/CBMia0FVX3lxTE9zaWtreUM4ODNTT1BUQjV2YTIwcGR3NHNkd0lnWGdvNF90R1psVmxPZVZPRVFOOVRTWjkxM2lFUXVNRGstNXlKU3lYTmVXNG5udVBQSUVWZVowN2diaFo3UGxhWVZuYlZ1UjVN0gFvQVVfeXFMTTZiZkd3MFlEUlRXSXlPYlhNdERVYTlkbXV5N0h3ejM3MERaRXhUYzR0NzNwaGhnd3U4Rnc5TmdscHdvOWlJMDk0LTc4ZHE2bTVoR19LMnBfQ2VnOE1jaGExSXlVTWtCSlVHa1dKaHM0?oc=5" target="_blank" rel="noopener noreferrer">
-              <div class="news-date">2026-02-23 07:10</div>
-              <div class="news-title">마포구청장 지지도, 국힘 박강수 26.3% VS 민주 유동균 16.5% VS 정의당 장혜영 10.1% ‘삼파전’ - 더퍼블릭</div>
-              <div class="news-source">더퍼블릭</div>
-            </a>
-            </div>
-    </section>
-
-    <section id="section-method" class="method section-tight">
-      <h2 class="panel-title section-heading">방법론·공시 <small>Methodology & Disclosure</small></h2>
-      <details>
-        <summary>세부 내용 펼치기</summary>
-        <p class="method-p"><strong>법정 안내</strong>: 선거여론조사 관련 세부사항은 중앙선거여론조사심의위원회 홈페이지(nesdc.go.kr) 참조.</p>
-        <p class="method-p">2023년부터 2025년 6월 선거까지, 여론조사기관의 정당지지율과 실제 선거결과를 비교해 정확도(MAE)를 산출했습니다. 이후 정확도 상위 클러스터(9개 기관)만 사용해 합성 시계열을 만들고, 기관별 가중치는 1/MAE를 정규화해 적용합니다. 주간 업데이트에서는 Huber 손실 기반으로 가중치 안정성을 유지하도록 설계했습니다.</p>
-        <p class="method-p"><strong>선정 기관</strong></p>
-        <div class="method-chips"><span class="method-chip">리서치앤리서치</span><span class="method-chip">엠브레인퍼블릭</span><span class="method-chip">리서치뷰</span><span class="method-chip">에이스리서치</span><span class="method-chip">한국리서치</span><span class="method-chip">조원씨앤아이</span><span class="method-chip">알앤써치</span><span class="method-chip">리얼미터</span><span class="method-chip">코리아리서치인터내셔널</span></div>
-        <p class="method-p"><strong>선정 이유</strong>: 기관 선정은 과거 선거 결과 대비 오차(MAE)와 시계열 연속성, 주간 공표 안정성을 함께 고려합니다.</p>
-        <ul class="method-list">
-          <li>과거 선거 결과 대비 MAE(낮을수록 우수)</li>
-          <li>시계열 결측률 및 연속성</li>
-          <li>주간 공표 주기 안정성</li>
-        </ul>
-        <p class="method-p">대통령 국정수행 평가는 NESDC 공개 XLSX에서 문항(대통령/국정/직무/수행/평가)을 자동 탐지해 긍정·부정·유보를 추출하고, 표본수 가중 주간 집계로 반영합니다. 데이터가 없는 주차는 보간하지 않습니다.</p>
-        <p class="method-p"></p>
-        <table class="table"><thead><tr><th>조사기관</th><th>MAE</th><th>가중치(%)</th></tr></thead><tbody>
-            <tr>
-              <td>리서치앤리서치</td>
-              <td>1.715</td>
-              <td>
-                <div class="wbar-wrap"><div class="wbar" style="width:18.53%"></div></div>
-                <span class="wlabel">18.53%</span>
-              </td>
-            </tr>
-            
-            <tr>
-              <td>엠브레인퍼블릭</td>
-              <td>1.988</td>
-              <td>
-                <div class="wbar-wrap"><div class="wbar" style="width:15.98%"></div></div>
-                <span class="wlabel">15.98%</span>
-              </td>
-            </tr>
-            
-            <tr>
-              <td>리서치뷰</td>
-              <td>2.521</td>
-              <td>
-                <div class="wbar-wrap"><div class="wbar" style="width:12.60%"></div></div>
-                <span class="wlabel">12.60%</span>
-              </td>
-            </tr>
-            
-            <tr>
-              <td>에이스리서치</td>
-              <td>2.707</td>
-              <td>
-                <div class="wbar-wrap"><div class="wbar" style="width:11.74%"></div></div>
-                <span class="wlabel">11.74%</span>
-              </td>
-            </tr>
-            
-            <tr>
-              <td>한국리서치</td>
-              <td>2.985</td>
-              <td>
-                <div class="wbar-wrap"><div class="wbar" style="width:10.65%"></div></div>
-                <span class="wlabel">10.65%</span>
-              </td>
-            </tr>
-            
-            <tr>
-              <td>조원씨앤아이</td>
-              <td>3.006</td>
-              <td>
-                <div class="wbar-wrap"><div class="wbar" style="width:10.57%"></div></div>
-                <span class="wlabel">10.57%</span>
-              </td>
-            </tr>
-            
-            <tr>
-              <td>알앤써치</td>
-              <td>4.152</td>
-              <td>
-                <div class="wbar-wrap"><div class="wbar" style="width:7.65%"></div></div>
-                <span class="wlabel">7.65%</span>
-              </td>
-            </tr>
-            
-            <tr>
-              <td>리얼미터</td>
-              <td>4.377</td>
-              <td>
-                <div class="wbar-wrap"><div class="wbar" style="width:7.26%"></div></div>
-                <span class="wlabel">7.26%</span>
-              </td>
-            </tr>
-            
-            <tr>
-              <td>코리아리서치인터내셔널</td>
-              <td>6.330</td>
-              <td>
-                <div class="wbar-wrap"><div class="wbar" style="width:5.02%"></div></div>
-                <span class="wlabel">5.02%</span>
-              </td>
-            </tr>
-            </tbody></table>
-      </details>
-    </section>
-
-    <section id="latest-poll-section" class="latest-poll section-tight reveal stagger-3">
-      <h2 class="panel-title card-header">최신 여론조사 결과 <small>Latest Poll Snapshot</small></h2>
+    <section id="latest-poll-section" class="latest-poll section-tight">
+      <div class="panel-title card-header">최신 여론조사 결과 <small>Latest Poll Snapshot</small></div>
       <div class="latest-poll-grid">
         <article class="panel"><div id="latest-poll-chart"></div></article>
         <article class="panel"><div id="latest-poll-list" class="latest-poll-list"></div></article>
       </div>
     </section>
 
-    <section id="poll-compare-section" class="poll-compare section-tight reveal stagger-3">
-      <h2 class="panel-title card-header">예측치 대비 최신 여론조사 차이 <small>Forecast vs Latest Poll</small></h2>
+    <section id="poll-compare-section" class="poll-compare section-tight">
+      <div class="panel-title card-header">예측치 대비 최신 여론조사 차이 <small>Forecast vs Latest Poll</small></div>
       <div class="poll-compare-grid">
         <article class="panel"><div id="poll-compare-chart"></div></article>
         <article class="panel"><div id="poll-compare-list" class="poll-compare-list"></div></article>
       </div>
     </section>
 
-    <section id="section-president" class="results-grid section reveal stagger-2">
+    <section class="results-grid section">
       <article class="panel">
-        <h2 class="panel-title card-header">대통령 국정수행 주간 표 <small>Weekly Presidential Approval Table</small></h2>
-        <div class="table-scroll">
-          <table class="table">
-            <thead>
-              <tr><th>조사기간(주차)</th><th>긍정(%)</th><th>부정(%)</th><th>조사기관</th><th>출처</th></tr>
-            </thead>
-            <tbody>
+        <div class="panel-title card-header">대통령 국정수행 주간 표 <small>Weekly Presidential Approval Table</small></div>
+        <table class="table">
+          <thead>
+            <tr><th>조사기간(주차)</th><th>긍정(%)</th><th>부정(%)</th><th>조사기관</th><th>출처</th></tr>
+          </thead>
+          <tbody>
             <tr>
               <td>2026-02-11 ~ 2026-02-16</td>
               <td>63.0</td>
@@ -632,15 +458,148 @@
               <td><a class="ext-link" href="https://news.google.com/rss/articles/CBMic0FVX3lxTE1lZDQwSmRHTU9ETmRKOTl0blN4cFBXMWRYdldnRnZfM1JybWR3SFpTbVpObzlVem9MZ2FjbEJnYWxRd09fSGhyZWxyWktKWkZ1dnhLRGR3THc0cE8zYUVla2ZxSW5seXJyLUNoVjByTGUtSVHSAXdBVV95cUxOZ25ocFdYNXlMOW9Ib0Q5cXcxNTFZOFY0cGh2WkpCMnVnVUVwR1E0bE1ISEh3VTN4QWZlMG1iS0x5NzdIQUp6N0xmSDBKYnFoNWcxSjVCUW1mZHdYdDJXbVNxc1pKM05aYnlBRmFSU25KX2o3WGl6UQ?oc=5" target="_blank" rel="noopener noreferrer">[스트레이트뉴스 여론조사] 이 대통령 지지도 취임 후 최저치 '긍정 51.1% vs 부정 45.5%' - 스트레이트뉴스</a></td>
             </tr>
             </tbody>
-          </table>
+        </table>
+      </article>
+
+      <article class="panel">
+        <div class="section-title-row card-header">
+          <div class="panel-title" style="margin: 0;">최근 여론조사 기사 링크 <small>Recent Coverage</small></div>
+          <div id="news-status" class="status-badge stale" aria-live="polite">대기 중...</div>
         </div>
+        <div id="news-grid" class="news-grid card-body">
+            <a class="news-card link-out" href="https://www.ekn.kr/web/view.php?key=20260223028471818" target="_blank" rel="noopener noreferrer">
+              <div class="news-date">2026-02-23 07:20</div>
+              <div class="news-title">국힘 의총, 변죽만 3시간…“그래서 ‘절윤’한단건가? 만단건가?”</div>
+              <div class="news-source">네이버뉴스</div>
+            </a>
+            
+            <a class="news-card link-out" href="https://www.mk.co.kr/article/11969267" target="_blank" rel="noopener noreferrer">
+              <div class="news-date">2026-02-23 07:15</div>
+              <div class="news-title">국힘, 의총서 ‘절윤 거부’ 충돌…“장 대표, 자신 없으면 내려와야” “전쟁 중 장수 못 바꿔” - 매일경제</div>
+              <div class="news-source">매일경제</div>
+            </a>
+            
+            <a class="news-card link-out" href="https://news.google.com/rss/articles/CBMibkFVX3lxTFBsSERvQVBNOTkzNVZEUU90ZF9yLXJ3OHZubHRBQ1FRbDRDMUh5YVBrdzJnYTR5Vk90OUxHNmZGLXoydHJNZXgyVk8zTS1kaDZHNzZINUU5UldIUU0wV21yZmJvQlNYeFRBVVpkanh3?oc=5" target="_blank" rel="noopener noreferrer">
+              <div class="news-date">2026-02-23 07:15</div>
+              <div class="news-title">대전시민, 행정통합 반대 41.5% 찬성 33.7% - ilyoseoul.co.kr</div>
+              <div class="news-source">ilyoseoul.co.kr</div>
+            </a>
+            
+            <a class="news-card link-out" href="https://www.newsis.com/view/NISX20260223_0003522671" target="_blank" rel="noopener noreferrer">
+              <div class="news-date">2026-02-23 07:12</div>
+              <div class="news-title">대전충남 행정통합법 국회 통과 앞두고 대전 정가 '시끌'</div>
+              <div class="news-source">Google News</div>
+            </a>
+            
+            <a class="news-card link-out" href="https://news.google.com/rss/articles/CBMiZkFVX3lxTE1ERkg2aUdMM1VlQm9Zb3c1UVZKaEwyTHJ3MUdJQzJUMzhyNUVsenh3Mm5TbFdISEFOZUo3MFZndUtieVFIWkw0b1QxenJXS3VfMFc3TzZmejdRNDIyVlhEODQ1TnIzZw?oc=5" target="_blank" rel="noopener noreferrer">
+              <div class="news-date">2026-02-23 07:12</div>
+              <div class="news-title">[윤장렬의 베를린에서 온 편지 - 27] 여론을 묻는 언론, 무엇을 묻고 있는가 - 부안독립신문</div>
+              <div class="news-source">부안독립신문</div>
+            </a>
+            
+            <a class="news-card link-out" href="https://news.google.com/rss/articles/CBMia0FVX3lxTE9zaWtreUM4ODNTT1BUQjV2YTIwcGR3NHNkd0lnWGdvNF90R1psVmxPZVZPRVFOOVRTWjkxM2lFUXVNRGstNXlKU3lYTmVXNG5udVBQSUVWZVowN2diaFo3UGxhWVZuYlZ1UjVN0gFvQVVfeXFMTTZiZkd3MFlEUlRXSXlPYlhNdERVYTlkbXV5N0h3ejM3MERaRXhUYzR0NzNwaGhnd3U4Rnc5TmdscHdvOWlJMDk0LTc4ZHE2bTVoR19LMnBfQ2VnOE1jaGExSXlVTWtCSlVHa1dKaHM0?oc=5" target="_blank" rel="noopener noreferrer">
+              <div class="news-date">2026-02-23 07:10</div>
+              <div class="news-title">마포구청장 지지도, 국힘 박강수 26.3% VS 민주 유동균 16.5% VS 정의당 장혜영 10.1% ‘삼파전’ - 더퍼블릭</div>
+              <div class="news-source">더퍼블릭</div>
+            </a>
+            </div>
       </article>
     </section>
-    </main>
+
+    <section class="method">
+      <details>
+        <summary>방법론 (클릭하여 펼치기)</summary>
+        <p class="method-p">2023년부터 2025년 6월 선거까지, 여론조사기관의 정당지지율과 실제 선거결과를 비교해 정확도(MAE)를 산출했습니다. 이후 정확도 상위 클러스터(9개 기관)만 사용해 합성 시계열을 만들고, 기관별 가중치는 1/MAE를 정규화해 적용합니다. 주간 업데이트에서는 Huber 손실 기반으로 가중치 안정성을 유지하도록 설계했습니다.</p>
+        <p class="method-p">대통령 국정수행 평가는 NESDC 공개 XLSX에서 문항(대통령/국정/직무/수행/평가)을 자동 탐지해 긍정·부정·유보를 추출하고, 표본수 가중 주간 집계로 반영합니다. 데이터가 없는 주차는 보간하지 않습니다.</p>
+        <p class="method-p"></p>
+        <table class="table"><thead><tr><th>조사기관</th><th>MAE</th><th>가중치(%)</th></tr></thead><tbody>
+            <tr>
+              <td>리서치앤리서치</td>
+              <td>1.715</td>
+              <td>
+                <div class="wbar-wrap"><div class="wbar" style="width:18.53%"></div></div>
+                <span class="wlabel">18.53%</span>
+              </td>
+            </tr>
+            
+            <tr>
+              <td>엠브레인퍼블릭</td>
+              <td>1.988</td>
+              <td>
+                <div class="wbar-wrap"><div class="wbar" style="width:15.98%"></div></div>
+                <span class="wlabel">15.98%</span>
+              </td>
+            </tr>
+            
+            <tr>
+              <td>리서치뷰</td>
+              <td>2.521</td>
+              <td>
+                <div class="wbar-wrap"><div class="wbar" style="width:12.60%"></div></div>
+                <span class="wlabel">12.60%</span>
+              </td>
+            </tr>
+            
+            <tr>
+              <td>에이스리서치</td>
+              <td>2.707</td>
+              <td>
+                <div class="wbar-wrap"><div class="wbar" style="width:11.74%"></div></div>
+                <span class="wlabel">11.74%</span>
+              </td>
+            </tr>
+            
+            <tr>
+              <td>한국리서치</td>
+              <td>2.985</td>
+              <td>
+                <div class="wbar-wrap"><div class="wbar" style="width:10.65%"></div></div>
+                <span class="wlabel">10.65%</span>
+              </td>
+            </tr>
+            
+            <tr>
+              <td>조원씨앤아이</td>
+              <td>3.006</td>
+              <td>
+                <div class="wbar-wrap"><div class="wbar" style="width:10.57%"></div></div>
+                <span class="wlabel">10.57%</span>
+              </td>
+            </tr>
+            
+            <tr>
+              <td>알앤써치</td>
+              <td>4.152</td>
+              <td>
+                <div class="wbar-wrap"><div class="wbar" style="width:7.65%"></div></div>
+                <span class="wlabel">7.65%</span>
+              </td>
+            </tr>
+            
+            <tr>
+              <td>리얼미터</td>
+              <td>4.377</td>
+              <td>
+                <div class="wbar-wrap"><div class="wbar" style="width:7.26%"></div></div>
+                <span class="wlabel">7.26%</span>
+              </td>
+            </tr>
+            
+            <tr>
+              <td>코리아리서치인터내셔널</td>
+              <td>6.330</td>
+              <td>
+                <div class="wbar-wrap"><div class="wbar" style="width:5.02%"></div></div>
+                <span class="wlabel">5.02%</span>
+              </td>
+            </tr>
+            </tbody></table>
+      </details>
+    </section>
   </div>
   </div>
 
-  <script id="poll-data" type="application/json">{"traces": [{"party": "더불어민주당", "display_party": "더불어민주당", "color": "#003B96", "actual_x": ["2024-12-31", "2025-01-03", "2025-01-06", "2025-01-09", "2025-01-10", "2025-01-13", "2025-01-15", "2025-01-17", "2025-01-19", "2025-01-20", "2025-01-22", "2025-01-23", "2025-01-24", "2025-01-26", "2025-01-28", "2025-01-31", "2025-02-02", "2025-02-03", "2025-02-06", "2025-02-07", "2025-02-10", "2025-02-13", "2025-02-14", "2025-02-17", "2025-02-20", "2025-02-21", "2025-02-24", "2025-02-28", "2025-03-03", "2025-03-04", "2025-03-07", "2025-03-10", "2025-03-14", "2025-03-16", "2025-03-17", "2025-03-21", "2025-03-24", "2025-03-28", "2025-03-31", "2025-04-04", "2025-04-05", "2025-04-07", "2025-04-09", "2025-04-10", "2025-04-11", "2025-04-12", "2025-04-13", "2025-04-14", "2025-04-18", "2025-04-20", "2025-04-21", "2025-04-23", "2025-04-24", "2025-04-25", "2025-04-26", "2025-04-27", "2025-05-04", "2025-05-05", "2025-05-07", "2025-05-08", "2025-05-09", "2025-05-12", "2025-05-13", "2025-05-14", "2025-05-15", "2025-05-16", "2025-05-19", "2025-05-20", "2025-05-21", "2025-05-22", "2025-05-23", "2025-05-25", "2025-05-27", "2025-06-05", "2025-06-13", "2025-06-20", "2025-06-27", "2025-06-30", "2025-07-04", "2025-07-07", "2025-07-11", "2025-07-18", "2025-07-21", "2025-07-25", "2025-07-28", "2025-07-31", "2025-08-04", "2025-08-08", "2025-08-14", "2025-08-18", "2025-08-22", "2025-08-29", "2025-08-31", "2025-09-05", "2025-09-10", "2025-09-12", "2025-09-15", "2025-09-19", "2025-09-26", "2025-09-29", "2025-09-30", "2025-10-02", "2025-10-17", "2025-10-20", "2025-10-24", "2025-10-31", "2025-11-03", "2025-11-07", "2025-11-14", "2025-11-17", "2025-11-21", "2025-11-28", "2025-11-30", "2025-12-05", "2025-12-12", "2025-12-15", "2025-12-19", "2025-12-26", "2025-12-28", "2025-12-29", "2025-12-30", "2025-12-31", "2026-01-02", "2026-01-07", "2026-01-09", "2026-01-12", "2026-01-16", "2026-01-23", "2026-01-26", "2026-01-30", "2026-01-31", "2026-02-06", "2026-02-22", "2026-03-01"], "actual_y": [42.0, 45.2, 43.48244907442166, 43.0, 42.2, 40.5, 39.0, 39.0, 36.7, 39.76142823952419, 40.0, 38.0, 41.7, 37.0, 44.0, 42.0, 39.7, 42.5, 39.0, 40.8, 40.56489814884332, 36.0, 43.1, 42.0, 30.0, 41.1, 41.63163194183755, 40.90052664640641, 40.3, 42.3, 41.0, 42.08601967323214, 44.3, 43.05285356800243, 42.2, 43.6, 44.79653009068087, 47.3, 44.90000000000001, 44.8, 44.2, 43.7, 43.2, 36.0, 46.7, 44.0, 43.4, 45.9315312523462, 48.7, 44.8, 46.2, 34.0, 42.27650437823147, 45.65548081953925, 42.1, 39.9, 45.99746072337457, 44.10736931191259, 48.6, 41.0, 46.9, 44.52229159368827, 42.8, 46.6, 41.56337410702288, 46.4, 46.27032227494424, 40.29021499358475, 45.9, 43.0, 43.5, 41.01232188725875, 43.08553336153241, 46.81093852245105, 49.9, 48.4, 50.6, 47.9, 53.8, 50.4, 56.2, 50.8, 50.4, 50.8, 47.0, 49.6, 47.8, 48.4, 44.71569898407326, 44.0, 45.8, 46.7, 42.6, 44.6, 48.00000000000001, 44.3, 45.1, 44.2, 43.3, 42.54239588609752, 42.5, 45.89197807947343, 46.5, 42.5, 44.04054692612255, 42.48123511028259, 46.0, 46.5, 46.7, 42.2, 47.5, 45.6, 42.3, 44.2, 45.8, 43.1, 44.1, 44.5, 42.22107935737763, 45.5, 42.84781841363968, 45.95990909126511, 45.7, 38.6, 47.8, 45.1, 42.5, 42.7, 45.29999999999999, 43.9, 42.5, 47.6, 40.94245277402447, 45.25800576716612], "forecast_x": ["2026-03-01", "2026-03-08"], "forecast_y": [45.25800576716612, 44.3382262630215], "pred_x": "2026-03-08", "pred_y": 44.3382262630215, "pred_lo_80": 42.44465127134272, "pred_hi_80": 46.23180125470029}, {"party": "국민의힘", "display_party": "국민의힘", "color": "#E61E2B", "actual_x": ["2024-12-31", "2025-01-03", "2025-01-06", "2025-01-09", "2025-01-10", "2025-01-13", "2025-01-15", "2025-01-17", "2025-01-19", "2025-01-20", "2025-01-22", "2025-01-23", "2025-01-24", "2025-01-26", "2025-01-28", "2025-01-31", "2025-02-02", "2025-02-03", "2025-02-06", "2025-02-07", "2025-02-10", "2025-02-13", "2025-02-14", "2025-02-17", "2025-02-20", "2025-02-21", "2025-02-24", "2025-02-28", "2025-03-03", "2025-03-04", "2025-03-07", "2025-03-10", "2025-03-14", "2025-03-16", "2025-03-17", "2025-03-21", "2025-03-24", "2025-03-28", "2025-03-31", "2025-04-04", "2025-04-05", "2025-04-07", "2025-04-09", "2025-04-10", "2025-04-11", "2025-04-12", "2025-04-13", "2025-04-14", "2025-04-18", "2025-04-20", "2025-04-21", "2025-04-23", "2025-04-24", "2025-04-25", "2025-04-26", "2025-04-27", "2025-05-04", "2025-05-05", "2025-05-07", "2025-05-08", "2025-05-09", "2025-05-12", "2025-05-13", "2025-05-14", "2025-05-15", "2025-05-16", "2025-05-19", "2025-05-20", "2025-05-21", "2025-05-22", "2025-05-23", "2025-05-25", "2025-05-27", "2025-06-05", "2025-06-13", "2025-06-20", "2025-06-27", "2025-06-30", "2025-07-04", "2025-07-07", "2025-07-11", "2025-07-18", "2025-07-21", "2025-07-25", "2025-07-28", "2025-07-31", "2025-08-04", "2025-08-08", "2025-08-14", "2025-08-18", "2025-08-22", "2025-08-29", "2025-08-31", "2025-09-05", "2025-09-10", "2025-09-12", "2025-09-15", "2025-09-19", "2025-09-26", "2025-09-29", "2025-09-30", "2025-10-02", "2025-10-17", "2025-10-20", "2025-10-24", "2025-10-31", "2025-11-03", "2025-11-07", "2025-11-14", "2025-11-17", "2025-11-21", "2025-11-28", "2025-11-30", "2025-12-05", "2025-12-12", "2025-12-15", "2025-12-19", "2025-12-26", "2025-12-28", "2025-12-29", "2025-12-30", "2025-12-31", "2026-01-02", "2026-01-07", "2026-01-09", "2026-01-12", "2026-01-16", "2026-01-23", "2026-01-26", "2026-01-30", "2026-01-31", "2026-02-06", "2026-02-22", "2026-03-01"], "actual_y": [30.0, 34.4, 35.50693981863824, 35.0, 40.8, 39.7, 42.0, 46.5, 45.9, 43.23326620700575, 39.0, 42.0, 45.4, 35.0, 41.0, 41.0, 43.7, 38.7, 40.0, 42.8, 42.02449074421659, 39.0, 41.4, 40.3, 41.0, 42.7, 41.21745023608698, 38.48831974904442, 40.5, 41.1, 42.7, 40.86663310350288, 39.0, 39.12034731200669, 39.7, 40.0, 36.49816435584907, 36.1, 33.2, 35.7, 32.6, 37.1, 33.5, 31.0, 33.1, 36.0, 36.3, 34.87550925578342, 32.9, 36.2, 33.7, 32.0, 36.63266511597038, 34.35474588990127, 34.4, 35.9, 32.42657628265145, 32.12103704152972, 32.2, 32.0, 37.7, 35.51274328665381, 31.8, 32.7, 31.32042176337786, 34.2, 36.80955548798374, 33.32391400256611, 37.4, 33.0, 37.8, 35.51010046110451, 35.061821330175, 26.00094506613775, 30.4, 31.4, 30.0, 21.8, 28.8, 30.9, 24.3, 27.4, 30.7, 29.0, 22.5, 21.6, 32.9, 30.3, 26.17680592369177, 38.10000000000001, 35.5, 36.1, 31.2, 36.2, 21.32042176337786, 36.4, 36.2, 38.6, 38.3, 33.64339985625255, 33.2, 32.26206403353548, 36.7, 39.3, 29.98727191307394, 35.17158934222069, 36.7, 34.8, 34.2, 39.6, 34.8, 37.4, 32.8, 37.0, 34.6, 38.8, 37.2, 35.7, 24.912639151257, 36.3, 26.29227854575411, 33.02539498480481, 35.5, 41.7, 33.5, 36.9, 37.0, 39.5, 36.8, 37.0, 32.6, 34.9, 31.59235114077954, 29.43213742298271], "forecast_x": ["2026-03-01", "2026-03-08"], "forecast_y": [29.43213742298271, 35.97098622709436], "pred_x": "2026-03-08", "pred_y": 35.97098622709436, "pred_lo_80": 32.59334741199113, "pred_hi_80": 39.34862504219758}, {"party": "지지정당 없음", "display_party": "지지정당 없음", "color": "#7A7A7A", "actual_x": ["2024-12-31", "2025-01-03", "2025-01-06", "2025-01-09", "2025-01-10", "2025-01-13", "2025-01-15", "2025-01-17", "2025-01-19", "2025-01-20", "2025-01-22", "2025-01-23", "2025-01-24", "2025-01-26", "2025-01-28", "2025-01-31", "2025-02-02", "2025-02-03", "2025-02-06", "2025-02-07", "2025-02-10", "2025-02-13", "2025-02-14", "2025-02-17", "2025-02-20", "2025-02-21", "2025-02-24", "2025-02-28", "2025-03-03", "2025-03-04", "2025-03-07", "2025-03-10", "2025-03-14", "2025-03-16", "2025-03-17", "2025-03-21", "2025-03-24", "2025-03-28", "2025-03-31", "2025-04-04", "2025-04-05", "2025-04-07", "2025-04-09", "2025-04-10", "2025-04-11", "2025-04-12", "2025-04-13", "2025-04-14", "2025-04-18", "2025-04-20", "2025-04-21", "2025-04-23", "2025-04-24", "2025-04-25", "2025-04-26", "2025-04-27", "2025-05-04", "2025-05-05", "2025-05-07", "2025-05-08", "2025-05-09", "2025-05-12", "2025-05-13", "2025-05-14", "2025-05-15", "2025-05-16", "2025-05-19", "2025-05-20", "2025-05-21", "2025-05-22", "2025-05-23", "2025-05-25", "2025-05-27", "2025-06-05", "2025-06-13", "2025-06-20", "2025-06-27", "2025-06-30", "2025-07-04", "2025-07-07", "2025-07-11", "2025-07-18", "2025-07-21", "2025-07-25", "2025-07-28", "2025-07-31", "2025-08-04", "2025-08-08", "2025-08-14", "2025-08-18", "2025-08-22", "2025-08-29", "2025-08-31", "2025-09-05", "2025-09-10", "2025-09-12", "2025-09-15", "2025-09-19", "2025-09-26", "2025-09-29", "2025-09-30", "2025-10-02", "2025-10-17", "2025-10-20", "2025-10-24", "2025-10-31", "2025-11-03", "2025-11-07", "2025-11-14", "2025-11-17", "2025-11-21", "2025-11-28", "2025-11-30", "2025-12-05", "2025-12-12", "2025-12-15", "2025-12-19", "2025-12-26", "2025-12-28", "2025-12-29", "2025-12-30", "2025-12-31", "2026-01-02", "2026-01-07", "2026-01-09", "2026-01-12", "2026-01-16", "2026-01-23", "2026-01-26", "2026-01-30", "2026-01-31", "2026-02-06", "2026-02-22", "2026-03-01"], "actual_y": [10.0, 8.0, 7.943776624454489, 11.0, 5.3, 6.2, 11.0, 5.4, 11.3, 6.84551157911405, 11.0, 12.0, 4.9, 14.0, 8.0, 4.0, 8.2, 5.6, 11.0, 6.8, 6.76132755003283, 13.0, 6.5, 5.4, 13.0, 6.6, 7.696429401189512, 6.096457680619085, 4.4, 8.6, 6.9, 6.512144682616928, 8.0, 8.451117007968989, 4.3, 7.6, 7.364797459351953, 6.5, 6.7, 7.0, 11.3, 10.8, 11.4, 16.0, 7.0, 12.0, 8.6, 8.417450236086978, 7.6, 5.7, 10.3, 20.0, 11.68788919928366, 10.04378425082276, 7.8, 8.1, 7.996191085061859, 11.85261376174825, 9.9, 12.0, 5.9, 9.721336762984825, 6.4, 5.6, 13.3978911831107, 7.199999999999999, 7.306853643741612, 8.04483324005636, 3.899999999999999, 11.0, 4.7, 9.573728456544464, 7.408097374759732, 12.44507112121033, 6.6, 7.499999999999999, 6.4, 11.7, 6.1, 8.8, 7.0, 7.6, 10.1, 8.0, 16.6, 12.0, 9.7, 7.499999999999999, 16.36397726896523, 10.1, 6.0, 7.0, 9.7, 6.9, 20.67957823662214, 7.7, 10.3, 6.1, 7.4, 12.89401028475622, 10.4, 10.73793596646452, 6.4, 9.3, 16.71522645100439, 7.426902821292061, 9.5, 7.7, 7.499999999999999, 10.4, 6.9, 6.3, 9.3, 7.3, 8.6, 9.8, 7.199999999999999, 7.7, 21.08834711125522, 9.999999999999998, 18.22946672333414, 7.005576802274579, 8.3, 9.9, 7.199999999999999, 9.5, 10.2, 7.4, 8.8, 7.4, 9.4, 8.2, 6.798287503453379, 6.937899609436259], "forecast_x": ["2026-03-01", "2026-03-08"], "forecast_y": [6.937899609436259, 9.179588433454013], "pred_x": "2026-03-08", "pred_y": 9.179588433454013, "pred_lo_80": 7.284188769873912, "pred_hi_80": 11.07498809703412}, {"party": "개혁신당", "display_party": "개혁신당", "color": "#FF7210", "actual_x": ["2024-12-31", "2025-01-03", "2025-01-06", "2025-01-09", "2025-01-10", "2025-01-13", "2025-01-15", "2025-01-17", "2025-01-19", "2025-01-20", "2025-01-22", "2025-01-23", "2025-01-24", "2025-01-26", "2025-01-28", "2025-01-31", "2025-02-02", "2025-02-03", "2025-02-06", "2025-02-07", "2025-02-10", "2025-02-13", "2025-02-14", "2025-02-17", "2025-02-20", "2025-02-21", "2025-02-24", "2025-02-28", "2025-03-03", "2025-03-04", "2025-03-07", "2025-03-10", "2025-03-14", "2025-03-16", "2025-03-17", "2025-03-21", "2025-03-24", "2025-03-28", "2025-03-31", "2025-04-04", "2025-04-05", "2025-04-07", "2025-04-09", "2025-04-10", "2025-04-11", "2025-04-12", "2025-04-13", "2025-04-14", "2025-04-18", "2025-04-20", "2025-04-21", "2025-04-23", "2025-04-24", "2025-04-25", "2025-04-26", "2025-04-27", "2025-05-04", "2025-05-05", "2025-05-07", "2025-05-08", "2025-05-09", "2025-05-12", "2025-05-13", "2025-05-14", "2025-05-15", "2025-05-16", "2025-05-19", "2025-05-20", "2025-05-21", "2025-05-22", "2025-05-23", "2025-05-25", "2025-05-27", "2025-06-05", "2025-06-13", "2025-06-20", "2025-06-27", "2025-06-30", "2025-07-04", "2025-07-07", "2025-07-11", "2025-07-18", "2025-07-21", "2025-07-25", "2025-07-28", "2025-07-31", "2025-08-04", "2025-08-08", "2025-08-14", "2025-08-18", "2025-08-22", "2025-08-29", "2025-08-31", "2025-09-05", "2025-09-10", "2025-09-12", "2025-09-15", "2025-09-19", "2025-09-26", "2025-09-29", "2025-09-30", "2025-10-02", "2025-10-17", "2025-10-20", "2025-10-24", "2025-10-31", "2025-11-03", "2025-11-07", "2025-11-14", "2025-11-17", "2025-11-21", "2025-11-28", "2025-11-30", "2025-12-05", "2025-12-12", "2025-12-15", "2025-12-19", "2025-12-26", "2025-12-28", "2025-12-29", "2025-12-30", "2025-12-31", "2026-01-02", "2026-01-07", "2026-01-09", "2026-01-12", "2026-01-16", "2026-01-23", "2026-01-26", "2026-01-30", "2026-01-31", "2026-02-06", "2026-02-22", "2026-03-01"], "actual_y": [5.0, 3.1, 2.898265045340439, 3.0, 2.4, 2.1, 2.0, 1.9, 2.2, 2.21581597091878, 2.0, 2.0, 1.0, 3.0, 2.0, 3.0, 1.9, 2.5, 2.0, 2.4, 1.835101851156683, 2.0, 2.2, 1.9, 3.0, 1.4, 1.654387731394585, 2.219291536123817, 2.5, 1.8, 1.7, 1.817550925578342, 1.5, 1.643920528005473, 1.5, 1.3, 2.178979165102536, 2.3, 2.85, 3.3, 3.6, 2.2, 2.7, 3.0, 2.7, 3.0, 3.2, 2.61581597091878, 2.9, 3.8, 3.200000000000001, 3.0, 2.399881708309401, 3.532118834851902, 2.8, 3.6, 3.643673338915316, 3.536846559562938, 3.3, 4.0, 3.4, 4.522291593688272, 6.7, 5.5, 6.679578236622141, 5.9, 5.10736952903271, 6.055166759943642, 7.900000000000001, 6.0, 7.7, 6.905070183218526, 8.52444431875967, 7.107967625303848, 4.5, 4.9, 4.3, 5.0, 3.2, 3.5, 3.7, 3.899999999999999, 3.1, 3.8, 3.7, 4.3, 3.200000000000001, 3.1, 3.567656965715733, 2.2, 3.4, 3.7, 4.6, 4.5, 3.32042176337786, 4.4, 2.9, 4.1, 3.4, 3.231420425764993, 3.4, 3.290508220197463, 3.0, 3.200000000000001, 2.608203891838285, 4.259382444858701, 3.200000000000001, 4.2, 3.1, 2.3, 3.8, 3.5, 4.6, 3.8, 3.4, 1.6, 3.0, 3.8, 2.536846559562938, 2.4, 3.439612162424832, 4.063451410646031, 3.7, 3.4, 4.3, 2.6, 3.3, 3.1, 2.2, 3.2, 3.7, 3.3, 5.424729517063128, 9.310258733809846], "forecast_x": ["2026-03-01", "2026-03-08"], "forecast_y": [9.310258733809846, 3.134954891566468], "pred_x": "2026-03-08", "pred_y": 3.134954891566468, "pred_lo_80": 2.295931802916845, "pred_hi_80": 3.973977980216092}, {"party": "조국혁신당", "display_party": "조국혁신당", "color": "#003A8C", "actual_x": ["2024-12-31", "2025-01-03", "2025-01-06", "2025-01-09", "2025-01-10", "2025-01-13", "2025-01-15", "2025-01-17", "2025-01-19", "2025-01-20", "2025-01-22", "2025-01-23", "2025-01-24", "2025-01-26", "2025-01-28", "2025-01-31", "2025-02-02", "2025-02-03", "2025-02-06", "2025-02-07", "2025-02-10", "2025-02-13", "2025-02-14", "2025-02-17", "2025-02-20", "2025-02-21", "2025-02-24", "2025-02-28", "2025-03-03", "2025-03-04", "2025-03-07", "2025-03-10", "2025-03-14", "2025-03-16", "2025-03-17", "2025-03-21", "2025-03-24", "2025-03-28", "2025-03-31", "2025-04-04", "2025-04-05", "2025-04-07", "2025-04-09", "2025-04-10", "2025-04-11", "2025-04-12", "2025-04-13", "2025-04-14", "2025-04-18", "2025-04-20", "2025-04-21", "2025-04-23", "2025-04-24", "2025-04-25", "2025-04-26", "2025-04-27", "2025-05-04", "2025-05-05", "2025-05-07", "2025-05-08", "2025-05-09", "2025-05-12", "2025-05-13", "2025-05-14", "2025-05-15", "2025-05-16", "2025-05-19", "2025-05-20", "2025-05-21", "2025-05-22", "2025-05-23", "2025-05-25", "2025-05-27", "2025-06-05", "2025-06-13", "2025-06-20", "2025-06-27", "2025-06-30", "2025-07-04", "2025-07-07", "2025-07-11", "2025-07-18", "2025-07-21", "2025-07-25", "2025-07-28", "2025-07-31", "2025-08-04", "2025-08-08", "2025-08-14", "2025-08-18", "2025-08-22", "2025-08-29", "2025-08-31", "2025-09-05", "2025-09-10", "2025-09-12", "2025-09-15", "2025-09-19", "2025-09-26", "2025-09-29", "2025-09-30", "2025-10-02", "2025-10-17", "2025-10-20", "2025-10-24", "2025-10-31", "2025-11-03", "2025-11-07", "2025-11-14", "2025-11-17", "2025-11-21", "2025-11-28", "2025-11-30", "2025-12-05", "2025-12-12", "2025-12-15", "2025-12-19", "2025-12-26", "2025-12-28", "2025-12-29", "2025-12-30", "2025-12-31", "2026-01-02", "2026-01-07", "2026-01-09", "2026-01-12", "2026-01-16", "2026-01-23", "2026-01-26", "2026-01-30", "2026-01-31", "2026-02-06", "2026-02-22", "2026-03-01"], "actual_y": [6.0, 4.8, 5.43867244996717, 4.0, 4.8, 5.6, 4.0, 4.2, 2.2, 4.349182867415903, 5.0, 4.0, 4.5, 8.0, 4.0, 5.0, 3.0, 5.9, 5.0, 3.4, 4.919386569729268, 6.0, 3.6, 6.0, 7.0, 4.4, 3.92285647904839, 5.903542319380915, 5.5, 3.0, 3.899999999999999, 4.549182867415901, 3.3, 4.129280352003648, 6.5, 4.3, 5.021121524388828, 3.7, 6.05, 5.2, 4.8, 3.3, 3.5, 8.0, 5.6, 3.0, 3.8, 3.126326388367512, 4.2, 2.8, 2.799999999999999, 8.0, 3.244692769868751, 2.822627055049366, 5.3, 5.5, 3.717731875420221, 3.449485710819934, 2.8, 6.0, 2.9, 2.800954830703446, 5.0, 2.9, 4.03873470986642, 2.8, 2.150229601815231, 5.045381753528389, 1.4, 5.0, 3.0, 3.097282495132891, 2.594394701921854, 4.47288996040682, 2.9, 2.9, 3.6, 4.9, 3.1, 2.4, 3.899999999999999, 3.899999999999999, 2.2, 3.5, 4.6, 3.9, 2.6, 4.0, 4.094767005308913, 2.799999999999999, 3.2, 2.5, 5.1, 2.7, 3.359156473244281, 2.6, 1.9, 1.9, 3.0, 2.978802056951244, 4.0, 3.586129795115187, 3.1, 2.4, 2.52711003959318, 3.386285266150763, 1.8, 2.5, 3.2, 2.1, 2.9, 3.1, 4.5, 2.6, 3.4, 2.3, 3.6, 3.1, 2.912639151256995, 2.2, 4.0, 3.097965517106336, 3.0, 2.4, 2.6, 2.3, 2.5, 3.2, 2.6, 3.1, 3.0, 2.6, 5.480632830524137, 3.170152302761947], "forecast_x": ["2026-03-01", "2026-03-08"], "forecast_y": [3.170152302761947, 2.723575158728821], "pred_x": "2026-03-08", "pred_y": 2.723575158728821, "pred_lo_80": 1.913962155736383, "pred_hi_80": 3.533188161721258}], "president_raw": {"x": ["2025-06-09", "2025-06-16", "2025-06-23", "2025-06-30", "2025-07-07", "2025-07-14", "2025-07-21", "2025-07-28", "2025-08-04", "2025-08-11", "2025-08-18", "2025-08-25", "2025-09-01", "2025-09-08", "2025-09-15", "2025-09-22", "2025-09-29", "2025-10-06", "2025-10-13", "2025-10-20", "2025-10-27", "2025-11-03", "2025-11-10", "2025-11-17", "2025-11-24", "2025-12-01", "2025-12-08", "2025-12-15", "2025-12-22", "2025-12-29", "2026-01-05", "2026-01-12", "2026-01-19", "2026-01-26", "2026-02-02", "2026-02-09", "2026-02-16"], "approve": [58.2, 53.0, 59.3, 59.7, 65.0, 63.6, 62.2, 61.5, 63.3, 57.2, 51.1, 51.4, 59.0, 51.1, 54.5, 54.7, 50.5, 57.0, 54.6, 52.2, 50.2, 51.35, 52.5, 59.0, 54.2, 52.7, 54.9, 54.3, 53.4, 62.0, 62.0, 56.8, 55.3, 53.1, 54.5, 55.8, 63.0], "disapprove": [35.5, 19.0, 33.5, 33.6, 23.0, 27.65, 32.3, 33.0, 31.4, 37.95, 44.5, 44.9, 11.0, 45.5, 49.5, 42.1, 47.4, 34.0, 39.45, 44.9, 46.2, 44.85, 43.5, 32.0, 42.0, 43.8, 42.1, 41.5, 42.2, 35.0, 35.0, 37.8, 40.5, 42.1, 41.8, 39.1, 26.0]}, "latest_poll_results": [{"pollster": "엠브레인퍼블릭", "date_end": "2026-02-23", "source_url": "https://www.hani.co.kr/arti/area/capital/1246088.html", "parties": [{"party": "더불어민주당", "display_party": "더불어민주당", "value": 88.78504672897196}, {"party": "국민의힘", "display_party": "국민의힘", "value": 6.5420560747663545}, {"party": "개혁신당", "display_party": "개혁신당", "value": 4.672897196261682}, {"party": "조국혁신당", "display_party": "조국혁신당", "value": 0.0}, {"party": "진보당", "display_party": "진보당", "value": 0.0}, {"party": "기타정당", "display_party": "기타정당", "value": 0.0}, {"party": "지지정당 없음", "display_party": "지지정당 없음", "value": 0.0}, {"party": "모름/\n무응답", "display_party": "모름/\n무응답", "value": 0.0}]}, {"pollster": "한국리서치", "date_end": "2026-02-23", "source_url": "https://www.munhwa.com/article/11569897?ref=naver", "parties": [{"party": "개혁신당", "display_party": "개혁신당", "value": 48.175182481751825}, {"party": "국민의힘", "display_party": "국민의힘", "value": 32.11678832116788}, {"party": "더불어민주당", "display_party": "더불어민주당", "value": 19.708029197080293}, {"party": "조국혁신당", "display_party": "조국혁신당", "value": 0.0}, {"party": "진보당", "display_party": "진보당", "value": 0.0}, {"party": "기타정당", "display_party": "기타정당", "value": 0.0}, {"party": "지지정당 없음", "display_party": "지지정당 없음", "value": 0.0}, {"party": "모름/\n무응답", "display_party": "모름/\n무응답", "value": 0.0}]}, {"pollster": "리얼미터", "date_end": "2026-02-23", "source_url": "https://www.inews24.com/view/1941676", "parties": [{"party": "국민의힘", "display_party": "국민의힘", "value": 32.6}, {"party": "지지정당 없음", "display_party": "지지정당 없음", "value": 28.07572960384944}, {"party": "개혁신당", "display_party": "개혁신당", "value": 11.283583901348557}, {"party": "조국혁신당", "display_party": "조국혁신당", "value": 10.168082320527672}, {"party": "기타정당", "display_party": "기타정당", "value": 7.729333569192128}, {"party": "진보당", "display_party": "진보당", "value": 5.710162266928865}, {"party": "모름/\n무응답", "display_party": "모름/\n무응답", "value": 4.433108338153338}, {"party": "더불어민주당", "display_party": "더불어민주당", "value": 0.0}]}], "pollster_color_map": {"리얼미터": "#EF4444", "한국갤럽": "#2563EB", "갤럽": "#2563EB", "한국리서치": "#0EA5A4", "코리아리서치인터내셔널": "#8B5CF6", "코리아리서치": "#8B5CF6", "리서치앤리서치": "#14B8A6", "엠브레인퍼블릭": "#F59E0B", "리서치뷰": "#EC4899", "에이스리서치": "#22C55E", "조원씨앤아이": "#6366F1", "알앤써치": "#06B6D4", "천지일보": "#D946EF", "JTBC": "#0F172A"}}</script>
-  <script src="app.js?v=20260223165723"></script>
+  <script id="poll-data" type="application/json">{"traces": [{"party": "더불어민주당", "display_party": "더불어민주당", "color": "#003B96", "actual_x": ["2024-12-31", "2025-01-03", "2025-01-06", "2025-01-09", "2025-01-10", "2025-01-13", "2025-01-15", "2025-01-17", "2025-01-19", "2025-01-20", "2025-01-22", "2025-01-23", "2025-01-24", "2025-01-26", "2025-01-28", "2025-01-31", "2025-02-02", "2025-02-03", "2025-02-06", "2025-02-07", "2025-02-10", "2025-02-13", "2025-02-14", "2025-02-17", "2025-02-20", "2025-02-21", "2025-02-24", "2025-02-28", "2025-03-03", "2025-03-04", "2025-03-07", "2025-03-10", "2025-03-14", "2025-03-16", "2025-03-17", "2025-03-21", "2025-03-24", "2025-03-28", "2025-03-31", "2025-04-04", "2025-04-05", "2025-04-07", "2025-04-09", "2025-04-10", "2025-04-11", "2025-04-12", "2025-04-13", "2025-04-14", "2025-04-18", "2025-04-20", "2025-04-21", "2025-04-23", "2025-04-24", "2025-04-25", "2025-04-26", "2025-04-27", "2025-05-04", "2025-05-05", "2025-05-07", "2025-05-08", "2025-05-09", "2025-05-12", "2025-05-13", "2025-05-14", "2025-05-15", "2025-05-16", "2025-05-19", "2025-05-20", "2025-05-21", "2025-05-22", "2025-05-23", "2025-05-25", "2025-05-27", "2025-06-05", "2025-06-13", "2025-06-20", "2025-06-27", "2025-06-30", "2025-07-04", "2025-07-07", "2025-07-11", "2025-07-18", "2025-07-21", "2025-07-25", "2025-07-28", "2025-07-31", "2025-08-04", "2025-08-08", "2025-08-14", "2025-08-18", "2025-08-22", "2025-08-29", "2025-08-31", "2025-09-05", "2025-09-10", "2025-09-12", "2025-09-15", "2025-09-19", "2025-09-26", "2025-09-29", "2025-09-30", "2025-10-02", "2025-10-17", "2025-10-20", "2025-10-24", "2025-10-31", "2025-11-03", "2025-11-07", "2025-11-14", "2025-11-17", "2025-11-21", "2025-11-28", "2025-11-30", "2025-12-05", "2025-12-12", "2025-12-15", "2025-12-19", "2025-12-26", "2025-12-28", "2025-12-29", "2025-12-30", "2025-12-31", "2026-01-02", "2026-01-07", "2026-01-09", "2026-01-12", "2026-01-16", "2026-01-23", "2026-01-26", "2026-01-30", "2026-01-31", "2026-02-06", "2026-02-22", "2026-03-01"], "actual_y": [42.0, 45.2, 43.48244907442166, 43.0, 42.2, 40.5, 39.0, 39.0, 36.7, 39.76142823952419, 40.0, 38.0, 41.7, 37.0, 44.0, 42.0, 39.7, 42.5, 39.0, 40.8, 40.56489814884332, 36.0, 43.1, 42.0, 30.0, 41.1, 41.63163194183755, 40.90052664640641, 40.3, 42.3, 41.0, 42.08601967323214, 44.3, 43.05285356800243, 42.2, 43.6, 44.79653009068087, 47.3, 44.90000000000001, 44.8, 44.2, 43.7, 43.2, 36.0, 46.7, 44.0, 43.4, 45.9315312523462, 48.7, 44.8, 46.2, 34.0, 42.27650437823147, 45.65548081953925, 42.1, 39.9, 45.99746072337457, 44.10736931191259, 48.6, 41.0, 46.9, 44.52229159368827, 42.8, 46.6, 41.56337410702288, 46.4, 46.27032227494424, 40.29021499358475, 45.9, 43.0, 43.5, 41.01232188725875, 43.08553336153241, 46.81093852245105, 49.9, 48.4, 50.6, 47.9, 53.8, 50.4, 56.2, 50.8, 50.4, 50.8, 47.0, 49.6, 47.8, 48.4, 44.71569898407326, 44.0, 45.8, 46.7, 42.6, 44.6, 48.00000000000001, 44.3, 45.1, 44.2, 43.3, 42.54239588609752, 42.5, 45.89197807947343, 46.5, 42.5, 44.04054692612255, 42.48123511028259, 46.0, 46.5, 46.7, 42.2, 47.5, 45.6, 42.3, 44.2, 45.8, 43.1, 44.1, 44.5, 42.22107935737763, 45.5, 42.84781841363968, 45.95990909126511, 45.7, 38.6, 47.8, 45.1, 42.5, 42.7, 45.29999999999999, 43.9, 42.5, 47.6, 44.42105980200818, 45.25800576716612], "forecast_x": ["2026-03-01", "2026-03-08"], "forecast_y": [45.25800576716612, 44.3382262630215], "pred_x": "2026-03-08", "pred_y": 44.3382262630215, "pred_lo_80": 42.44465127134272, "pred_hi_80": 46.23180125470029}, {"party": "국민의힘", "display_party": "국민의힘", "color": "#E61E2B", "actual_x": ["2024-12-31", "2025-01-03", "2025-01-06", "2025-01-09", "2025-01-10", "2025-01-13", "2025-01-15", "2025-01-17", "2025-01-19", "2025-01-20", "2025-01-22", "2025-01-23", "2025-01-24", "2025-01-26", "2025-01-28", "2025-01-31", "2025-02-02", "2025-02-03", "2025-02-06", "2025-02-07", "2025-02-10", "2025-02-13", "2025-02-14", "2025-02-17", "2025-02-20", "2025-02-21", "2025-02-24", "2025-02-28", "2025-03-03", "2025-03-04", "2025-03-07", "2025-03-10", "2025-03-14", "2025-03-16", "2025-03-17", "2025-03-21", "2025-03-24", "2025-03-28", "2025-03-31", "2025-04-04", "2025-04-05", "2025-04-07", "2025-04-09", "2025-04-10", "2025-04-11", "2025-04-12", "2025-04-13", "2025-04-14", "2025-04-18", "2025-04-20", "2025-04-21", "2025-04-23", "2025-04-24", "2025-04-25", "2025-04-26", "2025-04-27", "2025-05-04", "2025-05-05", "2025-05-07", "2025-05-08", "2025-05-09", "2025-05-12", "2025-05-13", "2025-05-14", "2025-05-15", "2025-05-16", "2025-05-19", "2025-05-20", "2025-05-21", "2025-05-22", "2025-05-23", "2025-05-25", "2025-05-27", "2025-06-05", "2025-06-13", "2025-06-20", "2025-06-27", "2025-06-30", "2025-07-04", "2025-07-07", "2025-07-11", "2025-07-18", "2025-07-21", "2025-07-25", "2025-07-28", "2025-07-31", "2025-08-04", "2025-08-08", "2025-08-14", "2025-08-18", "2025-08-22", "2025-08-29", "2025-08-31", "2025-09-05", "2025-09-10", "2025-09-12", "2025-09-15", "2025-09-19", "2025-09-26", "2025-09-29", "2025-09-30", "2025-10-02", "2025-10-17", "2025-10-20", "2025-10-24", "2025-10-31", "2025-11-03", "2025-11-07", "2025-11-14", "2025-11-17", "2025-11-21", "2025-11-28", "2025-11-30", "2025-12-05", "2025-12-12", "2025-12-15", "2025-12-19", "2025-12-26", "2025-12-28", "2025-12-29", "2025-12-30", "2025-12-31", "2026-01-02", "2026-01-07", "2026-01-09", "2026-01-12", "2026-01-16", "2026-01-23", "2026-01-26", "2026-01-30", "2026-01-31", "2026-02-06", "2026-02-22", "2026-03-01"], "actual_y": [30.0, 34.4, 35.50693981863824, 35.0, 40.8, 39.7, 42.0, 46.5, 45.9, 43.23326620700575, 39.0, 42.0, 45.4, 35.0, 41.0, 41.0, 43.7, 38.7, 40.0, 42.8, 42.02449074421659, 39.0, 41.4, 40.3, 41.0, 42.7, 41.21745023608698, 38.48831974904442, 40.5, 41.1, 42.7, 40.86663310350288, 39.0, 39.12034731200669, 39.7, 40.0, 36.49816435584907, 36.1, 33.2, 35.7, 32.6, 37.1, 33.5, 31.0, 33.1, 36.0, 36.3, 34.87550925578342, 32.9, 36.2, 33.7, 32.0, 36.63266511597038, 34.35474588990127, 34.4, 35.9, 32.42657628265145, 32.12103704152972, 32.2, 32.0, 37.7, 35.51274328665381, 31.8, 32.7, 31.32042176337786, 34.2, 36.80955548798374, 33.32391400256611, 37.4, 33.0, 37.8, 35.51010046110451, 35.061821330175, 26.00094506613775, 30.4, 31.4, 30.0, 21.8, 28.8, 30.9, 24.3, 27.4, 30.7, 29.0, 22.5, 21.6, 32.9, 30.3, 26.17680592369177, 38.10000000000001, 35.5, 36.1, 31.2, 36.2, 21.32042176337786, 36.4, 36.2, 38.6, 38.3, 33.64339985625255, 33.2, 32.26206403353548, 36.7, 39.3, 29.98727191307394, 35.17158934222069, 36.7, 34.8, 34.2, 39.6, 34.8, 37.4, 32.8, 37.0, 34.6, 38.8, 37.2, 35.7, 24.912639151257, 36.3, 26.29227854575411, 33.02539498480481, 35.5, 41.7, 33.5, 36.9, 37.0, 39.5, 36.8, 37.0, 32.6, 34.9, 33.96067829308391, 29.43213742298271], "forecast_x": ["2026-03-01", "2026-03-08"], "forecast_y": [29.43213742298271, 35.97098622709436], "pred_x": "2026-03-08", "pred_y": 35.97098622709436, "pred_lo_80": 32.59334741199113, "pred_hi_80": 39.34862504219758}, {"party": "지지정당 없음", "display_party": "지지정당 없음", "color": "#7A7A7A", "actual_x": ["2024-12-31", "2025-01-03", "2025-01-06", "2025-01-09", "2025-01-10", "2025-01-13", "2025-01-15", "2025-01-17", "2025-01-19", "2025-01-20", "2025-01-22", "2025-01-23", "2025-01-24", "2025-01-26", "2025-01-28", "2025-01-31", "2025-02-02", "2025-02-03", "2025-02-06", "2025-02-07", "2025-02-10", "2025-02-13", "2025-02-14", "2025-02-17", "2025-02-20", "2025-02-21", "2025-02-24", "2025-02-28", "2025-03-03", "2025-03-04", "2025-03-07", "2025-03-10", "2025-03-14", "2025-03-16", "2025-03-17", "2025-03-21", "2025-03-24", "2025-03-28", "2025-03-31", "2025-04-04", "2025-04-05", "2025-04-07", "2025-04-09", "2025-04-10", "2025-04-11", "2025-04-12", "2025-04-13", "2025-04-14", "2025-04-18", "2025-04-20", "2025-04-21", "2025-04-23", "2025-04-24", "2025-04-25", "2025-04-26", "2025-04-27", "2025-05-04", "2025-05-05", "2025-05-07", "2025-05-08", "2025-05-09", "2025-05-12", "2025-05-13", "2025-05-14", "2025-05-15", "2025-05-16", "2025-05-19", "2025-05-20", "2025-05-21", "2025-05-22", "2025-05-23", "2025-05-25", "2025-05-27", "2025-06-05", "2025-06-13", "2025-06-20", "2025-06-27", "2025-06-30", "2025-07-04", "2025-07-07", "2025-07-11", "2025-07-18", "2025-07-21", "2025-07-25", "2025-07-28", "2025-07-31", "2025-08-04", "2025-08-08", "2025-08-14", "2025-08-18", "2025-08-22", "2025-08-29", "2025-08-31", "2025-09-05", "2025-09-10", "2025-09-12", "2025-09-15", "2025-09-19", "2025-09-26", "2025-09-29", "2025-09-30", "2025-10-02", "2025-10-17", "2025-10-20", "2025-10-24", "2025-10-31", "2025-11-03", "2025-11-07", "2025-11-14", "2025-11-17", "2025-11-21", "2025-11-28", "2025-11-30", "2025-12-05", "2025-12-12", "2025-12-15", "2025-12-19", "2025-12-26", "2025-12-28", "2025-12-29", "2025-12-30", "2025-12-31", "2026-01-02", "2026-01-07", "2026-01-09", "2026-01-12", "2026-01-16", "2026-01-23", "2026-01-26", "2026-01-30", "2026-01-31", "2026-02-06", "2026-02-22", "2026-03-01"], "actual_y": [10.0, 8.0, 7.943776624454489, 11.0, 5.3, 6.2, 11.0, 5.4, 11.3, 6.84551157911405, 11.0, 12.0, 4.9, 14.0, 8.0, 4.0, 8.2, 5.6, 11.0, 6.8, 6.76132755003283, 13.0, 6.5, 5.4, 13.0, 6.6, 7.696429401189512, 6.096457680619085, 4.4, 8.6, 6.9, 6.512144682616928, 8.0, 8.451117007968989, 4.3, 7.6, 7.364797459351953, 6.5, 6.7, 7.0, 11.3, 10.8, 11.4, 16.0, 7.0, 12.0, 8.6, 8.417450236086978, 7.6, 5.7, 10.3, 20.0, 11.68788919928366, 10.04378425082276, 7.8, 8.1, 7.996191085061859, 11.85261376174825, 9.9, 12.0, 5.9, 9.721336762984825, 6.4, 5.6, 13.3978911831107, 7.199999999999999, 7.306853643741612, 8.04483324005636, 3.899999999999999, 11.0, 4.7, 9.573728456544464, 7.408097374759732, 12.44507112121033, 6.6, 7.499999999999999, 6.4, 11.7, 6.1, 8.8, 7.0, 7.6, 10.1, 8.0, 16.6, 12.0, 9.7, 7.499999999999999, 16.36397726896523, 10.1, 6.0, 7.0, 9.7, 6.9, 20.67957823662214, 7.7, 10.3, 6.1, 7.4, 12.89401028475622, 10.4, 10.73793596646452, 6.4, 9.3, 16.71522645100439, 7.426902821292061, 9.5, 7.7, 7.499999999999999, 10.4, 6.9, 6.3, 9.3, 7.3, 8.6, 9.8, 7.199999999999999, 7.7, 21.08834711125522, 9.999999999999998, 18.22946672333414, 7.005576802274579, 8.3, 9.9, 7.199999999999999, 9.5, 10.2, 7.4, 8.8, 7.4, 9.4, 8.2, 9.3593059828437, 6.937899609436259], "forecast_x": ["2026-03-01", "2026-03-08"], "forecast_y": [6.937899609436259, 9.179588433454013], "pred_x": "2026-03-08", "pred_y": 9.179588433454013, "pred_lo_80": 7.284188769873912, "pred_hi_80": 11.07498809703412}, {"party": "개혁신당", "display_party": "개혁신당", "color": "#FF7210", "actual_x": ["2024-12-31", "2025-01-03", "2025-01-06", "2025-01-09", "2025-01-10", "2025-01-13", "2025-01-15", "2025-01-17", "2025-01-19", "2025-01-20", "2025-01-22", "2025-01-23", "2025-01-24", "2025-01-26", "2025-01-28", "2025-01-31", "2025-02-02", "2025-02-03", "2025-02-06", "2025-02-07", "2025-02-10", "2025-02-13", "2025-02-14", "2025-02-17", "2025-02-20", "2025-02-21", "2025-02-24", "2025-02-28", "2025-03-03", "2025-03-04", "2025-03-07", "2025-03-10", "2025-03-14", "2025-03-16", "2025-03-17", "2025-03-21", "2025-03-24", "2025-03-28", "2025-03-31", "2025-04-04", "2025-04-05", "2025-04-07", "2025-04-09", "2025-04-10", "2025-04-11", "2025-04-12", "2025-04-13", "2025-04-14", "2025-04-18", "2025-04-20", "2025-04-21", "2025-04-23", "2025-04-24", "2025-04-25", "2025-04-26", "2025-04-27", "2025-05-04", "2025-05-05", "2025-05-07", "2025-05-08", "2025-05-09", "2025-05-12", "2025-05-13", "2025-05-14", "2025-05-15", "2025-05-16", "2025-05-19", "2025-05-20", "2025-05-21", "2025-05-22", "2025-05-23", "2025-05-25", "2025-05-27", "2025-06-05", "2025-06-13", "2025-06-20", "2025-06-27", "2025-06-30", "2025-07-04", "2025-07-07", "2025-07-11", "2025-07-18", "2025-07-21", "2025-07-25", "2025-07-28", "2025-07-31", "2025-08-04", "2025-08-08", "2025-08-14", "2025-08-18", "2025-08-22", "2025-08-29", "2025-08-31", "2025-09-05", "2025-09-10", "2025-09-12", "2025-09-15", "2025-09-19", "2025-09-26", "2025-09-29", "2025-09-30", "2025-10-02", "2025-10-17", "2025-10-20", "2025-10-24", "2025-10-31", "2025-11-03", "2025-11-07", "2025-11-14", "2025-11-17", "2025-11-21", "2025-11-28", "2025-11-30", "2025-12-05", "2025-12-12", "2025-12-15", "2025-12-19", "2025-12-26", "2025-12-28", "2025-12-29", "2025-12-30", "2025-12-31", "2026-01-02", "2026-01-07", "2026-01-09", "2026-01-12", "2026-01-16", "2026-01-23", "2026-01-26", "2026-01-30", "2026-01-31", "2026-02-06", "2026-02-22", "2026-03-01"], "actual_y": [5.0, 3.1, 2.898265045340439, 3.0, 2.4, 2.1, 2.0, 1.9, 2.2, 2.21581597091878, 2.0, 2.0, 1.0, 3.0, 2.0, 3.0, 1.9, 2.5, 2.0, 2.4, 1.835101851156683, 2.0, 2.2, 1.9, 3.0, 1.4, 1.654387731394585, 2.219291536123817, 2.5, 1.8, 1.7, 1.817550925578342, 1.5, 1.643920528005473, 1.5, 1.3, 2.178979165102536, 2.3, 2.85, 3.3, 3.6, 2.2, 2.7, 3.0, 2.7, 3.0, 3.2, 2.61581597091878, 2.9, 3.8, 3.200000000000001, 3.0, 2.399881708309401, 3.532118834851902, 2.8, 3.6, 3.643673338915316, 3.536846559562938, 3.3, 4.0, 3.4, 4.522291593688272, 6.7, 5.5, 6.679578236622141, 5.9, 5.10736952903271, 6.055166759943642, 7.900000000000001, 6.0, 7.7, 6.905070183218526, 8.52444431875967, 7.107967625303848, 4.5, 4.9, 4.3, 5.0, 3.2, 3.5, 3.7, 3.899999999999999, 3.1, 3.8, 3.7, 4.3, 3.200000000000001, 3.1, 3.567656965715733, 2.2, 3.4, 3.7, 4.6, 4.5, 3.32042176337786, 4.4, 2.9, 4.1, 3.4, 3.231420425764993, 3.4, 3.290508220197463, 3.0, 3.200000000000001, 2.608203891838285, 4.259382444858701, 3.200000000000001, 4.2, 3.1, 2.3, 3.8, 3.5, 4.6, 3.8, 3.4, 1.6, 3.0, 3.8, 2.536846559562938, 2.4, 3.439612162424832, 4.063451410646031, 3.7, 3.4, 4.3, 2.6, 3.3, 3.1, 2.2, 3.2, 3.7, 3.3, 4.111837113458613, 9.310258733809846], "forecast_x": ["2026-03-01", "2026-03-08"], "forecast_y": [9.310258733809846, 3.134954891566468], "pred_x": "2026-03-08", "pred_y": 3.134954891566468, "pred_lo_80": 2.295931802916845, "pred_hi_80": 3.973977980216092}, {"party": "조국혁신당", "display_party": "조국혁신당", "color": "#003A8C", "actual_x": ["2024-12-31", "2025-01-03", "2025-01-06", "2025-01-09", "2025-01-10", "2025-01-13", "2025-01-15", "2025-01-17", "2025-01-19", "2025-01-20", "2025-01-22", "2025-01-23", "2025-01-24", "2025-01-26", "2025-01-28", "2025-01-31", "2025-02-02", "2025-02-03", "2025-02-06", "2025-02-07", "2025-02-10", "2025-02-13", "2025-02-14", "2025-02-17", "2025-02-20", "2025-02-21", "2025-02-24", "2025-02-28", "2025-03-03", "2025-03-04", "2025-03-07", "2025-03-10", "2025-03-14", "2025-03-16", "2025-03-17", "2025-03-21", "2025-03-24", "2025-03-28", "2025-03-31", "2025-04-04", "2025-04-05", "2025-04-07", "2025-04-09", "2025-04-10", "2025-04-11", "2025-04-12", "2025-04-13", "2025-04-14", "2025-04-18", "2025-04-20", "2025-04-21", "2025-04-23", "2025-04-24", "2025-04-25", "2025-04-26", "2025-04-27", "2025-05-04", "2025-05-05", "2025-05-07", "2025-05-08", "2025-05-09", "2025-05-12", "2025-05-13", "2025-05-14", "2025-05-15", "2025-05-16", "2025-05-19", "2025-05-20", "2025-05-21", "2025-05-22", "2025-05-23", "2025-05-25", "2025-05-27", "2025-06-05", "2025-06-13", "2025-06-20", "2025-06-27", "2025-06-30", "2025-07-04", "2025-07-07", "2025-07-11", "2025-07-18", "2025-07-21", "2025-07-25", "2025-07-28", "2025-07-31", "2025-08-04", "2025-08-08", "2025-08-14", "2025-08-18", "2025-08-22", "2025-08-29", "2025-08-31", "2025-09-05", "2025-09-10", "2025-09-12", "2025-09-15", "2025-09-19", "2025-09-26", "2025-09-29", "2025-09-30", "2025-10-02", "2025-10-17", "2025-10-20", "2025-10-24", "2025-10-31", "2025-11-03", "2025-11-07", "2025-11-14", "2025-11-17", "2025-11-21", "2025-11-28", "2025-11-30", "2025-12-05", "2025-12-12", "2025-12-15", "2025-12-19", "2025-12-26", "2025-12-28", "2025-12-29", "2025-12-30", "2025-12-31", "2026-01-02", "2026-01-07", "2026-01-09", "2026-01-12", "2026-01-16", "2026-01-23", "2026-01-26", "2026-01-30", "2026-01-31", "2026-02-06", "2026-02-22", "2026-03-01"], "actual_y": [6.0, 4.8, 5.43867244996717, 4.0, 4.8, 5.6, 4.0, 4.2, 2.2, 4.349182867415903, 5.0, 4.0, 4.5, 8.0, 4.0, 5.0, 3.0, 5.9, 5.0, 3.4, 4.919386569729268, 6.0, 3.6, 6.0, 7.0, 4.4, 3.92285647904839, 5.903542319380915, 5.5, 3.0, 3.899999999999999, 4.549182867415901, 3.3, 4.129280352003648, 6.5, 4.3, 5.021121524388828, 3.7, 6.05, 5.2, 4.8, 3.3, 3.5, 8.0, 5.6, 3.0, 3.8, 3.126326388367512, 4.2, 2.8, 2.799999999999999, 8.0, 3.244692769868751, 2.822627055049366, 5.3, 5.5, 3.717731875420221, 3.449485710819934, 2.8, 6.0, 2.9, 2.800954830703446, 5.0, 2.9, 4.03873470986642, 2.8, 2.150229601815231, 5.045381753528389, 1.4, 5.0, 3.0, 3.097282495132891, 2.594394701921854, 4.47288996040682, 2.9, 2.9, 3.6, 4.9, 3.1, 2.4, 3.899999999999999, 3.899999999999999, 2.2, 3.5, 4.6, 3.9, 2.6, 4.0, 4.094767005308913, 2.799999999999999, 3.2, 2.5, 5.1, 2.7, 3.359156473244281, 2.6, 1.9, 1.9, 3.0, 2.978802056951244, 4.0, 3.586129795115187, 3.1, 2.4, 2.52711003959318, 3.386285266150763, 1.8, 2.5, 3.2, 2.1, 2.9, 3.1, 4.5, 2.6, 3.4, 2.3, 3.6, 3.1, 2.912639151256995, 2.2, 4.0, 3.097965517106336, 3.0, 2.4, 2.6, 2.3, 2.5, 3.2, 2.6, 3.1, 3.0, 2.6, 2.901288570216314, 3.170152302761947], "forecast_x": ["2026-03-01", "2026-03-08"], "forecast_y": [3.170152302761947, 2.723575158728821], "pred_x": "2026-03-08", "pred_y": 2.723575158728821, "pred_lo_80": 1.913962155736383, "pred_hi_80": 3.533188161721258}], "president_raw": {"x": ["2025-06-09", "2025-06-16", "2025-06-23", "2025-06-30", "2025-07-07", "2025-07-14", "2025-07-21", "2025-07-28", "2025-08-04", "2025-08-11", "2025-08-18", "2025-08-25", "2025-09-01", "2025-09-08", "2025-09-15", "2025-09-22", "2025-09-29", "2025-10-06", "2025-10-13", "2025-10-20", "2025-10-27", "2025-11-03", "2025-11-10", "2025-11-17", "2025-11-24", "2025-12-01", "2025-12-08", "2025-12-15", "2025-12-22", "2025-12-29", "2026-01-05", "2026-01-12", "2026-01-19", "2026-01-26", "2026-02-02", "2026-02-09", "2026-02-16"], "approve": [58.2, 53.0, 59.3, 59.7, 65.0, 63.6, 62.2, 61.5, 63.3, 57.2, 51.1, 51.4, 59.0, 51.1, 54.5, 54.7, 50.5, 57.0, 54.6, 52.2, 50.2, 51.35, 52.5, 59.0, 54.2, 52.7, 54.9, 54.3, 53.4, 62.0, 62.0, 56.8, 55.3, 53.1, 54.5, 55.8, 63.0], "disapprove": [35.5, 19.0, 33.5, 33.6, 23.0, 27.65, 32.3, 33.0, 31.4, 37.95, 44.5, 44.9, 11.0, 45.5, 49.5, 42.1, 47.4, 34.0, 39.45, 44.9, 46.2, 44.85, 43.5, 32.0, 42.0, 43.8, 42.1, 41.5, 42.2, 35.0, 35.0, 37.8, 40.5, 42.1, 41.8, 39.1, 26.0]}, "latest_poll_results": [], "pollster_color_map": {"리얼미터": "#EF4444", "한국갤럽": "#2563EB", "갤럽": "#2563EB", "한국리서치": "#0EA5A4", "코리아리서치인터내셔널": "#8B5CF6", "코리아리서치": "#8B5CF6", "리서치앤리서치": "#14B8A6", "엠브레인퍼블릭": "#F59E0B", "리서치뷰": "#EC4899", "에이스리서치": "#22C55E", "조원씨앤아이": "#6366F1", "알앤써치": "#06B6D4", "천지일보": "#D946EF", "JTBC": "#0F172A"}}</script>
+  <script src="app.js?v=20260223191835"></script>
 </body>
 </html>

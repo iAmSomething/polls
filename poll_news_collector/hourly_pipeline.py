@@ -156,6 +156,7 @@ def is_valid_point(point: dict) -> tuple[bool, str]:
     pollster = str(point.get("pollster") or "")
     date_end = str(point.get("date_end") or "")
     values = point.get("values") or {}
+    context = point.get("context") or {}
 
     if pollster not in POLLING_ORGS:
         return False, "pollster_not_target"
@@ -163,6 +164,11 @@ def is_valid_point(point: dict) -> tuple[bool, str]:
         return False, "missing_date"
     if not isinstance(values, dict) or len(values) < 2:
         return False, "insufficient_values"
+    if isinstance(context, dict):
+        if context.get("has_local_election_context") and not context.get("is_national_party_poll"):
+            return False, "context_local_election_poll"
+        if context.get("is_national_party_poll") is False:
+            return False, "context_not_national_party_poll"
     if not REQUIRED_PARTIES.issubset(set(values.keys())):
         return False, "missing_major_parties"
     try:
