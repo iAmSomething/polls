@@ -1,10 +1,9 @@
-# Pollster Watchlist (2026-02-16 ~ 2026-02-22)
+# Pollster Watchlist (2026-02-23 ~ 2026-03-01)
 
 - Pollsters analyzed: 9
-- Alerts: 4
+- Alerts: 3
 
 ## Alerted Pollsters
-- 한국리서치: delta_major_abs=29.64, max_abs_delta=40.39, z=2.36, source_type=observed_web
-- 리얼미터: delta_major_abs=17.87, max_abs_delta=28.09, z=1.00, source_type=observed_web
-- 엠브레인퍼블릭: delta_major_abs=12.01, max_abs_delta=13.81, z=0.32, source_type=observed_web
-- 코리아리서치인터내셔널: delta_major_abs=5.77, max_abs_delta=12.72, z=-0.40, source_type=observed_web
+- 리얼미터: delta_major_abs=2.80, max_abs_delta=4.59, z=1.54, source_type=observed_web
+- 엠브레인퍼블릭: delta_major_abs=2.00, max_abs_delta=8.19, z=0.58, source_type=estimated_bias_adjusted
+- 리서치앤리서치: delta_major_abs=1.89, max_abs_delta=8.39, z=0.46, source_type=estimated_bias_adjusted
