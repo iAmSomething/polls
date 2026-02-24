@@ -6,6 +6,8 @@ on:
       - main
   workflow_dispatch:
   schedule:
+    # Hourly refresh (every hour, UTC)
+    - cron: "0 * * * *"
     # Every Monday 09:00 Asia/Seoul == 00:00 UTC Monday
     - cron: "0 0 * * 1"
     # Tuesday 18:00~23:00 Asia/Seoul retry window == 09:00~14:00 UTC Tuesday
@@ -67,6 +69,19 @@ jobs:
             --week-end "$WEEK_END" \
             --keywords "정당 지지율,여론조사,민주당,국민의힘,개혁신당,조국혁신당"
 
+
+      - name: Refresh hourly poll/news inputs
+        run: |
+          PYTHONPATH=../poll_news_collector python ../poll_news_collector/hourly_pipeline.py \
+            --base-dir ../poll_news_collector \
+            --project-dir . \
+            --window-minutes 60 \
+            --run-update \
+            --news-json-out docs/news_latest.json \
+            --news-limit 6 \
+            --max-retries 3 \
+            --retry-delay-minutes 60
+
       - name: Build forecast outputs
         run: |
           python src/pipeline.py
@@ -91,6 +106,7 @@ jobs:
           p = Path("docs/news_latest.json")
           data = json.loads(p.read_text(encoding="utf-8"))
           assert isinstance(data, list), "news_latest.json must be a list"
+          assert len(data) > 0, "news_latest.json must contain at least one row"
           for i, row in enumerate(data[:12]):
             assert isinstance(row, dict), f"row {i} must be an object"
             for k in ("date", "source", "title", "url"):
