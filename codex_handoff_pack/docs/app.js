@@ -151,6 +151,40 @@
     return "#64748B";
   }
 
+  function normalizePartyKey(name) {
+    return String(name || "")
+      .replace(/\s+/g, "")
+      .replace(/\([^)]*\)/g, "")
+      .trim();
+  }
+
+  function renderEmptyPanelChart(chartEl, title, dark) {
+    if (!chartEl || !window.Plotly) return;
+    Plotly.react(
+      chartEl,
+      [],
+      {
+        paper_bgcolor: "rgba(0,0,0,0)",
+        plot_bgcolor: dark ? "#152338" : "#F8FAFD",
+        margin: { l: 20, r: 20, t: 40, b: 20 },
+        xaxis: { visible: false, fixedrange: true },
+        yaxis: { visible: false, fixedrange: true },
+        annotations: [
+          {
+            text: title,
+            x: 0.5,
+            y: 0.5,
+            xref: "paper",
+            yref: "paper",
+            showarrow: false,
+            font: { size: 13, color: dark ? "#9CA3AF" : "#6B7280", family: "Inter, Pretendard, sans-serif" }
+          }
+        ]
+      },
+      { displayModeBar: false, responsive: true }
+    );
+  }
+
   function buildSmoothedBand(y) {
     const raw = (y || []).map((v) => (Number.isFinite(v) ? Number(v) : null));
     const center = smoothSeries(raw, BAND_CENTER_WINDOW);
@@ -576,13 +610,23 @@
   function renderLatestPollSection() {
     const section = document.getElementById("latest-poll-section");
     if (!section) return;
+    const listEl = document.getElementById("latest-poll-list");
+    const chartEl = document.getElementById("latest-poll-chart");
+    const dark = isDarkMode();
     if (!Array.isArray(latestPollResults) || !latestPollResults.length) {
-      section.style.display = "none";
+      section.style.display = "";
+      if (listEl) {
+        listEl.innerHTML = `
+          <article class="latest-poll-card">
+            <div class="latest-poll-values">최신 여론조사 데이터가 아직 준비되지 않았습니다.</div>
+          </article>
+        `;
+      }
+      renderEmptyPanelChart(chartEl, "최신 여론조사 데이터 준비 중", dark);
       return;
     }
     section.style.display = "";
 
-    const listEl = document.getElementById("latest-poll-list");
     if (listEl) {
       listEl.innerHTML = latestPollResults.slice(0, 6).map((row) => {
         const sourceUrl = esc(row.source_url || "");
@@ -603,14 +647,16 @@
       }).join("");
     }
 
-    const chartEl = document.getElementById("latest-poll-chart");
     if (!chartEl) return;
     const top = latestPollResults[0] || {};
     const pieRows = (top.parties || []).filter((p) => Number.isFinite(Number(p.value)) && Number(p.value) > 0);
     const labels = pieRows.map((p) => p.display_party || p.party);
     const values = pieRows.map((p) => Number(p.value));
     const colors = pieRows.map((p) => partyColorMap[p.party] || "#94A3B8");
-    const dark = isDarkMode();
+    if (!labels.length || !values.length) {
+      renderEmptyPanelChart(chartEl, "표시할 최신 여론조사 항목이 없습니다.", dark);
+      return;
+    }
     Plotly.react(
       chartEl,
       [
@@ -645,8 +691,19 @@
   function renderForecastComparisonSection() {
     const section = document.getElementById("poll-compare-section");
     if (!section) return;
+    const listEl = document.getElementById("poll-compare-list");
+    const chartEl = document.getElementById("poll-compare-chart");
+    const dark = isDarkMode();
     if (!Array.isArray(latestPollResults) || !latestPollResults.length || !Array.isArray(tracesData) || !tracesData.length) {
-      section.style.display = "none";
+      section.style.display = "";
+      if (listEl) {
+        listEl.innerHTML = `
+          <article class="poll-compare-card">
+            <div class="poll-compare-meta">예측치/최신 조사 비교 데이터가 아직 준비되지 않았습니다.</div>
+          </article>
+        `;
+      }
+      renderEmptyPanelChart(chartEl, "비교 데이터 준비 중", dark);
       return;
     }
     const top = latestPollResults[0] || {};
@@ -654,12 +711,19 @@
     tracesData.forEach((t) => {
       if (t && t.party && Number.isFinite(Number(t.pred_y))) {
         forecastMap[t.party] = Number(t.pred_y);
+        forecastMap[normalizePartyKey(t.party)] = Number(t.pred_y);
+        if (t.display_party) {
+          forecastMap[normalizePartyKey(t.display_party)] = Number(t.pred_y);
+        }
       }
     });
     const rows = (top.parties || [])
       .map((p) => {
         const latest = Number(p.value);
-        const pred = forecastMap[p.party];
+        const pred =
+          forecastMap[p.party] ??
+          forecastMap[normalizePartyKey(p.party)] ??
+          forecastMap[normalizePartyKey(p.display_party)];
         if (!Number.isFinite(latest) || !Number.isFinite(pred)) return null;
         return {
           party: p.party,
@@ -674,12 +738,19 @@
       .sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
 
     if (!rows.length) {
-      section.style.display = "none";
+      section.style.display = "";
+      if (listEl) {
+        listEl.innerHTML = `
+          <article class="poll-compare-card">
+            <div class="poll-compare-meta">동일 정당 기준으로 매칭 가능한 비교 항목이 없습니다.</div>
+          </article>
+        `;
+      }
+      renderEmptyPanelChart(chartEl, "비교 가능한 항목이 없습니다", dark);
       return;
     }
     section.style.display = "";
 
-    const listEl = document.getElementById("poll-compare-list");
     if (listEl) {
       listEl.innerHTML = rows.map((r) => {
         const sign = r.delta > 0 ? "+" : "";
@@ -696,9 +767,7 @@
       }).join("");
     }
 
-    const chartEl = document.getElementById("poll-compare-chart");
     if (!chartEl) return;
-    const dark = isDarkMode();
     const sorted = rows.slice().reverse();
     const labels = sorted.map((r) => r.display_party || r.party);
 
