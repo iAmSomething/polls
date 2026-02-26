@@ -50,6 +50,8 @@ LOCAL_ELECTION_KEYWORDS = [
     "구청장",
     "군수",
 ]
+OBSERVED_WEIGHT_BOOST_SINGLE = 1.35
+OBSERVED_WEIGHT_BOOST_MULTI = 1.80
 
 # Verified text-available public point within 2026-02-09~15.
 # Source checked: Newsis article with full party breakdown text.
@@ -343,10 +345,14 @@ def build_week_points(
 
 def blend_from_points(points_df: pd.DataFrame, weights_df: pd.DataFrame, party_cols: List[str]) -> pd.Series:
     w_map = dict(zip(weights_df["조사기관"], weights_df["weight"]))
+    observed_count = int((points_df["source_type"] == "observed_web").sum())
+    observed_boost = OBSERVED_WEIGHT_BOOST_MULTI if observed_count >= 2 else OBSERVED_WEIGHT_BOOST_SINGLE
     row = {"date_end": WEEK_END, "n_polls": len(points_df)}
     for p in party_cols:
         vals = pd.to_numeric(points_df[p], errors="coerce")
         ws = np.array([w_map.get(a, 0.0) for a in points_df["pollster"]], dtype=float)
+        src = points_df["source_type"].astype(str).to_numpy()
+        ws = np.where(src == "observed_web", ws * observed_boost, ws)
         m = np.isfinite(vals.to_numpy(dtype=float)) & (ws > 0)
         if m.sum() == 0:
             row[p] = np.nan

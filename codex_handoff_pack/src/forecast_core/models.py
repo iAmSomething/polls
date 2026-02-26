@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
+
+RECENCY_SHRINK = 0.35
 def forecast_next(series: pd.Series, horizon_weeks: int = 1, window_weeks: int = 16) -> tuple[float, float]:
     s = series.dropna()
     if len(s) < 6:
@@ -97,6 +99,9 @@ def forecast_next_ssm(
     # h-step ahead latent and observed variance
     p_future = p + horizon_weeks * q
     pred_mean = float(mu)
+    # Pull the one-step forecast toward the latest observed level for faster adaptation.
+    latest_y = float(y[-1])
+    pred_mean = float((1.0 - RECENCY_SHRINK) * pred_mean + RECENCY_SHRINK * latest_y)
     pred_sd = float(np.sqrt(max(p_future + r, 1e-9)))
     rmse = float(np.sqrt(np.mean(np.square(pred_errors)))) if pred_errors else float("nan")
     return pred_mean, pred_sd, rmse
@@ -144,6 +149,7 @@ def forecast_next_ssm_with_exog(
 
     # Blend to preserve baseline stability.
     pred = 0.65 * float(base_pred) + 0.35 * pred_arx
+    latest_y = float(s.iloc[-1])
+    pred = float((1.0 - RECENCY_SHRINK) * pred + RECENCY_SHRINK * latest_y)
     return float(pred), pred_sd, rmse
-
 
