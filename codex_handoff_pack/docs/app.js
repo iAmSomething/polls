@@ -80,220 +80,6 @@
 
   initThemeToggle();
   updateFreshnessBadge();
-  const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  function initRevealAnimations() {
-    const items = document.querySelectorAll(".reveal");
-    if (!items.length) return;
-    if (reducedMotion || !("IntersectionObserver" in window)) {
-      items.forEach((el) => el.classList.add("in-view"));
-      return;
-    }
-    const observer = new IntersectionObserver((entries, obs) => {
-      entries.forEach((entry) => {
-        if (!entry.isIntersecting) return;
-        entry.target.classList.add("in-view");
-        obs.unobserve(entry.target);
-      });
-    }, { root: null, rootMargin: "0px 0px -10% 0px", threshold: 0.15 });
-    items.forEach((el) => observer.observe(el));
-  }
-
-  function animateValue(el, start, end, duration, decimals, suffix, finalText) {
-    let startTime = null;
-    function step(timestamp) {
-      if (startTime === null) startTime = timestamp;
-      const progress = timestamp - startTime;
-      const percent = Math.min(progress / duration, 1);
-      const value = start + percent * (end - start);
-      el.textContent = `${value.toFixed(decimals)}${suffix || ""}`;
-      if (progress < duration) {
-        requestAnimationFrame(step);
-      } else if (finalText) {
-        el.textContent = finalText;
-      }
-    }
-    requestAnimationFrame(step);
-  }
-
-  function initKpiCountUp() {
-    const nodes = document.querySelectorAll(".insight-value[data-kpi-value]");
-    if (!nodes.length) return;
-    nodes.forEach((el) => {
-      const end = Number(el.dataset.kpiValue);
-      if (!Number.isFinite(end)) return;
-      const decimals = Number(el.dataset.kpiDecimals || "2");
-      const suffix = el.dataset.kpiSuffix || "";
-      const finalText = el.textContent;
-      if (reducedMotion) {
-        if (finalText) el.textContent = finalText;
-        return;
-      }
-      animateValue(el, 0, end, 800, Number.isFinite(decimals) ? decimals : 2, suffix, finalText);
-    });
-  }
-
-  initRevealAnimations();
-  initKpiCountUp();
-  finalizePageEntryAnimation();
-  initFloatingToc();
-
-  function finalizePageEntryAnimation() {
-    const wrap = document.querySelector(".wrap.animate-fade-in");
-    if (!wrap) return;
-    const clear = () => {
-      wrap.classList.remove("animate-fade-in");
-      wrap.style.opacity = "1";
-      wrap.style.transform = "none";
-    };
-    wrap.addEventListener("animationend", clear, { once: true });
-    window.setTimeout(clear, 700);
-  }
-
-  function initFloatingToc() {
-    const root = document.getElementById("post");
-    const desktopNav = document.getElementById("floating-toc");
-    const desktopList = document.getElementById("toc-list-desktop");
-    const drawer = document.getElementById("toc-drawer");
-    const mobileList = document.getElementById("toc-list-mobile");
-    const fab = document.getElementById("toc-fab");
-    if (!root || !desktopNav || !desktopList || !drawer || !mobileList || !fab) return;
-
-    const headings = Array.from(root.querySelectorAll("h2, h3"));
-    if (!headings.length) {
-      desktopNav.style.display = "none";
-      fab.style.display = "none";
-      drawer.classList.remove("open");
-      return;
-    }
-
-    const slugCount = Object.create(null);
-    const idSet = new Set(Array.from(document.querySelectorAll("[id]")).map((el) => el.id));
-    function slugify(text) {
-      const base = String(text || "")
-        .normalize("NFKD")
-        .toLowerCase()
-        .replace(/[^\w\s-가-힣]/g, "")
-        .trim()
-        .replace(/\s+/g, "-")
-        .replace(/-+/g, "-") || "section";
-      slugCount[base] = (slugCount[base] || 0) + 1;
-      return slugCount[base] === 1 ? base : `${base}-${slugCount[base]}`;
-    }
-    const tocItems = headings.map((heading) => {
-      let id = (heading.id || "").trim();
-      if (!id) {
-        id = slugify(heading.textContent || "");
-        while (idSet.has(id)) id = slugify(heading.textContent || "");
-        heading.id = id;
-      }
-      idSet.add(id);
-      return {
-        id,
-        level: heading.tagName.toLowerCase() === "h3" ? 3 : 2,
-        label: (heading.textContent || "").trim(),
-        el: heading
-      };
-    });
-
-    function renderTocList(container) {
-      container.innerHTML = tocItems
-        .map((item) => {
-          const cls = item.level === 3 ? "toc-link lvl-3" : "toc-link";
-          return `<li><a class="${cls}" href="#${item.id}" data-target="${item.id}">${item.label}</a></li>`;
-        })
-        .join("");
-      return Array.from(container.querySelectorAll(".toc-link[data-target]"));
-    }
-
-    const desktopLinks = renderTocList(desktopList);
-    const mobileLinks = renderTocList(mobileList);
-    const links = [...desktopLinks, ...mobileLinks];
-
-    function setActive(id) {
-      links.forEach((link) => {
-        const active = link.dataset.target === id;
-        link.classList.toggle("active", active);
-        if (active) {
-          link.setAttribute("aria-current", "true");
-        } else {
-          link.removeAttribute("aria-current");
-        }
-      });
-    }
-
-    function closeDrawer() {
-      drawer.classList.remove("open");
-      fab.setAttribute("aria-expanded", "false");
-    }
-
-    function getHeaderOffset() {
-      const header = document.querySelector("header.top");
-      if (!header) return 92;
-      return Math.max(72, Math.ceil(header.getBoundingClientRect().height + 8));
-    }
-
-    function scrollToTarget(el) {
-      const top = window.scrollY + el.getBoundingClientRect().top - getHeaderOffset();
-      window.scrollTo({
-        top: Math.max(0, top),
-        behavior: reducedMotion ? "auto" : "smooth"
-      });
-    }
-
-    links.forEach((link) => {
-      link.addEventListener("click", (e) => {
-        const id = link.dataset.target || "";
-        const target = id ? document.getElementById(id) : null;
-        if (!target) return;
-        e.preventDefault();
-        scrollToTarget(target);
-        setActive(id);
-        history.replaceState(null, "", `#${id}`);
-        closeDrawer();
-      });
-    });
-
-    fab.addEventListener("click", () => {
-      const next = !drawer.classList.contains("open");
-      drawer.classList.toggle("open", next);
-      fab.setAttribute("aria-expanded", next ? "true" : "false");
-    });
-    document.addEventListener("click", (e) => {
-      if (!drawer.classList.contains("open")) return;
-      const target = e.target;
-      if (!(target instanceof HTMLElement)) return;
-      if (drawer.contains(target) || fab.contains(target)) return;
-      closeDrawer();
-    });
-
-    setActive(tocItems[0].id);
-    if ("IntersectionObserver" in window) {
-      const obs = new IntersectionObserver((entries) => {
-        const visible = entries
-          .filter((entry) => entry.isIntersecting)
-          .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
-        if (!visible) return;
-        const id = visible.target.getAttribute("id");
-        if (id) setActive(id);
-      }, { root: null, rootMargin: "-20% 0px -62% 0px", threshold: [0.01, 0.15, 0.45] });
-      tocItems.forEach((it) => obs.observe(it.el));
-    } else {
-      window.addEventListener("scroll", () => {
-        let current = tocItems[0];
-        const offset = getHeaderOffset();
-        tocItems.forEach((it) => {
-          const rect = it.el.getBoundingClientRect();
-          if (rect.top - offset <= 1) current = it;
-        });
-        if (current) setActive(current.id);
-      }, { passive: true });
-    }
-
-    window.addEventListener("resize", () => {
-      if (window.innerWidth >= 1024) closeDrawer();
-    });
-  }
 
   const dataEl = document.getElementById("poll-data");
   if (!dataEl) return;
@@ -390,9 +176,10 @@
 
   function buildTraces() {
     const out = [];
+    const dashStyles = ["solid", "dash", "dot", "longdash", "dashdot"];
     const markerSymbols = ["circle", "square", "triangle-up", "cross", "star"];
-    const PRESIDENT_DISAPPROVE_COLOR = "#B91C3A";
     tracesData.forEach((p, idx) => {
+      const dash = dashStyles[idx % dashStyles.length];
       const symbol = markerSymbols[idx % markerSymbols.length];
       const band = buildSmoothedBand(p.actual_y);
       out.push({
@@ -410,7 +197,7 @@
       });
       out.push({
         x: p.actual_x, y: p.actual_y, type: "scatter", mode: "lines", name: (p.display_party || p.party),
-        legendgroup: p.party, line: { color: p.color, width: 2.7, dash: "solid" },
+        legendgroup: p.party, line: { color: p.color, width: 2.7, dash },
         hovertemplate: "<b>%{fullData.name}</b>: %{y:.2f}%<extra></extra>"
       });
       out.push({
@@ -513,7 +300,7 @@
         hoverinfo: "skip",
         line: { color: "rgba(0,0,0,0)", width: 0, shape: "spline", smoothing: 0.65 },
         fill: "tonexty",
-        fillcolor: hexToRgba(PRESIDENT_DISAPPROVE_COLOR, BAND_OPACITY),
+        fillcolor: hexToRgba("#D83A3A", BAND_OPACITY),
         meta: "band"
       });
       out.push({
@@ -523,8 +310,8 @@
         mode: "lines+markers",
         name: "대통령 부정평가(raw)",
         legendgroup: "president_raw_disapprove",
-        line: { color: PRESIDENT_DISAPPROVE_COLOR, width: 2, dash: "dash" },
-        marker: { size: 4, color: PRESIDENT_DISAPPROVE_COLOR },
+        line: { color: "#D83A3A", width: 2, dash: "dash" },
+        marker: { size: 4, color: "#D83A3A" },
         hovertemplate: "<b>대통령 부정평가(raw)</b>: %{y:.2f}%<extra></extra>"
       });
     }
@@ -555,34 +342,31 @@
     const compactHover = isTouchDevice() || isMobileViewport();
     return {
       paper_bgcolor: "rgba(0,0,0,0)",
-      plot_bgcolor: dark ? "#16191F" : "#FFFFFF",
-      font: { color: dark ? "#E8EAF0" : "#111827", family: "Inter, Pretendard, sans-serif", size: 14 },
-      margin: { l: 58, r: 24, t: 92, b: 48 },
+      plot_bgcolor: dark ? "#152338" : "#F8FAFD",
+      font: { color: dark ? "#EAF0FA" : "#1A2332", family: "Inter, Pretendard, sans-serif" },
+      margin: { l: 55, r: 20, t: 92, b: 44 },
       hovermode: compactHover ? "closest" : "x unified",
       dragmode: "pan",
       hoverlabel: {
-        bgcolor: dark ? "#0F1217" : "#FFFFFF",
-        bordercolor: dark ? "#2A2E37" : "#E1E5EB",
-        font: { color: dark ? "#E8EAF0" : "#111827", size: compactHover ? 12 : 14, family: "Inter, Pretendard, sans-serif" },
+        bgcolor: dark ? "#111A2B" : "#FFFFFF",
+        bordercolor: "#8FB3FF",
+        font: { color: dark ? "#EAF0FA" : "#1A2332", size: compactHover ? 11 : 13, family: "Inter, Pretendard, sans-serif" },
         align: "left",
         namelength: compactHover ? 32 : -1
       },
       xaxis: {
-        tickfont: { size: 14 },
-        gridcolor: dark ? "rgba(156,163,175,0.22)" : "rgba(107,114,128,0.20)",
-        linecolor: dark ? "rgba(156,163,175,0.32)" : "rgba(107,114,128,0.35)",
+        gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)",
+        linecolor: dark ? "rgba(158,176,204,0.24)" : "rgba(100,116,139,0.35)",
         showspikes: !compactHover,
         spikemode: "across",
-        spikecolor: dark ? "rgba(156,163,175,0.45)" : "rgba(107,114,128,0.45)",
+        spikecolor: dark ? "rgba(158,176,204,0.5)" : "rgba(71,85,105,0.5)",
         spikedash: "dot",
         spikethickness: 1,
         fixedrange: true
       },
       yaxis: {
         title: "지지율(%)",
-        titlefont: { size: 14 },
-        tickfont: { size: 14 },
-        gridcolor: dark ? "rgba(156,163,175,0.22)" : "rgba(107,114,128,0.20)",
+        gridcolor: dark ? "rgba(158,176,204,0.16)" : "rgba(71,85,105,0.18)",
         zeroline: false,
         fixedrange: true
       },
@@ -590,12 +374,12 @@
         orientation: "h",
         x: 0,
         xanchor: "left",
-        y: 1.14,
+        y: 1.16,
         yanchor: "bottom",
-        bgcolor: dark ? "rgba(22,25,31,0.96)" : "rgba(247,249,251,0.96)",
-        bordercolor: dark ? "#2A2E37" : "#E1E5EB",
+        bgcolor: dark ? "rgba(17,26,41,0.88)" : "rgba(255,255,255,0.92)",
+        bordercolor: dark ? "rgba(110,138,174,0.45)" : "rgba(106,125,160,0.45)",
         borderwidth: 1,
-        font: { size: 14 }
+        font: { size: 12 }
       }
     };
   }
@@ -660,114 +444,12 @@
     }
   }
 
-  function bindMainChartHoverEmphasis() {
-    if (!chartDiv || chartDiv.dataset.hoverEmphasisBound === "1" || isTouchDevice()) return;
-    chartDiv.dataset.hoverEmphasisBound = "1";
-    const HOVER_Y_GAP_THRESHOLD = 2.0;
-    let lastActiveGroup = null;
-    const baseLineWidths = (chartDiv.data || []).map((t) => {
-      const w = t && t.line ? Number(t.line.width) : NaN;
-      return Number.isFinite(w) ? w : null;
-    });
-
-    function restore() {
-      const data = chartDiv.data || [];
-      Plotly.restyle(chartDiv, {
-        opacity: data.map(() => 1),
-        "line.width": baseLineWidths
-      });
-    }
-    function applyEmphasis(activeGroup) {
-      const data = chartDiv.data || [];
-      if (!activeGroup || !data.some((t) => t && t.legendgroup === activeGroup)) {
-        restore();
-        return false;
-      }
-      const opacities = data.map((t) => (t && t.legendgroup === activeGroup ? 1 : 0.2));
-      const boostedWidths = data.map((t, idx) => {
-        const base = baseLineWidths[idx];
-        if (base === null) return null;
-        const same = t && t.legendgroup === activeGroup;
-        const isBand = t && t.meta === "band";
-        const isLine = t && String(t.mode || "").includes("lines");
-        if (same && !isBand && isLine) return base + 1;
-        return base;
-      });
-      Plotly.restyle(chartDiv, { opacity: opacities, "line.width": boostedWidths });
-      return true;
-    }
-
-    function getCursorYValue(ev) {
-      const layout = chartDiv && chartDiv._fullLayout;
-      const axis = layout && layout.yaxis;
-      const rawClientY = ev && ev.event && Number.isFinite(ev.event.clientY) ? Number(ev.event.clientY) : Number.NaN;
-      if (axis && Number.isFinite(rawClientY)) {
-        const rect = chartDiv.getBoundingClientRect();
-        const yInDiv = rawClientY - rect.top;
-        const axisOffset = Number.isFinite(axis._offset) ? Number(axis._offset) : 0;
-        const yInAxis = yInDiv - axisOffset;
-        if (Number.isFinite(yInAxis)) {
-          const converted = axis.p2l(yInAxis);
-          if (Number.isFinite(converted)) return Number(converted);
-        }
-      }
-      return Number.isFinite(ev && ev.yval) ? Number(ev.yval) : Number.NaN;
-    }
-
-    chartDiv.on("plotly_hover", (ev) => {
-      const hoverY = getCursorYValue(ev);
-      const rankedCandidates = (ev && Array.isArray(ev.points) ? ev.points : [])
-        .filter((p) => {
-          const t = (chartDiv.data || [])[p.curveNumber];
-          return !!(
-            t &&
-            t.legendgroup &&
-            t.meta !== "band" &&
-            String(t.mode || "").includes("lines") &&
-            Number.isFinite(Number(p.y))
-          );
-        })
-        .map((p) => ({
-          p,
-          yGap: Number.isFinite(hoverY) ? Math.abs(Number(p.y) - hoverY) : Number.POSITIVE_INFINITY,
-          distance: Number.isFinite(p.distance) ? Number(p.distance) : Number.POSITIVE_INFINITY
-        }))
-        .sort((a, b) => {
-          if (a.yGap !== b.yGap) return a.yGap - b.yGap;
-          return a.distance - b.distance;
-        });
-      const bestCandidate = rankedCandidates[0] || null;
-      if (!bestCandidate) {
-        if (!applyEmphasis(lastActiveGroup)) lastActiveGroup = null;
-        return;
-      }
-      // If cursor-to-series y-gap is too large (e.g., sparse/missing points), suppress highlight flicker.
-      if (!Number.isFinite(bestCandidate.yGap) || bestCandidate.yGap > HOVER_Y_GAP_THRESHOLD) {
-        if (!applyEmphasis(lastActiveGroup)) lastActiveGroup = null;
-        return;
-      }
-      const point = bestCandidate.p;
-      if (!point || typeof point.curveNumber !== "number") return;
-      const sourceTrace = (chartDiv.data || [])[point.curveNumber];
-      if (!sourceTrace || !sourceTrace.legendgroup) return;
-      const activeGroup = sourceTrace.legendgroup;
-      lastActiveGroup = activeGroup;
-      applyEmphasis(activeGroup);
-    });
-
-    chartDiv.on("plotly_unhover", () => {
-      lastActiveGroup = null;
-      restore();
-    });
-  }
-
   function renderAndSync() {
     syncChartHeightToRanking();
     const shouldAnimate = !chartDiv.dataset.animated;
     const renderPromise = renderChart();
     if (renderPromise && typeof renderPromise.then === "function") {
       renderPromise.then(() => {
-        bindMainChartHoverEmphasis();
         if (shouldAnimate) {
           animateSeriesRevealOnce();
           chartDiv.dataset.animated = "1";
@@ -780,7 +462,6 @@
       animateSeriesRevealOnce();
       chartDiv.dataset.animated = "1";
     }
-    bindMainChartHoverEmphasis();
     Plotly.Plots.resize(chartDiv);
   }
 
@@ -1087,32 +768,6 @@
       },
       { displayModeBar: false, responsive: true }
     );
-
-    if (chartEl.dataset.hoverEmphasisBound === "1" || isTouchDevice()) return;
-    chartEl.dataset.hoverEmphasisBound = "1";
-    const restore = () => {
-      const data = chartEl.data || [];
-      const traceOpacity = data.map(() => 1);
-      const markerOpacity = data.map((t) => (t && t.marker ? 1 : null));
-      Plotly.restyle(chartEl, { opacity: traceOpacity, "marker.opacity": markerOpacity });
-    };
-    chartEl.on("plotly_hover", (ev) => {
-      const point = ev && Array.isArray(ev.points) ? ev.points[0] : null;
-      const selectedLabel = point ? String(point.y || "") : "";
-      if (!selectedLabel) return;
-      const data = chartEl.data || [];
-      const traceOpacity = data.map((t) => {
-        const rowLabel = Array.isArray(t.y) && t.y.length === 2 && t.y[0] === t.y[1] ? String(t.y[0]) : "";
-        if (!rowLabel) return 1;
-        return rowLabel === selectedLabel ? 1 : 0.2;
-      });
-      const markerOpacity = data.map((t) => {
-        if (!t || !t.marker || !Array.isArray(t.y)) return null;
-        return t.y.map((label) => (String(label) === selectedLabel ? 1 : 0.25));
-      });
-      Plotly.restyle(chartEl, { opacity: traceOpacity, "marker.opacity": markerOpacity });
-    });
-    chartEl.on("plotly_unhover", restore);
   }
 
   function parseRss(xmlText) {
