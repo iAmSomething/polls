@@ -2208,7 +2208,7 @@ def load_latest_poll_results(outputs: Path, max_rows: int = 6) -> list[dict]:
         return []
     df["date_end"] = pd.to_datetime(df["date_end"], errors="coerce")
     df = df.dropna(subset=["date_end"]).sort_values("date_end", ascending=False).head(max_rows)
-    meta_cols = {"pollster", "date_end", "source_type", "source_url"}
+    meta_cols = {"pollster", "date_end", "source_type", "source_url", "is_national_party_poll", "has_local_election_context"}
 
     rows: list[dict] = []
     for _, r in df.iterrows():

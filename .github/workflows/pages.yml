@@ -70,6 +70,12 @@ jobs:
             --keywords "정당 지지율,여론조사,민주당,국민의힘,개혁신당,조국혁신당"
 
 
+      - name: Build base outputs
+        run: |
+          python src/pipeline.py
+          python src/president_approval_pipeline.py
+          python src/president_approval_postprocess.py
+
       - name: Refresh hourly poll/news inputs
         run: |
           PYTHONPATH=../poll_news_collector python ../poll_news_collector/hourly_pipeline.py \
@@ -82,11 +88,8 @@ jobs:
             --max-retries 3 \
             --retry-delay-minutes 60
 
-      - name: Build forecast outputs
+      - name: Build forecast/site outputs
         run: |
-          python src/pipeline.py
-          python src/president_approval_pipeline.py
-          python src/president_approval_postprocess.py
           python src/forecast.py --model ssm --regime-guard on --exog-approval on
           python src/backtest_report.py --regime-guard on --exog-approval on
           python src/generate_site.py
