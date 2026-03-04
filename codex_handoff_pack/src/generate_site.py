@@ -2292,7 +2292,17 @@ def load_latest_poll_results(outputs: Path, max_rows: int = 6) -> list[dict]:
     files = sorted(outputs.glob("weekly_public_points_*.csv"))
     if not files:
         return []
-    latest = max(files, key=lambda p: p.stat().st_mtime)
+    def _week_end_key(path: Path) -> tuple[pd.Timestamp, float]:
+        m = re.search(r"weekly_public_points_\\d{4}-\\d{2}-\\d{2}_(\\d{4}-\\d{2}-\\d{2})\\.csv$", path.name)
+        if not m:
+            return (pd.Timestamp.min, path.stat().st_mtime)
+        week_end = pd.to_datetime(m.group(1), errors="coerce")
+        if pd.isna(week_end):
+            return (pd.Timestamp.min, path.stat().st_mtime)
+        return (week_end, path.stat().st_mtime)
+
+    # Prefer the newest week window in filename. mtime is only a tiebreaker.
+    latest = max(files, key=_week_end_key)
     try:
         df = pd.read_csv(latest)
     except Exception:

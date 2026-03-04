@@ -219,6 +219,11 @@ def monday_sunday_window(date_str: str) -> tuple[str, str]:
     return start.isoformat(), end.isoformat()
 
 
+def today_kst(now_utc: dt.datetime) -> str:
+    kst = dt.timezone(dt.timedelta(hours=9))
+    return now_utc.astimezone(kst).date().isoformat()
+
+
 def run_update_week_window(project_dir: Path, observed_jsonl: Path, week_start: str, week_end: str) -> None:
     py = sys.executable
     script = project_dir / "src" / "update_week_window.py"
@@ -482,19 +487,21 @@ def main() -> None:
     appended = append_jsonl(observed_jsonl, to_append) if to_append else 0
     print(f"[extract] candidates={len(rows)} retried={retried_candidates} accepted={len(accepted_dates)} appended={appended}")
 
-    week_start, week_end = (None, None)
+    # Keep weekly series fresh even when no new article is accepted this hour.
+    # This prevents dashboard trend/forecast dates from freezing on stale weeks.
+    ref_date = sorted(accepted_dates)[-1] if accepted_dates else today_kst(now_utc)
+    week_start, week_end = monday_sunday_window(ref_date)
     update_ok = False
-    if accepted_dates:
-        week_start, week_end = monday_sunday_window(sorted(accepted_dates)[-1])
-        if args.run_update:
-            try:
-                run_update_week_window(project_dir, observed_jsonl, week_start, week_end)
-                update_ok = True
-                print(f"[update] ran update_week_window for {week_start}~{week_end}")
-            except subprocess.CalledProcessError as exc:
-                print(f"[update] failed for {week_start}~{week_end}: {exc}; continuing with news refresh commit")
-        else:
+    if args.run_update:
+        try:
+            run_update_week_window(project_dir, observed_jsonl, week_start, week_end)
             update_ok = True
+            mode = "observed+estimated" if accepted_dates else "estimated-only"
+            print(f"[update] ran update_week_window for {week_start}~{week_end} ({mode})")
+        except subprocess.CalledProcessError as exc:
+            print(f"[update] failed for {week_start}~{week_end}: {exc}; continuing with news refresh commit")
+    else:
+        update_ok = True
 
     if args.git_commit:
         targets = [triage_md, news_json_out]
